@@ -47,13 +47,13 @@ class Playlist extends Equatable {
   });
 
   Playlist.fromJson(Map json)
-      : name = json['name'] ?? 'New Playlist',
+      : name = json['name']?.toString() ?? 'New Playlist',
         audios = json['audios'] != null
-            ? (jsonDecode(json['audios']) as List)
-                .map((audio) => Audio.fromJson(audio))
+            ? (jsonDecode(json['audios'].toString()) as List)
+                .map((audio) => Audio.fromJson(audio as Map))
                 .toList()
             : [],
-        color = json['color'] != null ? colorTranslation[json['color']] : null;
+        color = json['color'] != null ? colorTranslation[json['color']?.toString()] : null;
 
   toJson() => {
         'name': name,
