@@ -46,13 +46,27 @@ class Playlist extends Equatable {
     this.color,
   });
 
+  static List<Audio> _parseAudiosSafely(dynamic audiosJson) {
+    if (audiosJson == null) return <Audio>[];
+    try {
+      if (audiosJson is String) {
+        if (audiosJson.trim().isEmpty) return <Audio>[];
+        final decoded = jsonDecode(audiosJson);
+        if (decoded is List) {
+          return decoded.map((e) => Audio.fromJson(e as Map)).toList();
+        }
+      } else if (audiosJson is List) {
+        return audiosJson.map((e) => Audio.fromJson(e as Map)).toList();
+      }
+    } catch (e) {
+      debugPrint('Playlist parsing error: $e');
+    }
+    return <Audio>[];
+  }
+
   Playlist.fromJson(Map json)
       : name = json['name'] ?? 'New Playlist',
-        audios = json['audios'] != null
-            ? (jsonDecode(json['audios']) as List)
-                .map((audio) => Audio.fromJson(audio))
-                .toList()
-            : <Audio>[],
+        audios = _parseAudiosSafely(json['audios']),
         color = json['color'] != null ? colorTranslation[json['color']] : null;
 
   toJson() => {

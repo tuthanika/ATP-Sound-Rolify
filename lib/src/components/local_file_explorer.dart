@@ -25,44 +25,56 @@ class LocalFileExplorerState extends State<LocalFileExplorer> {
 
   Future<void> _requestPermissionAndLoad() async {
     if (Platform.isAndroid) {
-      if (await Permission.manageExternalStorage.request().isGranted ||
-          await Permission.storage.request().isGranted ||
-          await Permission.audio.request().isGranted) {
-        if (mounted) {
-          setState(() {
-            hasPermission = true;
-          });
-          _loadDir();
-        }
-      } else {
-        if (mounted) {
-          setState(() => hasPermission = false);
-        }
+      bool granted = false;
+      try {
+        if (await Permission.storage.request().isGranted) granted = true;
+      } catch (_) {}
+      
+      try {
+        if (!granted && await Permission.audio.request().isGranted) granted = true;
+      } catch (_) {}
+
+      try {
+        if (!granted && await Permission.manageExternalStorage.request().isGranted) granted = true;
+      } catch (_) {}
+
+      if (mounted) {
+        setState(() => hasPermission = granted);
+        if (granted) _loadDir();
       }
     } else {
-      setState(() => hasPermission = true);
-      _loadDir();
+      if (mounted) {
+        setState(() => hasPermission = true);
+        _loadDir();
+      }
     }
   }
 
-  void _loadDir() {
+  Future<void> _loadDir() async {
     try {
-      final list = currentDir.listSync().where((e) {
+      final list = <FileSystemEntity>[];
+      final stream = currentDir.list(recursive: false);
+      
+      await for (final e in stream) {
         if (e is Directory) {
           // Hide hidden folders
-          if (e.path.split('/').last.startsWith('.')) return false;
-          return true;
+          if (!e.path.split('/').last.startsWith('.')) {
+            list.add(e);
+          }
+        } else {
+          final name = e.path.toLowerCase();
+          if (name.endsWith('.mp3') ||
+              name.endsWith('.m4a') ||
+              name.endsWith('.wav') ||
+              name.endsWith('.ogg') ||
+              name.endsWith('.flac') ||
+              name.endsWith('.aac') ||
+              name.endsWith('.opus') ||
+              name.endsWith('.wma')) {
+            list.add(e);
+          }
         }
-        final name = e.path.toLowerCase();
-        return name.endsWith('.mp3') ||
-            name.endsWith('.m4a') ||
-            name.endsWith('.wav') ||
-            name.endsWith('.ogg') ||
-            name.endsWith('.flac') ||
-            name.endsWith('.aac') ||
-            name.endsWith('.opus') ||
-            name.endsWith('.wma');
-      }).toList();
+      }
 
       list.sort((a, b) {
         if (a is Directory && b is File) return -1;
@@ -76,6 +88,7 @@ class LocalFileExplorerState extends State<LocalFileExplorer> {
         });
       }
     } catch (e) {
+      debugPrint('Error loading directory: $e');
       if (mounted) {
         setState(() {
           files = [];
@@ -158,8 +171,7 @@ class LocalFileExplorerState extends State<LocalFileExplorer> {
                             size: 28,
                             color: isDir
                                 ? Colors.amber
-                                : NeumorphicTheme.currentTheme(context)
-                                    .accentColor),
+                                : (NeumorphicTheme.of(context)?.current?.accentColor ?? Colors.blue)),
                         const SizedBox(width: 16),
                         Expanded(
                           child: MyText.body(file.path.split('/').last),
