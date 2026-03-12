@@ -59,8 +59,9 @@ class Audio extends Equatable {
   List<Object> get props => [path];
 }
 
-String removeFileExtension(String path) {
-  const audioExtensions = [
+String removeFileExtension(String? path) {
+  if (path == null || path.isEmpty) return 'Unknown';
+  final audioExtensions = [
     'mp3', 'wav', 'ogg', 'flac', 'm4a', 'aac', 'wma', 'opus'
   ];
   final fileName = path.split('/').last.split('\\').last;

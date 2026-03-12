@@ -27,58 +27,71 @@ class LocalFileExplorerState extends State<LocalFileExplorer> {
     if (Platform.isAndroid) {
       bool granted = false;
       try {
-        if (await Permission.storage.request().isGranted) granted = true;
+        if (await Permission.storage.status.isGranted) granted = true;
+      } catch (_) {}
+
+      try {
+        if (!granted && await Permission.storage.request().isGranted) granted = true;
       } catch (_) {}
       
       try {
+        if (!granted && await Permission.audio.status.isGranted) granted = true;
         if (!granted && await Permission.audio.request().isGranted) granted = true;
       } catch (_) {}
 
       try {
+        if (!granted && await Permission.manageExternalStorage.status.isGranted) granted = true;
         if (!granted && await Permission.manageExternalStorage.request().isGranted) granted = true;
       } catch (_) {}
 
       if (mounted) {
         setState(() => hasPermission = granted);
-        if (granted) _loadDir();
+        if (granted) await _loadDir();
       }
     } else {
       if (mounted) {
         setState(() => hasPermission = true);
-        _loadDir();
+        await _loadDir();
       }
     }
   }
 
   Future<void> _loadDir() async {
     try {
+      if (!await currentDir.exists()) return;
+
       final list = <FileSystemEntity>[];
       final stream = currentDir.list(recursive: false);
       
-      await for (final e in stream) {
-        if (e is Directory) {
-          // Hide hidden folders
-          if (!e.path.split('/').last.startsWith('.')) {
-            list.add(e);
+      await stream.forEach((e) {
+        try {
+          final isDir = FileSystemEntity.isDirectorySync(e.path);
+          if (isDir) {
+            // Hide hidden folders
+            if (!e.path.split('/').last.startsWith('.')) {
+              list.add(e);
+            }
+          } else {
+            final name = e.path.toLowerCase();
+            if (name.endsWith('.mp3') ||
+                name.endsWith('.m4a') ||
+                name.endsWith('.wav') ||
+                name.endsWith('.ogg') ||
+                name.endsWith('.flac') ||
+                name.endsWith('.aac') ||
+                name.endsWith('.opus') ||
+                name.endsWith('.wma')) {
+              list.add(e);
+            }
           }
-        } else {
-          final name = e.path.toLowerCase();
-          if (name.endsWith('.mp3') ||
-              name.endsWith('.m4a') ||
-              name.endsWith('.wav') ||
-              name.endsWith('.ogg') ||
-              name.endsWith('.flac') ||
-              name.endsWith('.aac') ||
-              name.endsWith('.opus') ||
-              name.endsWith('.wma')) {
-            list.add(e);
-          }
-        }
-      }
+        } catch (_) {}
+      });
 
       list.sort((a, b) {
-        if (a is Directory && b is File) return -1;
-        if (a is File && b is Directory) return 1;
+        final aIsDir = FileSystemEntity.isDirectorySync(a.path);
+        final bIsDir = FileSystemEntity.isDirectorySync(b.path);
+        if (aIsDir && !bIsDir) return -1;
+        if (!aIsDir && bIsDir) return 1;
         return a.path.toLowerCase().compareTo(b.path.toLowerCase());
       });
 
@@ -150,14 +163,14 @@ class LocalFileExplorerState extends State<LocalFileExplorer> {
               itemCount: files.length,
               itemBuilder: (context, index) {
                 final file = files[index];
-                final isDir = file is Directory;
+                final isDir = FileSystemEntity.isDirectorySync(file.path);
                 return InkWell(
-                  onTap: () {
+                  onTap: () async {
                     if (isDir) {
                       setState(() {
-                        currentDir = file as Directory;
-                        _loadDir();
+                        currentDir = Directory(file.path);
                       });
+                      await _loadDir();
                     } else {
                       Navigator.pop(context, file.path);
                     }
