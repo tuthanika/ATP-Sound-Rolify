@@ -42,6 +42,7 @@ class EditPlaylistState extends State<EditPlaylist> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      resizeToAvoidBottomInset: false,
       backgroundColor: NeumorphicTheme.currentTheme(context).baseColor,
       body: SafeArea(
         child: Padding(
