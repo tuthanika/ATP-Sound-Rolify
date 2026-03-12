@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:math';
 
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:flutter_neumorphic/flutter_neumorphic.dart';
+import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:rolify/data/audios.dart';
 import 'package:rolify/entities/audio.dart';
@@ -34,35 +34,37 @@ class PlayerWidgetState extends State<PlayerWidget> {
   final _volumeController = StreamController<double>();
   late String audioImage;
   bool loopAudio = true, isPlaying = false;
+  final List<StreamSubscription> _subscriptions = [];
+
 
   @override
   void initState() {
     super.initState();
-    eventBus.on<OnAppResume>().listen((event) {
+    _subscriptions.add(eventBus.on<OnAppResume>().listen((event) {
       checkIfIsPlaying();
-    });
-    eventBus.on<AudioPlayed>().listen((event) {
+    }));
+    _subscriptions.add(eventBus.on<AudioPlayed>().listen((event) {
       if (event.path == widget.audio.path && mounted) {
         setState(() {
           isPlaying = true;
         });
       }
-    });
-    eventBus.on<AudioPaused>().listen((event) {
+    }));
+    _subscriptions.add(eventBus.on<AudioPaused>().listen((event) {
       if (event.path == widget.audio.path && mounted) {
         setState(() {
           isPlaying = false;
         });
       }
-    });
-    eventBus.on<ToggleLoop>().listen((event) {
+    }));
+    _subscriptions.add(eventBus.on<ToggleLoop>().listen((event) {
       if (event.path == widget.audio.path && mounted) {
         setState(() {
           loopAudio = event.value;
         });
       }
-    });
-    eventBus.on<VolumeChange>().listen((event) {
+    }));
+    _subscriptions.add(eventBus.on<VolumeChange>().listen((event) {
       if (event.path == widget.audio.path && mounted) {
         double volume;
         if (PlayingSounds().masterVolume == 0) {
@@ -77,8 +79,8 @@ class PlayerWidgetState extends State<PlayerWidget> {
           });
         }
       }
-    });
-    AppState().audioHandler.customEvent.listen((event) {
+    }));
+    _subscriptions.add(AppState().audioHandler.customEvent.listen((event) {
       if (event['name'] == AudioCustomEvents.pauseAll ||
           (event['name'] == AudioCustomEvents.audioEnded &&
               event['audioPath'] == widget.audio.path)) {
@@ -88,7 +90,7 @@ class PlayerWidgetState extends State<PlayerWidget> {
           });
         }
       }
-    });
+    }));
 
     loopAudio = widget.audio.loopMode == LoopMode.one;
     _volumeController.add(widget.audio.volume);
@@ -97,6 +99,15 @@ class PlayerWidgetState extends State<PlayerWidget> {
     WidgetsBinding.instance.addPostFrameCallback((timeStamp) {
       checkIfIsPlaying();
     });
+  }
+
+  @override
+  void dispose() {
+    for (final sub in _subscriptions) {
+      sub.cancel();
+    }
+    _volumeController.close();
+    super.dispose();
   }
 
   @override

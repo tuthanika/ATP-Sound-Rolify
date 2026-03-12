@@ -60,10 +60,17 @@ class Audio extends Equatable {
 }
 
 String removeFileExtension(String path) {
-  final pathSplit = path.split('.');
-  return path
-      .split('/')
-      .last
-      .replaceAll('_', ' ')
-      .replaceAll('.${pathSplit.last}', '');
+  const audioExtensions = [
+    'mp3', 'wav', 'ogg', 'flac', 'm4a', 'aac', 'wma', 'opus'
+  ];
+  final fileName = path.split('/').last.split('\\').last;
+  final dotIndex = fileName.lastIndexOf('.');
+  if (dotIndex > 0) {
+    final ext = fileName.substring(dotIndex + 1).toLowerCase();
+    if (audioExtensions.contains(ext)) {
+      return fileName.substring(0, dotIndex).replaceAll('_', ' ');
+    }
+  }
+  return fileName.replaceAll('_', ' ');
 }
+

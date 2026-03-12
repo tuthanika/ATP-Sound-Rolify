@@ -1,7 +1,8 @@
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:flutter_neumorphic/flutter_neumorphic.dart';
+import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
 import 'package:rolify/data/audios.dart';
 import 'package:rolify/entities/audio.dart';
 import 'package:rolify/presentation_logic_holders/audio_list_bloc/audio_list_bloc.dart';
@@ -9,13 +10,24 @@ import 'package:rolify/presentation_logic_holders/audio_list_bloc/audio_list_sta
 import 'package:rolify/presentation_logic_holders/event_bus/stop_all_event_bus.dart';
 import 'package:rolify/presentation_logic_holders/playing_sounds_singleton.dart';
 import 'package:rolify/presentation_logic_holders/singletons/app_state.dart';
-import 'package:rolify/root/info_page.dart';
 import 'package:rolify/src/components/button.dart';
 import 'package:rolify/src/components/my_icons.dart';
 import 'package:rolify/src/components/player_card.dart';
+import 'package:rolify/src/theme/texts.dart';
 
 import 'search_bar.dart';
 import 'global_controls.dart';
+
+const _supportedExtensions = [
+  'mp3',
+  'wav',
+  'ogg',
+  'flac',
+  'm4a',
+  'aac',
+  'wma',
+  'opus'
+];
 
 class AllSound extends StatefulWidget {
   const AllSound({Key? key}) : super(key: key);
@@ -77,10 +89,12 @@ class AllSoundState extends State<AllSound> with WidgetsBindingObserver {
     final allAudios = await AudioData.getAllAudios();
     allAudios
         .sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
-    setState(() {
-      audios = allAudios;
-      filteredAudios = allAudios;
-    });
+    if (mounted) {
+      setState(() {
+        audios = allAudios;
+        filteredAudios = allAudios;
+      });
+    }
   }
 
   @override
@@ -111,24 +125,22 @@ class AllSoundState extends State<AllSound> with WidgetsBindingObserver {
                           const SizedBox(width: 8.0),
                           MyButton(
                             icon: MyIcons.add,
-                            onTap: () => _openFileExplorer(context),
+                            onTap: () => _showAddOptions(context),
                           )
                         ],
                       ),
                     ),
                   ),
                   Expanded(
-                    child: SingleChildScrollView(
-                        padding: const EdgeInsets.only(bottom: 148),
-                        physics: const BouncingScrollPhysics(),
-                        child: Wrap(
-                          children: filteredAudios
-                              .map(
-                                (e) => PlayerWidget(
-                                    key: Key('${e.path}_all_sounds'), audio: e),
-                              )
-                              .toList(),
-                        )),
+                    child: ListView.builder(
+                      padding: const EdgeInsets.only(bottom: 148),
+                      physics: const BouncingScrollPhysics(),
+                      itemCount: filteredAudios.length,
+                      itemBuilder: (context, index) => PlayerWidget(
+                        key: Key('${filteredAudios[index].path}_all_sounds'),
+                        audio: filteredAudios[index],
+                      ),
+                    ),
                   ),
                 ],
               ),
@@ -160,10 +172,8 @@ class AllSoundState extends State<AllSound> with WidgetsBindingObserver {
     filterAudios(context);
   }
 
-  filterAudios(BuildContext context) async {
-    final allAudios = await AudioData.getAllAudios();
-
-    List<Audio> newFilteredAudios = allAudios;
+  filterAudios(BuildContext context) {
+    List<Audio> newFilteredAudios = audios;
     if (filterController.text != '') {
       newFilteredAudios =
           filterAudiosByText(newFilteredAudios, filterController.text);
@@ -181,39 +191,187 @@ class AllSoundState extends State<AllSound> with WidgetsBindingObserver {
         .toList();
   }
 
+  /// Show a bottom sheet with two options: pick file or enter path manually
+  void _showAddOptions(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: NeumorphicTheme.currentTheme(context).baseColor,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              MyText.body('Add audio', fontWeight: FontWeight.bold),
+              const SizedBox(height: 20),
+              _OptionTile(
+                icon: Icons.folder_open,
+                title: 'Browse files',
+                subtitle: 'Open file picker to select audio files',
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _openFileExplorer(context);
+                },
+              ),
+              const SizedBox(height: 12),
+              _OptionTile(
+                icon: Icons.link,
+                title: 'Enter file path',
+                subtitle: 'Paste or type the full path to an audio file',
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _showPathInputDialog(context);
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// File picker: picks files by path reference (no cache copy)
   void _openFileExplorer(BuildContext context) async {
     List<PlatformFile>? paths;
     try {
       final result = await FilePicker.platform.pickFiles(
         type: Theme.of(context).platform == TargetPlatform.android
             ? FileType.audio
-            : FileType.any,
+            : FileType.custom,
+        allowedExtensions:
+            Theme.of(context).platform == TargetPlatform.android
+                ? null
+                : _supportedExtensions,
         allowMultiple: true,
+        // Do NOT read bytes - just return the path reference
+        withData: false,
+        withReadStream: false,
       );
       paths = result?.files;
     } on PlatformException catch (e) {
       debugPrint("Unsupported operation $e");
     }
     if (!mounted || paths == null) return;
+    await _addAudiosByPaths(
+        paths.where((f) => f.path != null).map((f) => f.path!).toList());
+  }
+
+  /// Manual path input dialog
+  void _showPathInputDialog(BuildContext context) {
+    final controller = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: NeumorphicTheme.currentTheme(context).baseColor,
+        title: MyText.body('Enter file path', fontWeight: FontWeight.bold),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          decoration: InputDecoration(
+            hintText: '/path/to/audio.mp3',
+            hintStyle: TextStyle(
+              color: NeumorphicTheme.currentTheme(context).disabledColor,
+            ),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+          onSubmitted: (value) async {
+            Navigator.pop(ctx);
+            if (value.trim().isNotEmpty) {
+              await _addAudiosByPaths([value.trim()]);
+            }
+          },
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () async {
+              final path = controller.text.trim();
+              Navigator.pop(ctx);
+              if (path.isNotEmpty) {
+                await _addAudiosByPaths([path]);
+              }
+            },
+            child: const Text('Add'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Add audio files by absolute path references (no copying to cache)
+  Future<void> _addAudiosByPaths(List<String> paths) async {
+    if (!mounted) return;
     final allAudios = await AudioData.getAllAudios();
-    for (var file in paths) {
-      final name = file.name.replaceAll('_', ' ').replaceAll('.mp3', '');
+    bool added = false;
+    for (final path in paths) {
+      final name = removeFileExtension(path);
       final audio = Audio(
         name: name,
-        path: file.path ?? '',
+        path: path,
         audioSource: LocalAudioSource.file,
       );
       if (allAudios.contains(audio) == false) {
         allAudios.add(audio);
+        added = true;
       }
     }
-    AudioData.saveAllAudios(context, allAudios).then((value) {
-      resetTextFilter(context);
-    });
+    if (added && mounted) {
+      AudioData.saveAllAudios(context, allAudios).then((_) {
+        resetTextFilter(context);
+      });
+    }
   }
+}
 
-  void navigateToInfo() {
-    Navigator.push(
-        context, MaterialPageRoute(builder: (context) => const InfoPage()));
+class _OptionTile extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
+
+  const _OptionTile({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+        child: Row(
+          children: [
+            Icon(icon,
+                size: 32,
+                color: NeumorphicTheme.currentTheme(context).accentColor),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  MyText.body(title, fontWeight: FontWeight.w600),
+                  MyText.caption(subtitle,
+                      textType: TextType.secondary,
+                      fontWeight: FontWeight.normal),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }

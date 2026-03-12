@@ -1,5 +1,4 @@
-import 'package:flutter_neumorphic/flutter_neumorphic.dart';
-import 'package:launch_review/launch_review.dart';
+import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
 import 'package:rolify/src/theme/texts.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -27,7 +26,7 @@ class InfoPage extends StatelessWidget {
                 const SizedBox(width: 8.0),
                 Expanded(
                   child: MyText.body(
-                    "Made for fun by “madciock”.",
+                    "Made for fun by \u201cmadciock\u201d.",
                     fontWeight: FontWeight.w500,
                   ),
                 )
@@ -39,25 +38,16 @@ class InfoPage extends StatelessWidget {
               children: <Widget>[
                 ClickableText(
                   onTap: _goToReddit,
-                  text: "Rolify’s subReddit",
+                  text: "Rolify's subReddit",
                 ),
                 MyText.caption(
-                  '  •  ',
+                  '  \u2022  ',
                   fontWeight: FontWeight.w500,
                   textType: TextType.secondary,
                 ),
                 ClickableText(
                   onTap: _goToGithub,
                   text: "Github",
-                ),
-                MyText.caption(
-                  '  •  ',
-                  fontWeight: FontWeight.w500,
-                  textType: TextType.secondary,
-                ),
-                ClickableText(
-                  onTap: _openPlayStore,
-                  text: "Review",
                 ),
               ],
             ),
@@ -71,7 +61,7 @@ class InfoPage extends StatelessWidget {
               "So the most natural thing I could do was to release it free of charge for everyone.\n\n"
               "You sincerely surprised me for all the interest you have shown in this project!\n\n"
               "Thanks aside, I continue to be anxious to hear your opinion so join the community on Rolify's subReddit"
-              " where you can find new audios and leave there your feedback like bugs or new ideas!\nDon't forget to leave a review on the Store!",
+              " where you can find new audios and leave there your feedback like bugs or new ideas!",
               textType: TextType.secondary,
               fontWeight: FontWeight.w500,
             ),
@@ -89,10 +79,6 @@ class InfoPage extends StatelessWidget {
   _goToGithub() async {
     final url = Uri.parse('https://github.com/Ciock/rolify/tree/master');
     await launchUrl(url);
-  }
-
-  _openPlayStore() {
-    LaunchReview.launch(iOSAppId: '1511308478');
   }
 }
 

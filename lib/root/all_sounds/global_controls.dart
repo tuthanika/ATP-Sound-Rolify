@@ -1,5 +1,4 @@
-import 'package:flutter_neumorphic/flutter_neumorphic.dart';
-import 'package:launch_review/launch_review.dart';
+import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
 
 import '../../presentation_logic_holders/audio_service_commands.dart';
 import '../../presentation_logic_holders/playing_sounds_singleton.dart';
@@ -43,16 +42,7 @@ class _GlobalControlsState extends State<GlobalControls> {
             Row(
               children: <Widget>[
                 Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.only(right: 16.0),
-                    child: Align(
-                      alignment: Alignment.centerRight,
-                      child: MyButton(
-                        icon: MyIcons.star,
-                        onTap: _openPlayStore,
-                      ),
-                    ),
-                  ),
+                  child: Container(),
                 ),
                 MyRadio(
                     big: true,
@@ -101,9 +91,6 @@ class _GlobalControlsState extends State<GlobalControls> {
     );
   }
 
-  _openPlayStore() {
-    LaunchReview.launch(iOSAppId: '1511308478');
-  }
 
   void playAllSound() async {
     final pausedAudios = PlayingSounds().pausedAudios.toList();

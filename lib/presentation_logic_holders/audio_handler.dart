@@ -1,9 +1,9 @@
 import 'dart:io';
 
 import 'package:audio_service/audio_service.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:just_audio/just_audio.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:rolify/entities/audio.dart';
 import 'package:rolify/presentation_logic_holders/playing_sounds_singleton.dart';
 
@@ -33,20 +33,14 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
   List<AudioPlayer> pausedAudio = [];
   bool stoppingAll = false;
 
-  Future<void> setMockMediaItem(String path) async {
-    final byteData = await rootBundle.load('assets/$path');
-
-    final file = File('${(await getTemporaryDirectory()).path}/mock.png');
-    await file.writeAsBytes(byteData.buffer
-        .asUint8List(byteData.offsetInBytes, byteData.lengthInBytes));
-
+  Future<void> setMockMediaItem(String assetPath) async {
+    // Use asset URI directly (no file copy needed)
     final mockMediaItem = MediaItem(
-      id: "id",
+      id: assetPath,
       album: "For awesome roleplayers",
       title: "Rolify",
-      artUri: Uri.parse('file://${file.path}'),
+      artUri: Uri.parse('asset:///assets/$assetPath'),
     );
-
     mediaItem.add(mockMediaItem);
   }
 
