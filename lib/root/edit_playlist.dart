@@ -42,87 +42,65 @@ class EditPlaylistState extends State<EditPlaylist> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: NeumorphicTheme.currentTheme(context).baseColor,
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Neumorphic(
-            style: NeumorphicStyle(
-              boxShape: NeumorphicBoxShape.roundRect(
-                  const BorderRadius.all(Radius.circular(16.0))),
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: <Widget>[
-                Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    children: <Widget>[
-                      Row(
-                        children: <Widget>[
-                          Expanded(child: MyText.title('Edit playlist')),
-                          GestureDetector(
-                            onTap: () => Navigator.pop(context),
-                            child: MyIcons.close(),
-                          )
-                        ],
-                      ),
-                      const SizedBox(height: 16.0),
-                      Row(
-                        children: <Widget>[
-                          Expanded(
-                            child: MyTextField(
-                              controller: playlistNameController,
-                              hintText: 'Create a new playlist...',
-                            ),
-                          ),
-                          const SizedBox(width: 12.0),
-                          MyButton(icon: MyIcons.done, onTap: savePlaylist),
-                          const SizedBox(width: 12.0),
-                          MyButton(icon: MyIcons.delete, onTap: removePlaylist),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-                ColorSelection(
-                  onChange: (value) {
-                    setState(() {
-                      color = color == value ? null : value;
-                    });
-                  },
-                  colors: <Color>[
-                    Colors.redAccent[100]!,
-                    Colors.deepOrangeAccent[100]!,
-                    Colors.amberAccent[100]!,
-                    Colors.greenAccent[100]!,
-                    Colors.cyanAccent[100]!,
-                    Colors.blueAccent[100]!,
-                    Colors.deepPurpleAccent[100]!,
-                  ],
-                  groupValue: color,
-                ),
-                if (audios != null)
-                  Expanded(
-                    child: ListView.separated(
-                      physics: const BouncingScrollPhysics(),
-                      padding: const EdgeInsets.all(16.0),
-                      itemCount: audios!.length,
-                      itemBuilder: (context, index) => _AudioRow(
-                        playlist: widget.playlist,
-                        audio: audios![index],
-                        onAdd: () => addSoundToPlaylist(audios![index]),
-                        onRemove: () => removeSoundFromPlaylist(audios![index]),
-                      ),
-                      separatorBuilder: (BuildContext context, int index) =>
-                          const SizedBox(
-                        height: 16.0,
-                      ),
-                    ),
-                  )
-              ],
-            ),
+      appBar: AppBar(
+        title: const Text('Edit Playlist'),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.close),
+          onPressed: () => Navigator.pop(context),
+        ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.check),
+            onPressed: savePlaylist,
           ),
+          if (widget.playlist.name != '')
+            IconButton(
+              icon: const Icon(Icons.delete),
+              onPressed: removePlaylist,
+            ),
+        ],
+      ),
+      body: SafeArea(
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: TextField(
+                controller: playlistNameController,
+                decoration: const InputDecoration(
+                  labelText: 'Playlist Name',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ),
+            if (audios == null)
+              const Expanded(child: Center(child: CircularProgressIndicator()))
+            else
+              Expanded(
+                child: ListView.separated(
+                  itemCount: audios!.length,
+                  padding: const EdgeInsets.all(16),
+                  separatorBuilder: (context, index) => const Divider(),
+                  itemBuilder: (context, index) {
+                    final audio = audios![index];
+                    final isAdded = widget.playlist.audios.contains(audio);
+                    return ListTile(
+                      title: Text(audio.name),
+                      subtitle: Text(audio.path, maxLines: 1, overflow: TextOverflow.ellipsis),
+                      trailing: IconButton(
+                        icon: Icon(isAdded ? Icons.remove_circle : Icons.add_circle,
+                            color: isAdded ? Colors.red : Colors.green),
+                        onPressed: isAdded
+                            ? () => removeSoundFromPlaylist(audio)
+                            : () => addSoundToPlaylist(audio),
+                      ),
+                    );
+                  },
+                ),
+              ),
+          ],
         ),
       ),
     );
