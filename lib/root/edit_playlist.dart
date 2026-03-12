@@ -1,4 +1,4 @@
-import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
+import 'package:flutter_neumorphic/flutter_neumorphic.dart';
 import 'package:rolify/data/audios.dart';
 import 'package:rolify/data/playlist.dart';
 import 'package:rolify/entities/audio.dart';
@@ -42,19 +42,19 @@ class EditPlaylistState extends State<EditPlaylist> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      resizeToAvoidBottomInset: false,
       backgroundColor: NeumorphicTheme.currentTheme(context).baseColor,
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(24.0),
-          child: Column(
-            children: [
-              Neumorphic(
-                style: NeumorphicStyle(
-                  boxShape: NeumorphicBoxShape.roundRect(
-                      const BorderRadius.all(Radius.circular(16.0))),
-                ),
-                child: Padding(
+          child: Neumorphic(
+            style: NeumorphicStyle(
+              boxShape: NeumorphicBoxShape.roundRect(
+                  const BorderRadius.all(Radius.circular(16.0))),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: <Widget>[
+                Padding(
                   padding: const EdgeInsets.all(16.0),
                   child: Column(
                     children: <Widget>[
@@ -73,60 +73,55 @@ class EditPlaylistState extends State<EditPlaylist> {
                           Expanded(
                             child: MyTextField(
                               controller: playlistNameController,
-                              hintText: 'Playlist name',
+                              hintText: 'Create a new playlist...',
                             ),
                           ),
                           const SizedBox(width: 12.0),
                           MyButton(icon: MyIcons.done, onTap: savePlaylist),
-                          if (widget.playlist.name != '') ...[
-                            const SizedBox(width: 12.0),
-                            MyButton(
-                                icon: MyIcons.delete, onTap: removePlaylist),
-                          ]
+                          const SizedBox(width: 12.0),
+                          MyButton(icon: MyIcons.delete, onTap: removePlaylist),
                         ],
-                      ),
-                      const SizedBox(height: 16.0),
-                      ColorSelection(
-                        onChange: (value) {
-                          setState(() {
-                            color = color == value ? null : value;
-                          });
-                        },
-                        colors: <Color>[
-                          Colors.redAccent[100]!,
-                          Colors.deepOrangeAccent[100]!,
-                          Colors.amberAccent[100]!,
-                          Colors.greenAccent[100]!,
-                          Colors.cyanAccent[100]!,
-                          Colors.blueAccent[100]!,
-                          Colors.deepPurpleAccent[100]!,
-                        ],
-                        groupValue: color,
                       ),
                     ],
                   ),
                 ),
-              ),
-              const SizedBox(height: 16.0),
-              if (audios != null)
-                Expanded(
-                  child: ListView.separated(
-                    physics: const BouncingScrollPhysics(),
-                    padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-                    itemCount: audios!.length,
-                    itemBuilder: (context, index) => _AudioRow(
-                      playlist: widget.playlist,
-                      audio: audios![index],
-                      onAdd: () => addSoundToPlaylist(audios![index]),
-                      onRemove: () => removeSoundFromPlaylist(audios![index]),
+                ColorSelection(
+                  onChange: (value) {
+                    setState(() {
+                      color = color == value ? null : value;
+                    });
+                  },
+                  colors: <Color>[
+                    Colors.redAccent[100]!,
+                    Colors.deepOrangeAccent[100]!,
+                    Colors.amberAccent[100]!,
+                    Colors.greenAccent[100]!,
+                    Colors.cyanAccent[100]!,
+                    Colors.blueAccent[100]!,
+                    Colors.deepPurpleAccent[100]!,
+                  ],
+                  groupValue: color,
+                ),
+                if (audios != null)
+                  Expanded(
+                    child: ListView.separated(
+                      physics: const BouncingScrollPhysics(),
+                      padding: const EdgeInsets.all(16.0),
+                      itemCount: audios!.length,
+                      itemBuilder: (context, index) => _AudioRow(
+                        playlist: widget.playlist,
+                        audio: audios![index],
+                        onAdd: () => addSoundToPlaylist(audios![index]),
+                        onRemove: () => removeSoundFromPlaylist(audios![index]),
+                      ),
+                      separatorBuilder: (BuildContext context, int index) =>
+                          const SizedBox(
+                        height: 16.0,
+                      ),
                     ),
-                    separatorBuilder: (BuildContext context, int index) =>
-                        const SizedBox(
-                      height: 16.0,
-                    ),
-                  ),
-                )
-            ],
+                  )
+              ],
+            ),
           ),
         ),
       ),

@@ -74,4 +74,3 @@ String removeFileExtension(String? path) {
   }
   return fileName.replaceAll('_', ' ');
 }
-
