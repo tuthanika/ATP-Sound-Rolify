@@ -121,7 +121,6 @@ class EditPlaylistState extends State<EditPlaylist> {
                         height: 16.0,
                       ),
                     ),
-                    ),
                   )
               ],
             ),
