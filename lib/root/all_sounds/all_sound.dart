@@ -11,7 +11,6 @@ import 'package:rolify/presentation_logic_holders/event_bus/stop_all_event_bus.d
 import 'package:rolify/presentation_logic_holders/playing_sounds_singleton.dart';
 import 'package:rolify/presentation_logic_holders/singletons/app_state.dart';
 import 'package:rolify/src/components/button.dart';
-import 'package:rolify/src/components/local_file_explorer.dart';
 import 'package:rolify/src/components/my_icons.dart';
 import 'package:rolify/src/components/player_card.dart';
 import 'package:rolify/src/theme/texts.dart';
@@ -215,14 +214,39 @@ class AllSoundState extends State<AllSound> with WidgetsBindingObserver {
                 subtitle: 'Explore local folders to pick audio files',
                 onTap: () async {
                   Navigator.pop(ctx);
-                  showDialog(
-                    context: context,
-                    builder: (context) => LocalFileExplorer(
-                      onFilesSelected: (paths) {
-                        _addAudiosByPaths(paths);
-                      },
-                    ),
-                  );
+                  try {
+                    const channel = MethodChannel('com.example.rolify/file_picker');
+                    final List<dynamic>? result = await channel.invokeMethod('pickAudioFile');
+                    if (result != null && result.isNotEmpty) {
+                      if (!mounted) return;
+                      final allAudios = await AudioData.getAllAudios();
+                      bool added = false;
+                      for (final item in result) {
+                        final map = Map<String, dynamic>.from(item as Map);
+                        final uri = map['uri'] as String;
+                        var name = map['name'] as String;
+                        if (name.toLowerCase().endsWith('.mp3') || name.toLowerCase().endsWith('.wav') || name.toLowerCase().endsWith('.m4a') || name.toLowerCase().endsWith('.ogg')) {
+                          name = name.substring(0, name.lastIndexOf('.'));
+                        }
+                        
+                        final audio = Audio(
+                          name: name,
+                          path: uri,
+                          audioSource: LocalAudioSource.file,
+                        );
+                        if (allAudios.contains(audio) == false) {
+                          allAudios.add(audio);
+                          added = true;
+                        }
+                      }
+                      if (added && mounted) {
+                        await AudioData.saveAllAudios(context, allAudios);
+                        resetTextFilter(context);
+                      }
+                    }
+                  } catch (e) {
+                    debugPrint('Native file picker error: $e');
+                  }
                 },
               ),
               const SizedBox(height: 12),
