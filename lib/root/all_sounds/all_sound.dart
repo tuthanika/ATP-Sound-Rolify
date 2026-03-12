@@ -6,7 +6,7 @@ import 'package:just_audio/just_audio.dart';
 import 'package:rolify/data/audios.dart';
 import 'package:rolify/entities/audio.dart';
 import 'package:rolify/presentation_logic_holders/audio_list_bloc/audio_list_bloc.dart';
-import 'package:file_picker/file_picker.dart';
+import 'package:rolify/src/components/local_file_explorer.dart';
 import 'package:rolify/presentation_logic_holders/audio_list_bloc/audio_list_state.dart';
 import 'package:rolify/presentation_logic_holders/event_bus/stop_all_event_bus.dart';
 import 'package:rolify/presentation_logic_holders/playing_sounds_singleton.dart';
@@ -215,23 +215,12 @@ class AllSoundState extends State<AllSound> with WidgetsBindingObserver {
                 subtitle: 'Explore local folders to pick audio files',
                 onTap: () async {
                   Navigator.pop(ctx);
-                  try {
-                    final result = await FilePicker.platform.pickFiles(
-                      type: FileType.custom,
-                      allowedExtensions: _supportedExtensions,
-                      allowMultiple: true,
-                    );
-                    if (result != null && result.files.isNotEmpty) {
-                      final paths = result.files
-                          .where((file) => file.path != null)
-                          .map((file) => file.path!)
-                          .toList();
-                      if (paths.isNotEmpty) {
-                        await _addAudiosByPaths(paths);
-                      }
-                    }
-                  } catch (e) {
-                    debugPrint('Error picking files: $e');
+                  final path = await Navigator.push<String>(
+                      context,
+                      MaterialPageRoute(
+                          builder: (_) => const LocalFileExplorer()));
+                  if (path != null) {
+                    await _addAudiosByPaths([path]);
                   }
                 },
               ),

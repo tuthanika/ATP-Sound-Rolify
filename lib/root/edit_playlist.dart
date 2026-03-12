@@ -52,7 +52,7 @@ class EditPlaylistState extends State<EditPlaylist> {
                   const BorderRadius.all(Radius.circular(16.0))),
             ),
             child: Column(
-              mainAxisSize: MainAxisSize.min,
+              mainAxisSize: MainAxisSize.max,
               children: <Widget>[
                 Padding(
                   padding: const EdgeInsets.all(16.0),
