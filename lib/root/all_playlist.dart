@@ -72,7 +72,11 @@ class AllPlaylistState extends State<AllPlaylist> {
                 context,
                 MaterialPageRoute(
                   builder: (context) => EditPlaylist(
-                    playlist: Playlist.fromJson(const {}),
+                    playlist: Playlist(
+                      name: '',
+                      audios: [],
+                      color: null,
+                    ),
                   ),
                 ),
               )),
@@ -80,3 +84,4 @@ class AllPlaylistState extends State<AllPlaylist> {
     return list;
   }
 }
+

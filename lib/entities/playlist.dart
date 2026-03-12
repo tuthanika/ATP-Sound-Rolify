@@ -52,7 +52,7 @@ class Playlist extends Equatable {
             ? (jsonDecode(json['audios']) as List)
                 .map((audio) => Audio.fromJson(audio))
                 .toList()
-            : [],
+            : <Audio>[],
         color = json['color'] != null ? colorTranslation[json['color']] : null;
 
   toJson() => {

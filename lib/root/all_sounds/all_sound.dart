@@ -1,11 +1,12 @@
-import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
+import 'package:just_audio/just_audio.dart';
 import 'package:rolify/data/audios.dart';
 import 'package:rolify/entities/audio.dart';
 import 'package:rolify/presentation_logic_holders/audio_list_bloc/audio_list_bloc.dart';
+import 'package:rolify/src/components/local_file_explorer.dart';
 import 'package:rolify/presentation_logic_holders/audio_list_bloc/audio_list_state.dart';
 import 'package:rolify/presentation_logic_holders/event_bus/stop_all_event_bus.dart';
 import 'package:rolify/presentation_logic_holders/playing_sounds_singleton.dart';
@@ -125,7 +126,7 @@ class AllSoundState extends State<AllSound> with WidgetsBindingObserver {
                           const SizedBox(width: 8.0),
                           MyButton(
                             icon: MyIcons.add,
-                            onTap: () => _showAddOptions(context),
+                            onTap: () => _showPathInputDialog(context),
                           )
                         ],
                       ),
@@ -211,10 +212,16 @@ class AllSoundState extends State<AllSound> with WidgetsBindingObserver {
               _OptionTile(
                 icon: Icons.folder_open,
                 title: 'Browse files',
-                subtitle: 'Open file picker to select audio files',
-                onTap: () {
+                subtitle: 'Explore local folders to pick audio files',
+                onTap: () async {
                   Navigator.pop(ctx);
-                  _openFileExplorer(context);
+                  final path = await Navigator.push<String>(
+                      context,
+                      MaterialPageRoute(
+                          builder: (_) => const LocalFileExplorer()));
+                  if (path != null) {
+                    await _addAudiosByPaths([path]);
+                  }
                 },
               ),
               const SizedBox(height: 12),
@@ -232,32 +239,6 @@ class AllSoundState extends State<AllSound> with WidgetsBindingObserver {
         ),
       ),
     );
-  }
-
-  /// File picker: picks files by path reference (no cache copy)
-  void _openFileExplorer(BuildContext context) async {
-    List<PlatformFile>? paths;
-    try {
-      final result = await FilePicker.platform.pickFiles(
-        type: Theme.of(context).platform == TargetPlatform.android
-            ? FileType.audio
-            : FileType.custom,
-        allowedExtensions:
-            Theme.of(context).platform == TargetPlatform.android
-                ? null
-                : _supportedExtensions,
-        allowMultiple: true,
-        // Do NOT read bytes - just return the path reference
-        withData: false,
-        withReadStream: false,
-      );
-      paths = result?.files;
-    } on PlatformException catch (e) {
-      debugPrint("Unsupported operation $e");
-    }
-    if (!mounted || paths == null) return;
-    await _addAudiosByPaths(
-        paths.where((f) => f.path != null).map((f) => f.path!).toList());
   }
 
   /// Manual path input dialog
@@ -375,3 +356,4 @@ class _OptionTile extends StatelessWidget {
     );
   }
 }
+
