@@ -110,25 +110,19 @@ class EditPlaylistState extends State<EditPlaylist> {
               const SizedBox(height: 16.0),
               if (audios != null)
                 Expanded(
-                  child: Neumorphic(
-                    style: NeumorphicStyle(
-                      boxShape: NeumorphicBoxShape.roundRect(
-                          const BorderRadius.all(Radius.circular(16.0))),
+                  child: ListView.separated(
+                    physics: const BouncingScrollPhysics(),
+                    padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                    itemCount: audios!.length,
+                    itemBuilder: (context, index) => _AudioRow(
+                      playlist: widget.playlist,
+                      audio: audios![index],
+                      onAdd: () => addSoundToPlaylist(audios![index]),
+                      onRemove: () => removeSoundFromPlaylist(audios![index]),
                     ),
-                    child: ListView.separated(
-                      physics: const BouncingScrollPhysics(),
-                      padding: const EdgeInsets.all(16.0),
-                      itemCount: audios!.length,
-                      itemBuilder: (context, index) => _AudioRow(
-                        playlist: widget.playlist,
-                        audio: audios![index],
-                        onAdd: () => addSoundToPlaylist(audios![index]),
-                        onRemove: () => removeSoundFromPlaylist(audios![index]),
-                      ),
-                      separatorBuilder: (BuildContext context, int index) =>
-                          const SizedBox(
-                        height: 16.0,
-                      ),
+                    separatorBuilder: (BuildContext context, int index) =>
+                        const SizedBox(
+                      height: 16.0,
                     ),
                   ),
                 )
