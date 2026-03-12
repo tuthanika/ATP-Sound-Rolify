@@ -49,18 +49,15 @@ class EditPlaylistState extends State<EditPlaylist> {
           padding: const EdgeInsets.all(24.0),
           child: Column(
             children: [
-              Expanded(
-                child: Neumorphic(
-                  style: NeumorphicStyle(
-                    boxShape: NeumorphicBoxShape.roundRect(
-                        const BorderRadius.all(Radius.circular(16.0))),
-                  ),
+              Neumorphic(
+                style: NeumorphicStyle(
+                  boxShape: NeumorphicBoxShape.roundRect(
+                      const BorderRadius.all(Radius.circular(16.0))),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
                   child: Column(
                     children: <Widget>[
-                      Padding(
-                        padding: const EdgeInsets.all(16.0),
-                        child: Column(
-                          children: <Widget>[
                       Row(
                         children: <Widget>[
                           Expanded(child: MyText.title('Edit playlist')),
@@ -76,37 +73,48 @@ class EditPlaylistState extends State<EditPlaylist> {
                           Expanded(
                             child: MyTextField(
                               controller: playlistNameController,
-                              hintText: 'Create a new playlist...',
+                              hintText: 'Playlist name',
                             ),
                           ),
                           const SizedBox(width: 12.0),
                           MyButton(icon: MyIcons.done, onTap: savePlaylist),
-                          const SizedBox(width: 12.0),
-                          MyButton(icon: MyIcons.delete, onTap: removePlaylist),
+                          if (widget.playlist.name != '') ...[
+                            const SizedBox(width: 12.0),
+                            MyButton(
+                                icon: MyIcons.delete, onTap: removePlaylist),
+                          ]
                         ],
+                      ),
+                      const SizedBox(height: 16.0),
+                      ColorSelection(
+                        onChange: (value) {
+                          setState(() {
+                            color = color == value ? null : value;
+                          });
+                        },
+                        colors: <Color>[
+                          Colors.redAccent[100]!,
+                          Colors.deepOrangeAccent[100]!,
+                          Colors.amberAccent[100]!,
+                          Colors.greenAccent[100]!,
+                          Colors.cyanAccent[100]!,
+                          Colors.blueAccent[100]!,
+                          Colors.deepPurpleAccent[100]!,
+                        ],
+                        groupValue: color,
                       ),
                     ],
                   ),
                 ),
-                ColorSelection(
-                  onChange: (value) {
-                    setState(() {
-                      color = color == value ? null : value;
-                    });
-                  },
-                  colors: <Color>[
-                    Colors.redAccent[100]!,
-                    Colors.deepOrangeAccent[100]!,
-                    Colors.amberAccent[100]!,
-                    Colors.greenAccent[100]!,
-                    Colors.cyanAccent[100]!,
-                    Colors.blueAccent[100]!,
-                    Colors.deepPurpleAccent[100]!,
-                  ],
-                  groupValue: color,
-                ),
-                if (audios != null)
-                  Expanded(
+              ),
+              const SizedBox(height: 16.0),
+              if (audios != null)
+                Expanded(
+                  child: Neumorphic(
+                    style: NeumorphicStyle(
+                      boxShape: NeumorphicBoxShape.roundRect(
+                          const BorderRadius.all(Radius.circular(16.0))),
+                    ),
                     child: ListView.separated(
                       physics: const BouncingScrollPhysics(),
                       padding: const EdgeInsets.all(16.0),
@@ -122,15 +130,12 @@ class EditPlaylistState extends State<EditPlaylist> {
                         height: 16.0,
                       ),
                     ),
-                  )
-              ],
-            ),
+                  ),
+                )
+            ],
           ),
         ),
-      ],
-    ),
-  ),
-),
+      ),
     );
   }
 
