@@ -19,14 +19,14 @@ class Audio extends Equatable {
   });
 
   Audio.fromJson(Map json)
-      : name = json['name'] ?? removeFileExtension(json['path']),
-        path = json['path'],
-        image = json['image'],
+      : name = json['name']?.toString() ?? removeFileExtension(json['path']?.toString()),
+        path = json['path']?.toString() ?? '',
+        image = json['image']?.toString() ?? 'assets/images/tavern.jpg',
         audioSource = json['audio_source'] == 'assets'
             ? LocalAudioSource.assets
             : LocalAudioSource.file,
         loopMode = json['loop_mode'] == 'off' ? LoopMode.off : LoopMode.one,
-        volume = json['volume'] ?? 0.5;
+        volume = json['volume'] != null ? (json['volume'] as num).toDouble() : 0.5;
 
   toJson() => {
         'name': name,
