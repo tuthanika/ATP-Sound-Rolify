@@ -74,7 +74,7 @@ class AllPlaylistState extends State<AllPlaylist> {
                   builder: (context) => EditPlaylist(
                     playlist: Playlist(
                       name: '',
-                      audios: [],
+                      audios: <Audio>[],
                       color: null,
                     ),
                   ),

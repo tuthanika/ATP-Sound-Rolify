@@ -126,7 +126,7 @@ class AllSoundState extends State<AllSound> with WidgetsBindingObserver {
                           const SizedBox(width: 8.0),
                           MyButton(
                             icon: MyIcons.add,
-                            onTap: () => _showPathInputDialog(context),
+                            onTap: () => _showAddOptions(context),
                           )
                         ],
                       ),
