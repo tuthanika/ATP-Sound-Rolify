@@ -57,7 +57,3 @@ flutter:
     - family: Inter-Regular
       fonts:
         - asset: fonts/Inter-Regular.ttf
-    - family: Rubik
-      fonts:
-        - asset: fonts/Rubik-Regular.ttf
-        - asset: fonts/Rubik-Bold.ttf
