@@ -4,11 +4,11 @@ import android.app.Activity
 import android.content.Intent
 import android.net.Uri
 import android.provider.OpenableColumns
-import io.flutter.embedding.android.FlutterActivity
+import com.ryanheise.audioservice.AudioServiceActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 
-class MainActivity: FlutterActivity() {
+class MainActivity: AudioServiceActivity() {
     private val CHANNEL = "com.example.rolify/file_picker"
     private var pendingResult: MethodChannel.Result? = null
 
