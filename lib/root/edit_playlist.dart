@@ -46,18 +46,20 @@ class EditPlaylistState extends State<EditPlaylist> {
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(24.0),
-          child: Neumorphic(
-            style: NeumorphicStyle(
-              boxShape: NeumorphicBoxShape.roundRect(
-                  const BorderRadius.all(Radius.circular(16.0))),
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.max,
-              children: <Widget>[
-                Padding(
-                  padding: const EdgeInsets.all(16.0),
+          child: Column(
+            children: [
+              Expanded(
+                child: Neumorphic(
+                  style: NeumorphicStyle(
+                    boxShape: NeumorphicBoxShape.roundRect(
+                        const BorderRadius.all(Radius.circular(16.0))),
+                  ),
                   child: Column(
                     children: <Widget>[
+                      Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Column(
+                          children: <Widget>[
                       Row(
                         children: <Widget>[
                           Expanded(child: MyText.title('Edit playlist')),
@@ -119,12 +121,16 @@ class EditPlaylistState extends State<EditPlaylist> {
                         height: 16.0,
                       ),
                     ),
+                    ),
                   )
               ],
             ),
           ),
         ),
-      ),
+      ],
+    ),
+  ),
+),
     );
   }
 
