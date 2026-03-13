@@ -12,13 +12,19 @@ import '../presentation_logic_holders/playing_sounds_singleton.dart';
 
 class AudioData {
   static Future<List<Audio>> getAllAudios() async {
-    final preferences = await SharedPreferences.getInstance();
-    if (preferences.containsKey('audios')) {
-      List savedAudios = jsonDecode(preferences.getString('audios')!);
-      return savedAudios.map((audio) => Audio.fromJson(audio)).toList();
-    } else {
-      return assetsAudios.map((audio) => Audio.fromJson(audio)).toList();
+    try {
+      final preferences = await SharedPreferences.getInstance();
+      if (preferences.containsKey('audios')) {
+        final data = preferences.getString('audios');
+        if (data != null && data.isNotEmpty) {
+          List savedAudios = jsonDecode(data);
+          return savedAudios.map((audio) => Audio.fromJson(audio)).toList();
+        }
+      }
+    } catch (e) {
+      debugPrint('Error getting all audios: $e');
     }
+    return assetsAudios.map((audio) => Audio.fromJson(audio)).toList();
   }
 
   static Future saveAllAudios(BuildContext context, List<Audio> audios,

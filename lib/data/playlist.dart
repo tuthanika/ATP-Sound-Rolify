@@ -10,15 +10,20 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 class PlaylistData {
   static Future<List<Playlist>> getAllPlaylist() async {
-    final preferences = await SharedPreferences.getInstance();
-    if (preferences.containsKey('playlist')) {
-      List savedPlaylist = jsonDecode(preferences.getString('playlist')!);
-      return savedPlaylist
-          .map((playlist) => Playlist.fromJson(playlist))
-          .toList();
-    } else {
-      return [];
+    try {
+      final preferences = await SharedPreferences.getInstance();
+      if (preferences.containsKey('playlist')) {
+        final data = preferences.getString('playlist');
+        if (data == null || data.isEmpty) return [];
+        List savedPlaylist = jsonDecode(data);
+        return savedPlaylist
+            .map((playlist) => Playlist.fromJson(playlist))
+            .toList();
+      }
+    } catch (e) {
+      debugPrint('Error getting all playlists: $e');
     }
+    return [];
   }
 
   static Future savePlaylist(BuildContext context, Playlist playlist) async {

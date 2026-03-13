@@ -71,8 +71,8 @@ class AllPlaylistState extends State<AllPlaylist> {
           onTap: () => Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => EditPlaylist(
-                    playlist: Playlist.fromJson(const {}),
+                  builder: (context) => const EditPlaylist(
+                    playlist: Playlist(name: 'New Playlist', audios: []),
                   ),
                 ),
               )),
