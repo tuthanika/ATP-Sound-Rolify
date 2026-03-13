@@ -1,6 +1,6 @@
-import 'dart:io';
-
 import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
+import 'package:launch_review/launch_review.dart';
+
 import 'package:rolify/src/theme/texts.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -92,14 +92,8 @@ class InfoPage extends StatelessWidget {
     await launchUrl(url);
   }
 
-  _openPlayStore() async {
-    final appId = Platform.isIOS ? '1511308478' : 'com.lucaoropallo.rolify';
-    final url = Uri.parse(Platform.isIOS
-        ? 'https://apps.apple.com/app/id$appId'
-        : 'https://play.google.com/store/apps/details?id=$appId');
-    if (await canLaunchUrl(url)) {
-      await launchUrl(url, mode: LaunchMode.externalApplication);
-    }
+  _openPlayStore() {
+    LaunchReview.launch(iOSAppId: '1511308478');
   }
 }
 

@@ -80,11 +80,11 @@ class BaseState extends State<Base> {
                   child: IndexedStack(
                 index: pageSelected,
                 children: <Widget>[
-                  const RepaintBoundary(child: AllSound()),
-                  const RepaintBoundary(child: SessionSounds()),
-                  const RepaintBoundary(child: AllPlaylist()),
-                  const RepaintBoundary(child: InfoPage()),
-                  RepaintBoundary(child: SoundEdit()),
+                  const AllSound(),
+                  const SessionSounds(),
+                  const AllPlaylist(),
+                  const InfoPage(),
+                  SoundEdit(),
                 ],
               ))
             ],

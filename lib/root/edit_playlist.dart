@@ -22,33 +22,21 @@ class EditPlaylistState extends State<EditPlaylist> {
   final playlistNameController = TextEditingController();
   List<Audio>? audios;
   Color? color;
-  bool isLoading = true;
 
   @override
   void initState() {
     super.initState();
+    initAudios();
     playlistNameController.text = widget.playlist.name;
     color = widget.playlist.color;
-    
-    // Asynchronous initialization to prevent blocking navigation
-    initAudios();
   }
 
-  void initAudios() async {
-    try {
-      final value = await AudioData.getAllAudios();
-      if (mounted) {
-        setState(() {
-          audios = value;
-          isLoading = false;
-        });
-      }
-    } catch (e) {
-      debugPrint('Error initializing audios in EditPlaylist: $e');
-      if (mounted) {
-        setState(() => isLoading = false);
-      }
-    }
+  initAudios() {
+    AudioData.getAllAudios().then((value) {
+      setState(() {
+        audios = value;
+      });
+    });
   }
 
   @override
@@ -114,26 +102,24 @@ class EditPlaylistState extends State<EditPlaylist> {
                   ],
                   groupValue: color,
                 ),
-                const SizedBox(height: 8.0),
-                Expanded(
-                  child: isLoading
-                      ? const Center(child: CircularProgressIndicator())
-                      : (audios == null || audios!.isEmpty)
-                          ? const Center(child: Text('No audios found'))
-                          : ListView.separated(
-                              physics: const BouncingScrollPhysics(),
-                              padding: const EdgeInsets.all(16.0),
-                              itemCount: audios!.length,
-                              itemBuilder: (context, index) => _AudioRow(
-                                playlist: widget.playlist,
-                                audio: audios![index],
-                                onAdd: () => addSoundToPlaylist(audios![index]),
-                                onRemove: () => removeSoundFromPlaylist(audios![index]),
-                              ),
-                              separatorBuilder: (context, index) =>
-                                  const SizedBox(height: 16.0),
-                            ),
-                )
+                if (audios != null)
+                  Expanded(
+                    child: ListView.separated(
+                      physics: const BouncingScrollPhysics(),
+                      padding: const EdgeInsets.all(16.0),
+                      itemCount: audios!.length,
+                      itemBuilder: (context, index) => _AudioRow(
+                        playlist: widget.playlist,
+                        audio: audios![index],
+                        onAdd: () => addSoundToPlaylist(audios![index]),
+                        onRemove: () => removeSoundFromPlaylist(audios![index]),
+                      ),
+                      separatorBuilder: (BuildContext context, int index) =>
+                          const SizedBox(
+                        height: 16.0,
+                      ),
+                    ),
+                  )
               ],
             ),
           ),
@@ -143,14 +129,12 @@ class EditPlaylistState extends State<EditPlaylist> {
   }
 
   savePlaylist() async {
-    final name = playlistNameController.text.trim();
-    if (name.isEmpty) return;
-
     await PlaylistData.removePlaylist(context, widget.playlist);
     if (widget.playlist.audios.isNotEmpty) {
       await PlaylistData.savePlaylist(
           context,
-          widget.playlist.copyFrom(name: name, color: color));
+          widget.playlist
+              .copyFrom(name: playlistNameController.text, color: color));
     }
     Navigator.pop(context);
   }
@@ -160,28 +144,22 @@ class EditPlaylistState extends State<EditPlaylist> {
     Navigator.pop(context);
   }
 
-  void addSoundToPlaylist(Audio audio) {
-    setState(() {
-      if (!widget.playlist.audios.contains(audio)) {
-        widget.playlist.audios.add(audio);
-      }
-    });
+  addSoundToPlaylist(Audio audio) {
+    widget.playlist.audios.add(audio);
 
     PlaylistData.savePlaylist(context, widget.playlist).then((_) {
-      // Data saved, UI already updated via setState
+      initAudios();
     });
   }
 
-  void removeSoundFromPlaylist(Audio audio) {
-    setState(() {
-      widget.playlist.audios.remove(audio);
-    });
+  removeSoundFromPlaylist(Audio audio) {
+    widget.playlist.audios.remove(audio);
 
     if (widget.playlist.audios.isEmpty) {
       removePlaylist();
     } else {
       PlaylistData.savePlaylist(context, widget.playlist).then((_) {
-        // Data saved, UI already updated via setState
+        initAudios();
       });
     }
   }

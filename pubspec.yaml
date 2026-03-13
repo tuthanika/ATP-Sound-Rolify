@@ -14,6 +14,7 @@ dependencies:
   audio_session: ^0.1.21
   equatable: ^2.0.5
   event_bus: ^2.0.0
+  file_picker: 5.2.11
   flutter_bloc: ^8.1.6
   flutter_neumorphic_plus: ^3.3.0
   flutter_svg: ^1.1.6
@@ -25,12 +26,12 @@ dependencies:
 
   cupertino_icons: ^1.0.8
 
-dependency_overrides:
-  win32: ^5.5.4
+
+
 
 dev_dependencies:
   flutter_lints: ^4.0.0
-  flutter_launcher_icons_maker: ^0.10.2
+
   flutter_test:
     sdk: flutter
 
@@ -54,6 +55,6 @@ flutter:
     - family: AssetAudioPlayer
       fonts:
         - asset: fonts/AssetAudioPlayer.ttf
-    - family: Inter-Regular
+    - family: Inter-Regular.ttf
       fonts:
         - asset: fonts/Inter-Regular.ttf
