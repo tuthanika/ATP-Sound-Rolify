@@ -23,12 +23,25 @@ jobs:
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.3.10'
+          flutter-version: '3.7.12'
           channel: 'stable'
           cache: true
+
+      - name: Patch dependencies for Dart 2 compatibility
+        run: |
+          # The file_picker ^5.3.4 in master conflicts with Dart 2.x (required by legacy Neumorphic).
+          # We patch it at runtime in CI to allow the build to proceed without touching the repo code.
+          sed -i 's/file_picker: ^5.3.4/file_picker: 5.2.11/g' pubspec.yaml
 
       - name: Install dependencies
         run: flutter pub get
 
       - name: Build APK
         run: flutter build apk --release --no-shrink
+
+      - name: Upload APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-release
+          path: build/app/outputs/flutter-apk/app-release.apk
+          retention-days: 7
