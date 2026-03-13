@@ -22,97 +22,144 @@ class EditPlaylistState extends State<EditPlaylist> {
   final playlistNameController = TextEditingController();
   List<Audio>? audios;
   Color? color;
+  bool isLoading = true;
 
   @override
   void initState() {
     super.initState();
-    initAudios();
     playlistNameController.text = widget.playlist.name;
     color = widget.playlist.color;
+    
+    // Delay initialization to avoid blocking the navigation animation
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Future.delayed(const Duration(milliseconds: 200), () => initAudios());
+    });
   }
 
-  initAudios() {
-    AudioData.getAllAudios().then((value) {
-      setState(() {
-        audios = value;
-      });
-    });
+  void initAudios() async {
+    try {
+      final value = await AudioData.getAllAudios();
+      if (mounted) {
+        setState(() {
+          audios = value;
+          isLoading = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading audios in EditPlaylist: $e');
+      if (mounted) {
+        setState(() => isLoading = false);
+      }
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Edit Playlist'),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.close),
-          onPressed: () => Navigator.pop(context),
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.check),
-            onPressed: savePlaylist,
-          ),
-          if (widget.playlist.name != '')
-            IconButton(
-              icon: const Icon(Icons.delete),
-              onPressed: removePlaylist,
-            ),
-        ],
-      ),
+      backgroundColor: NeumorphicTheme.currentTheme(context).baseColor,
       body: SafeArea(
-        child: Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: TextField(
-                controller: playlistNameController,
-                decoration: const InputDecoration(
-                  labelText: 'Playlist Name',
-                  border: OutlineInputBorder(),
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            children: [
+              Neumorphic(
+                style: NeumorphicStyle(
+                  boxShape: NeumorphicBoxShape.roundRect(
+                      const BorderRadius.all(Radius.circular(16.0))),
                 ),
-              ),
-            ),
-            if (audios == null)
-              const Expanded(child: Center(child: CircularProgressIndicator()))
-            else
-              Expanded(
-                child: ListView.separated(
-                  itemCount: audios!.length,
-                  padding: const EdgeInsets.all(16),
-                  separatorBuilder: (context, index) => const Divider(),
-                  itemBuilder: (context, index) {
-                    final audio = audios![index];
-                    final isAdded = widget.playlist.audios.contains(audio);
-                    return ListTile(
-                      title: Text(audio.name),
-                      subtitle: Text(audio.path, maxLines: 1, overflow: TextOverflow.ellipsis),
-                      trailing: IconButton(
-                        icon: Icon(isAdded ? Icons.remove_circle : Icons.add_circle,
-                            color: isAdded ? Colors.red : Colors.green),
-                        onPressed: isAdded
-                            ? () => removeSoundFromPlaylist(audio)
-                            : () => addSoundToPlaylist(audio),
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    children: <Widget>[
+                      Row(
+                        children: <Widget>[
+                          Expanded(child: MyText.title('Edit playlist')),
+                          GestureDetector(
+                            onTap: () => Navigator.pop(context),
+                            child: MyIcons.close(),
+                          )
+                        ],
                       ),
-                    );
-                  },
+                      const SizedBox(height: 16.0),
+                      Row(
+                        children: <Widget>[
+                          Expanded(
+                            child: MyTextField(
+                              controller: playlistNameController,
+                              hintText: 'Playlist name',
+                            ),
+                          ),
+                          const SizedBox(width: 12.0),
+                          MyButton(icon: MyIcons.done, onTap: savePlaylist),
+                          if (widget.playlist.name.isNotEmpty) ...[
+                            const SizedBox(width: 12.0),
+                            MyButton(
+                                icon: MyIcons.delete, onTap: removePlaylist),
+                          ]
+                        ],
+                      ),
+                      const SizedBox(height: 16.0),
+                      ColorSelection(
+                        onChange: (value) {
+                          setState(() {
+                            color = color == value ? null : value;
+                          });
+                        },
+                        colors: const <Color>[
+                          Color(0xFFFF8A80), // Colors.redAccent[100]
+                          Color(0xFFFF9E80), // Colors.deepOrangeAccent[100]
+                          Color(0xFFFFD180), // Colors.amberAccent[100]
+                          Color(0xFFB9F6CA), // Colors.greenAccent[100]
+                          Color(0xFF84FFFF), // Colors.cyanAccent[100]
+                          Color(0xFF82B1FF), // Colors.blueAccent[100]
+                          Color(0xFFB388FF), // Colors.deepPurpleAccent[100]
+                        ],
+                        groupValue: color,
+                      ),
+                    ],
+                  ),
                 ),
               ),
-          ],
+              const SizedBox(height: 16.0),
+              Expanded(
+                child: isLoading
+                    ? const Center(child: CircularProgressIndicator())
+                    : (audios == null || audios!.isEmpty)
+                        ? const Center(child: Text('No audios found'))
+                        : ListView.builder(
+                            physics: const BouncingScrollPhysics(),
+                            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                            itemCount: audios!.length,
+                            itemBuilder: (context, index) {
+                              final audio = audios![index];
+                              return Padding(
+                                padding: const EdgeInsets.only(bottom: 16.0),
+                                child: _AudioRow(
+                                  playlist: widget.playlist,
+                                  audio: audio,
+                                  onAdd: () => addSoundToPlaylist(audio),
+                                  onRemove: () => removeSoundFromPlaylist(audio),
+                                ),
+                              );
+                            },
+                          ),
+              )
+            ],
+          ),
         ),
       ),
     );
   }
 
   savePlaylist() async {
+    final name = playlistNameController.text.trim();
+    if (name.isEmpty) return;
+
     await PlaylistData.removePlaylist(context, widget.playlist);
     if (widget.playlist.audios.isNotEmpty) {
       await PlaylistData.savePlaylist(
           context,
-          widget.playlist
-              .copyFrom(name: playlistNameController.text, color: color));
+          widget.playlist.copyFrom(name: name, color: color));
     }
     Navigator.pop(context);
   }
@@ -122,22 +169,26 @@ class EditPlaylistState extends State<EditPlaylist> {
     Navigator.pop(context);
   }
 
-  addSoundToPlaylist(Audio audio) {
-    widget.playlist.audios.add(audio);
+  void addSoundToPlaylist(Audio audio) {
+    setState(() {
+      widget.playlist.audios.add(audio);
+    });
 
     PlaylistData.savePlaylist(context, widget.playlist).then((_) {
-      initAudios();
+      // Data saved, UI updated locally via setState
     });
   }
 
-  removeSoundFromPlaylist(Audio audio) {
-    widget.playlist.audios.remove(audio);
+  void removeSoundFromPlaylist(Audio audio) {
+    setState(() {
+      widget.playlist.audios.remove(audio);
+    });
 
     if (widget.playlist.audios.isEmpty) {
       removePlaylist();
     } else {
       PlaylistData.savePlaylist(context, widget.playlist).then((_) {
-        initAudios();
+        // Data saved, UI updated locally via setState
       });
     }
   }
