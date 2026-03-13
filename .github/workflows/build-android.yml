@@ -2,9 +2,9 @@ name: Build Android APK
 
 on:
   push:
-    branches: [ "master", "dev2" ]
+    branches: [ "master"]
   pull_request:
-    branches: [ "master", "dev2" ]
+    branches: [ "master"]
 
 jobs:
   build:
