@@ -19,14 +19,14 @@ class Audio extends Equatable {
   });
 
   Audio.fromJson(Map json)
-      : name = json['name'] ?? removeFileExtension(json['path']),
-        path = json['path'],
-        image = json['image'],
+      : name = json['name'] ?? removeFileExtension(json['path'] ?? ''),
+        path = json['path'] ?? '',
+        image = json['image'] ?? 'assets/images/tavern.jpg',
         audioSource = json['audio_source'] == 'assets'
             ? LocalAudioSource.assets
             : LocalAudioSource.file,
         loopMode = json['loop_mode'] == 'off' ? LoopMode.off : LoopMode.one,
-        volume = json['volume'] ?? 0.5;
+        volume = json['volume']?.toDouble() ?? 0.5;
 
   toJson() => {
         'name': name,
@@ -60,10 +60,19 @@ class Audio extends Equatable {
 }
 
 String removeFileExtension(String path) {
-  final pathSplit = path.split('.');
-  return path
-      .split('/')
-      .last
-      .replaceAll('_', ' ')
-      .replaceAll('.${pathSplit.last}', '');
+  if (path.isEmpty) return 'Unknown';
+  final uri = Uri.tryParse(path);
+  String fileName = path;
+  
+  if (uri != null && (uri.scheme == 'content' || uri.scheme == 'file')) {
+    fileName = uri.pathSegments.isNotEmpty ? uri.pathSegments.last : path;
+  } else {
+    fileName = path.split(RegExp(r'[/\\]')).last;
+  }
+
+  final lastDotIndex = fileName.lastIndexOf('.');
+  if (lastDotIndex != -1) {
+    return fileName.substring(0, lastDotIndex).replaceAll('_', ' ');
+  }
+  return fileName.replaceAll('_', ' ');
 }
