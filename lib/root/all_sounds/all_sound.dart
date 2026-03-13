@@ -213,14 +213,17 @@ class AllSoundState extends State<AllSound> with WidgetsBindingObserver {
     try {
       final List<dynamic>? result = await platform.invokeMethod('pickAudioFiles');
       if (result != null) {
-        List<String> paths = [];
+        List<Map<String, String>> audioItems = [];
         for (var item in result) {
           if (item is Map) {
-            paths.add(item['path']);
+            audioItems.add({
+              'name': item['name']?.toString() ?? '',
+              'path': item['path']?.toString() ?? '',
+            });
           }
         }
-        if (paths.isNotEmpty) {
-          _addAudiosByPaths(paths);
+        if (audioItems.isNotEmpty) {
+          _addAudiosWithNames(audioItems);
         }
       }
     } on PlatformException catch (e) {
@@ -261,12 +264,23 @@ class AllSoundState extends State<AllSound> with WidgetsBindingObserver {
   }
 
   Future<void> _addAudiosByPaths(List<String> paths) async {
+    final List<Map<String, String>> items = paths.map((path) => {
+      'name': removeFileExtension(path),
+      'path': path,
+    }).toList();
+    _addAudiosWithNames(items);
+  }
+
+  Future<void> _addAudiosWithNames(List<Map<String, String>> items) async {
     final allAudios = await AudioData.getAllAudios();
     bool added = false;
     
-    for (var path in paths) {
+    for (var item in items) {
+      final name = item['name']!;
+      final path = item['path']!;
+      
       final audio = Audio(
-        name: removeFileExtension(path),
+        name: name,
         path: path,
         audioSource: LocalAudioSource.file,
       );
