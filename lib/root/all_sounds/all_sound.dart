@@ -16,6 +16,7 @@ import 'package:rolify/src/components/player_card.dart';
 
 import 'search_bar.dart';
 import 'global_controls.dart';
+import 'package:rolify/src/theme/texts.dart';
 
 class AllSound extends StatefulWidget {
   const AllSound({Key? key}) : super(key: key);
@@ -183,7 +184,7 @@ class AllSoundState extends State<AllSound> with WidgetsBindingObserver {
                 child: MyText.body('Add audio', fontWeight: FontWeight.bold),
               ),
               _OptionTile(
-                icon: MyIcons.folder,
+                icon: MyIcons.list(),
                 title: 'Browse files',
                 subtitle: 'Select audio from your storage',
                 onTap: () {
@@ -319,7 +320,7 @@ class AllSoundState extends State<AllSound> with WidgetsBindingObserver {
 }
 
 class _OptionTile extends StatelessWidget {
-  final IconData icon;
+  final Widget icon;
   final String title;
   final String subtitle;
   final VoidCallback onTap;
@@ -340,7 +341,11 @@ class _OptionTile extends StatelessWidget {
           depth: 2,
         ),
         padding: const EdgeInsets.all(8),
-        child: Icon(icon, color: NeumorphicTheme.accentColor(context)),
+        child: SizedBox(
+          width: 24,
+          height: 24,
+          child: icon,
+        ),
       ),
       title: MyText.body(title, fontWeight: FontWeight.w600),
       subtitle: MyText.caption(subtitle, textType: TextType.secondary),
