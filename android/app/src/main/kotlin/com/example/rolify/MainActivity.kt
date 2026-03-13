@@ -71,10 +71,13 @@ class MainActivity: AudioServiceActivity() {
             contentResolver.takePersistableUriPermission(uri, takeFlags)
 
             var name = ""
-            contentResolver.query(uri, null, null, null, null)?.use { cursor ->
-                val nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
-                if (cursor.moveToFirst()) {
-                    name = cursor.getString(nameIndex)
+            val cursor = contentResolver.query(uri, null, null, null, null)
+            cursor?.use {
+                if (it.moveToFirst()) {
+                    val nameIndex = it.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+                    if (nameIndex != -1) {
+                        name = it.getString(nameIndex)
+                    }
                 }
             }
             
