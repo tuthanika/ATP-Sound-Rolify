@@ -20,10 +20,9 @@ dependencies:
   flutter_neumorphic_plus: 3.3.0
   flutter_svg: ^1.1.6
   just_audio: ^0.9.40
-  launch_review: ^3.0.1
   path_provider: ^2.1.1
   shared_preferences: ^2.2.1
-  url_launcher: ^6.1.14
+  url_launcher: ^6.3.1
 
   cupertino_icons: ^1.0.6
 
