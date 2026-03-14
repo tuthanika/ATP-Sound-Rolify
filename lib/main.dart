@@ -9,14 +9,33 @@ import 'package:rolify/presentation_logic_holders/singletons/app_state.dart';
 import 'package:rolify/root/base.dart';
 
 Future<void> main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-
   // store this in a singleton
   AppState().audioHandler = await initAudioService();
 
   await _configureAudioSession();
 
-  runApp(const MyApp());
+  runApp(
+    NeumorphicTheme(
+      themeMode: ThemeMode.system,
+      darkTheme: const NeumorphicThemeData(
+        baseColor: Color(0xff333333),
+        accentColor: Color(0xFF007aff),
+        variantColor: Colors.cyan,
+        lightSource: LightSource.topLeft,
+        depth: 4,
+        intensity: 0.3,
+      ),
+      theme: const NeumorphicThemeData(
+        baseColor: Color(0xFFF0F0F3),
+        disabledColor: Color(0xFF7b7b7b),
+        accentColor: Color(0xFF007aff),
+        variantColor: Colors.cyan,
+        intensity: 1,
+        lightSource: LightSource.topLeft,
+      ),
+      child: const MyApp(),
+    ),
+  );
 }
 
 Future<void> _configureAudioSession() async {
@@ -53,31 +72,12 @@ class MyApp extends StatelessWidget {
         BlocProvider<AudioListBloc>(create: (context) => AudioListBloc()),
         BlocProvider<AudioEditBloc>(create: (context) => AudioEditBloc())
       ],
-      child: NeumorphicTheme(
-        themeMode: ThemeMode.system,
-        darkTheme: const NeumorphicThemeData(
-          baseColor: Color(0xff333333),
-          accentColor: Color(0xFF007aff),
-          variantColor: Colors.cyan,
-          lightSource: LightSource.topLeft,
-          depth: 4,
-          intensity: 0.3,
-        ),
-        theme: const NeumorphicThemeData(
-          baseColor: Color(0xFFF0F0F3),
-          disabledColor: Color(0xFF7b7b7b),
-          accentColor: Color(0xFF007aff),
-          variantColor: Colors.cyan,
-          intensity: 1,
-          lightSource: LightSource.topLeft,
-        ),
-        child: MaterialApp(
-          title: 'Rolify',
-          debugShowCheckedModeBanner: false,
-          home: ScrollConfiguration(
-            behavior: NoScrollGlowBehavior(),
-            child: const Base(),
-          ),
+      child: MaterialApp(
+        title: 'Rolify',
+        debugShowCheckedModeBanner: false,
+        home: ScrollConfiguration(
+          behavior: NoScrollGlowBehavior(),
+          child: const Base(),
         ),
       ),
     );
@@ -85,8 +85,8 @@ class MyApp extends StatelessWidget {
 }
 
 class NoScrollGlowBehavior extends ScrollBehavior {
-  @override
-  Widget buildOverscrollIndicator(BuildContext context, Widget child, ScrollableDetails details) {
+  Widget buildViewportChrome(
+      BuildContext context, Widget child, AxisDirection axisDirection) {
     return child;
   }
 }
