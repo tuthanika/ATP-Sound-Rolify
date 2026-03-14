@@ -1,4 +1,4 @@
-import 'package:flutter_neumorphic/flutter_neumorphic.dart';
+import 'package:flutter/material.dart';
 import 'package:rolify/presentation_logic_holders/singletons/app_state.dart';
 
 enum TextType { primary, secondary, disabled }
@@ -47,14 +47,14 @@ class MyText extends StatelessWidget {
   }
 
   Color getTextColor(BuildContext context, TextType textType) {
-    if (NeumorphicTheme.of(context)!.isUsingDark) {
+    if (Theme.of(context).brightness == Brightness.dark) {
       return textType == TextType.primary
           ? Colors.white
-          : NeumorphicTheme.currentTheme(context).disabledColor;
+          : Theme.of(context).disabledColor;
     } else {
       return textType == TextType.primary
           ? Colors.black
-          : NeumorphicTheme.currentTheme(context).disabledColor;
+          : Theme.of(context).disabledColor;
     }
   }
 

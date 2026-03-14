@@ -1,4 +1,4 @@
-import 'package:flutter_neumorphic/flutter_neumorphic.dart';
+import 'package:flutter/material.dart';
 
 import '../../presentation_logic_holders/singletons/app_state.dart';
 import '../../src/components/my_icons.dart';
@@ -20,13 +20,12 @@ class MySearchBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Expanded(
-      child: Neumorphic(
-        style: NeumorphicStyle(
-          depth: -5.0,
-          boxShape: NeumorphicBoxShape.roundRect(
-              const BorderRadius.all(Radius.circular(20.0))),
+      child: Container(
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.surfaceContainerHighest,
+          borderRadius: BorderRadius.circular(20.0),
         ),
-        padding: const EdgeInsets.only(left: 16.0, right: 16.0),
+        padding: const EdgeInsets.symmetric(horizontal: 16.0),
         child: SizedBox(
           height: 40 * heightFactor,
           child: Row(
@@ -45,7 +44,7 @@ class MySearchBar extends StatelessWidget {
                       child: MyIcons.search(
                         color: focusNode.hasFocus
                             ? Theme.of(context).colorScheme.secondary
-                            : NeumorphicTheme.currentTheme(context)
+                            : Theme.of(context)
                                 .disabledColor,
                       )),
               const SizedBox(width: 8.0),
@@ -60,7 +59,7 @@ class MySearchBar extends StatelessWidget {
                           fontWeight: FontWeight.w500,
                           fontSize: 16 * heightFactor,
                           fontFamily: 'Inter-Regular',
-                          color: NeumorphicTheme.currentTheme(context)
+                          color: Theme.of(context)
                               .disabledColor)),
                   onChanged: (text) {
                     if (text == '') {
