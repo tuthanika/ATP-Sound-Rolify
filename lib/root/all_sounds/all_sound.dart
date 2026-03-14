@@ -1,7 +1,7 @@
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:flutter_neumorphic/flutter_neumorphic.dart';
+import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
 import 'package:rolify/data/audios.dart';
 import 'package:rolify/entities/audio.dart';
 import 'package:rolify/presentation_logic_holders/audio_list_bloc/audio_list_bloc.dart';

@@ -1,4 +1,4 @@
-import 'package:flutter_neumorphic/flutter_neumorphic.dart';
+import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
 import 'package:launch_review/launch_review.dart';
 
 import '../../presentation_logic_holders/audio_service_commands.dart';

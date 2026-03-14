@@ -1,4 +1,4 @@
-import 'package:flutter_neumorphic/flutter_neumorphic.dart';
+import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
 import 'package:rolify/data/audios.dart';
 import 'package:rolify/data/playlist.dart';
 import 'package:rolify/entities/audio.dart';
