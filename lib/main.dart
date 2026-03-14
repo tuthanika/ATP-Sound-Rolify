@@ -9,6 +9,8 @@ import 'package:rolify/presentation_logic_holders/singletons/app_state.dart';
 import 'package:rolify/root/base.dart';
 
 Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
   // store this in a singleton
   AppState().audioHandler = await initAudioService();
 
@@ -72,7 +74,7 @@ class MyApp extends StatelessWidget {
         BlocProvider<AudioListBloc>(create: (context) => AudioListBloc()),
         BlocProvider<AudioEditBloc>(create: (context) => AudioEditBloc())
       ],
-      child: MaterialApp(
+      child: NeumorphicApp(
         title: 'Rolify',
         debugShowCheckedModeBanner: false,
         home: ScrollConfiguration(
