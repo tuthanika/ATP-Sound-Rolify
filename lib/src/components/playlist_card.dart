@@ -166,7 +166,7 @@ class PlaylistCardState extends State<PlaylistCard> {
           ),
         ),
       ),
-    );
+    ));
   }
 
   void playAllSoundInPlaylist() async {

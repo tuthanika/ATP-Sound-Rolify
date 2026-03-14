@@ -353,7 +353,7 @@ class _OptionTile extends StatelessWidget {
         padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          color: Theme.of(context).colorScheme.surfaceContainerHighest,
+          color: Theme.of(context).colorScheme.surfaceVariant,
         ),
         child: SizedBox(
           width: 24,

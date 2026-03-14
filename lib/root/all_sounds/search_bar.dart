@@ -22,7 +22,7 @@ class MySearchBar extends StatelessWidget {
     return Expanded(
       child: Container(
         decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surfaceContainerHighest,
+          color: Theme.of(context).colorScheme.surfaceVariant,
           borderRadius: BorderRadius.circular(20.0),
         ),
         padding: const EdgeInsets.symmetric(horizontal: 16.0),
