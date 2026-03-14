@@ -1,4 +1,4 @@
-import 'package:flutter_neumorphic/flutter_neumorphic.dart';
+import 'package:flutter/material.dart';
 import 'package:rolify/presentation_logic_holders/singletons/app_state.dart';
 
 class MyButton extends StatelessWidget {
@@ -19,15 +19,13 @@ class MyButton extends StatelessWidget {
       height: size * heightFactor,
       width: size * heightFactor,
       child: Center(
-        child: NeumorphicButton(
-          padding: padding,
-          onPressed: onTap,
-          style: NeumorphicStyle(
-            boxShape: const NeumorphicBoxShape.circle(),
-            shadowLightColor: Colors.white.withOpacity(0.7),
+        child: FilledButton.tonal(
+          style: FilledButton.styleFrom(
+            padding: EdgeInsets.zero,
+            shape: const CircleBorder(),
           ),
+          onPressed: onTap,
           child: icon,
-          //onPressed: stopAll,
         ),
       ),
     );

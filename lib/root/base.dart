@@ -1,5 +1,5 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:flutter_neumorphic/flutter_neumorphic.dart';
+import 'package:flutter/material.dart';
 import 'package:rolify/presentation_logic_holders/audio_edit_bloc/audio_edit_bloc.dart';
 import 'package:rolify/presentation_logic_holders/audio_edit_bloc/audio_edit_state.dart';
 import 'package:rolify/presentation_logic_holders/singletons/app_state.dart';
@@ -28,14 +28,12 @@ class BaseState extends State<Base> {
 
   @override
   Widget build(BuildContext context) {
-    AppState().deviceHeight = MediaQuery.of(context).size.height *
-        MediaQuery.of(context).devicePixelRatio;
-    AppState().deviceWidth = MediaQuery.of(context).size.width *
-        MediaQuery.of(context).devicePixelRatio;
+    AppState().deviceHeight = MediaQuery.of(context).size.height;
+    AppState().deviceWidth = MediaQuery.of(context).size.width;
     return BlocListener<AudioEditBloc, AudioEditState>(
       listener: handleAudioEditing,
       child: Scaffold(
-        backgroundColor: NeumorphicTheme.currentTheme(context).baseColor,
+        backgroundColor: Theme.of(context).colorScheme.surface,
         body: SafeArea(
           child: Column(
             children: <Widget>[
@@ -96,10 +94,10 @@ class BaseState extends State<Base> {
 
   Color? _getIconColor(BuildContext context, int pageNumber) {
     if (pageSelected > 3) {
-      return NeumorphicTheme.currentTheme(context).disabledColor;
+      return Theme.of(context).disabledColor;
     }
     if (pageSelected == pageNumber) {
-      return NeumorphicTheme.currentTheme(context).accentColor;
+      return Theme.of(context).colorScheme.primary;
     }
     return null;
   }

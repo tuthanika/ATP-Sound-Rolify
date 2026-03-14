@@ -1,6 +1,6 @@
 import 'package:audio_session/audio_session.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:flutter_neumorphic/flutter_neumorphic.dart';
+import 'package:flutter/material.dart';
 import 'package:rolify/presentation_logic_holders/audio_edit_bloc/audio_edit_bloc.dart';
 import 'package:rolify/presentation_logic_holders/audio_handler.dart';
 import 'package:rolify/presentation_logic_holders/audio_list_bloc/audio_list_bloc.dart';
@@ -14,28 +14,7 @@ Future<void> main() async {
 
   await _configureAudioSession();
 
-  runApp(
-    NeumorphicTheme(
-      themeMode: ThemeMode.system,
-      darkTheme: const NeumorphicThemeData(
-        baseColor: Color(0xff333333),
-        accentColor: Color(0xFF007aff),
-        variantColor: Colors.cyan,
-        lightSource: LightSource.topLeft,
-        depth: 4,
-        intensity: 0.3,
-      ),
-      theme: const NeumorphicThemeData(
-        baseColor: Color(0xFFF0F0F3),
-        disabledColor: Color(0xFF7b7b7b),
-        accentColor: Color(0xFF007aff),
-        variantColor: Colors.cyan,
-        intensity: 1,
-        lightSource: LightSource.topLeft,
-      ),
-      child: const MyApp(),
-    ),
-  );
+  runApp(const MyApp());
 }
 
 Future<void> _configureAudioSession() async {
@@ -75,6 +54,17 @@ class MyApp extends StatelessWidget {
       child: MaterialApp(
         title: 'Rolify',
         debugShowCheckedModeBanner: false,
+        themeMode: ThemeMode.system,
+        theme: ThemeData(
+          useMaterial3: true,
+          colorSchemeSeed: Colors.deepPurple,
+          brightness: Brightness.light,
+        ),
+        darkTheme: ThemeData(
+          useMaterial3: true,
+          colorSchemeSeed: Colors.deepPurple,
+          brightness: Brightness.dark,
+        ),
         home: ScrollConfiguration(
           behavior: NoScrollGlowBehavior(),
           child: const Base(),

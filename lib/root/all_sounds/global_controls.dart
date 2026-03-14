@@ -1,4 +1,4 @@
-import 'package:flutter_neumorphic/flutter_neumorphic.dart';
+import 'package:flutter/material.dart';
 import 'package:launch_review/launch_review.dart';
 
 import '../../presentation_logic_holders/audio_service_commands.dart';
@@ -28,12 +28,11 @@ class GlobalControls extends StatefulWidget {
 class _GlobalControlsState extends State<GlobalControls> {
   @override
   Widget build(BuildContext context) {
-    return Neumorphic(
-      curve: Curves.ease,
-      style: NeumorphicStyle(
-        boxShape: NeumorphicBoxShape.roundRect(
-            const BorderRadius.all(Radius.circular(12.0))),
+    return Card(
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12.0),
       ),
+      elevation: 2,
       child: Padding(
         padding: EdgeInsets.symmetric(
             vertical: 16.0 * heightFactor, horizontal: 16.0),
@@ -60,12 +59,12 @@ class _GlobalControlsState extends State<GlobalControls> {
                         ? MyIcons.pauseBig(
                             color: widget.playPauseEnabled
                                 ? null
-                                : NeumorphicTheme.currentTheme(context)
+                                : Theme.of(context)
                                     .disabledColor)
                         : MyIcons.playBig(
                             color: widget.playPauseEnabled
                                 ? null
-                                : NeumorphicTheme.currentTheme(context)
+                                : Theme.of(context)
                                     .disabledColor),
                     value: widget.pauseAll,
                     onChanged: (value) {

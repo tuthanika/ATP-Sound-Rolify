@@ -1,4 +1,4 @@
-import 'package:flutter_neumorphic/flutter_neumorphic.dart';
+import 'package:flutter/material.dart';
 import 'package:rolify/src/components/slider.dart';
 
 class AudioSlider extends StatelessWidget {
@@ -11,22 +11,13 @@ class AudioSlider extends StatelessWidget {
       : super(key: key);
 
   @override
-  Widget build(BuildContext context) => MySlider(
-        style: MySliderStyle(
-          depth: -5.0,
-          accent: isActive
-              ? NeumorphicTheme.currentTheme(context).variantColor
-              : NeumorphicTheme.currentTheme(context)
-                  .disabledColor
-                  .withOpacity(0.5),
-          variant: isActive
-              ? NeumorphicTheme.currentTheme(context).accentColor
-              : NeumorphicTheme.currentTheme(context).disabledColor,
-        ),
-        min: 0.0,
-        max: 1.0,
-        height: 12,
-        value: value,
-        onChanged: onChanged,
-      );
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return MySlider(
+      activeColor: isActive ? theme.colorScheme.primary : theme.disabledColor,
+      inactiveColor: isActive ? theme.colorScheme.primary.withOpacity(0.5) : theme.disabledColor.withOpacity(0.5),
+      value: value,
+      onChanged: onChanged,
+    );
+  }
 }

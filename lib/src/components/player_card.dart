@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:math';
 
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:flutter_neumorphic/flutter_neumorphic.dart';
+import 'package:flutter/material.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:rolify/data/audios.dart';
 import 'package:rolify/entities/audio.dart';
@@ -136,8 +136,7 @@ class PlayerWidgetState extends State<PlayerWidget> {
                       MyRadio(
                         icon: MyIcons.loop(
                             color: loopAudio
-                                ? NeumorphicTheme.currentTheme(context)
-                                    .accentColor
+                                ? Theme.of(context).colorScheme.primary
                                 : null),
                         value: loopAudio,
                         onChanged: toggleLoop,
