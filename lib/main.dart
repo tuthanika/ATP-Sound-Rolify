@@ -53,9 +53,7 @@ class MyApp extends StatelessWidget {
         BlocProvider<AudioListBloc>(create: (context) => AudioListBloc()),
         BlocProvider<AudioEditBloc>(create: (context) => AudioEditBloc())
       ],
-      child: NeumorphicApp(
-        title: 'Rolify',
-        debugShowCheckedModeBanner: false,
+      child: NeumorphicTheme(
         themeMode: ThemeMode.system,
         darkTheme: const NeumorphicThemeData(
           baseColor: Color(0xff333333),
@@ -73,9 +71,13 @@ class MyApp extends StatelessWidget {
           intensity: 1,
           lightSource: LightSource.topLeft,
         ),
-        home: ScrollConfiguration(
-          behavior: NoScrollGlowBehavior(),
-          child: const Base(),
+        child: MaterialApp(
+          title: 'Rolify',
+          debugShowCheckedModeBanner: false,
+          home: ScrollConfiguration(
+            behavior: NoScrollGlowBehavior(),
+            child: const Base(),
+          ),
         ),
       ),
     );
