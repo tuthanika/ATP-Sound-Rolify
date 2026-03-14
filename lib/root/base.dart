@@ -29,9 +29,9 @@ class BaseState extends State<Base> {
   @override
   Widget build(BuildContext context) {
     AppState().deviceHeight = MediaQuery.of(context).size.height *
-        MediaQuery.devicePixelRatioOf(context);
+        MediaQuery.of(context).devicePixelRatio;
     AppState().deviceWidth = MediaQuery.of(context).size.width *
-        MediaQuery.devicePixelRatioOf(context);
+        MediaQuery.of(context).devicePixelRatio;
     return BlocListener<AudioEditBloc, AudioEditState>(
       listener: handleAudioEditing,
       child: Scaffold(
