@@ -16,28 +16,7 @@ Future<void> main() async {
 
   await _configureAudioSession();
 
-  runApp(
-    NeumorphicTheme(
-      themeMode: ThemeMode.system,
-      darkTheme: const NeumorphicThemeData(
-        baseColor: Color(0xff333333),
-        accentColor: Color(0xFF007aff),
-        variantColor: Colors.cyan,
-        lightSource: LightSource.topLeft,
-        depth: 4,
-        intensity: 0.3,
-      ),
-      theme: const NeumorphicThemeData(
-        baseColor: Color(0xFFF0F0F3),
-        disabledColor: Color(0xFF7b7b7b),
-        accentColor: Color(0xFF007aff),
-        variantColor: Colors.cyan,
-        intensity: 1,
-        lightSource: LightSource.topLeft,
-      ),
-      child: const MyApp(),
-    ),
-  );
+  runApp(const MyApp());
 }
 
 Future<void> _configureAudioSession() async {
@@ -77,6 +56,23 @@ class MyApp extends StatelessWidget {
       child: NeumorphicApp(
         title: 'Rolify',
         debugShowCheckedModeBanner: false,
+        themeMode: ThemeMode.system,
+        darkTheme: const NeumorphicThemeData(
+          baseColor: Color(0xff333333),
+          accentColor: Color(0xFF007aff),
+          variantColor: Colors.cyan,
+          lightSource: LightSource.topLeft,
+          depth: 4,
+          intensity: 0.3,
+        ),
+        theme: const NeumorphicThemeData(
+          baseColor: Color(0xFFF0F0F3),
+          disabledColor: Color(0xFF7b7b7b),
+          accentColor: Color(0xFF007aff),
+          variantColor: Colors.cyan,
+          intensity: 1,
+          lightSource: LightSource.topLeft,
+        ),
         home: ScrollConfiguration(
           behavior: NoScrollGlowBehavior(),
           child: const Base(),
@@ -87,8 +83,8 @@ class MyApp extends StatelessWidget {
 }
 
 class NoScrollGlowBehavior extends ScrollBehavior {
-  Widget buildViewportChrome(
-      BuildContext context, Widget child, AxisDirection axisDirection) {
+  @override
+  Widget buildOverscrollIndicator(BuildContext context, Widget child, ScrollableDetails details) {
     return child;
   }
 }
