@@ -22,13 +22,13 @@ dependencies:
   just_audio: ^0.9.40
   path_provider: ^2.1.4
   shared_preferences: ^2.2.1
-
+  sqflite: ^2.4.1
   url_launcher: ^6.1.14
 
   cupertino_icons: ^1.0.8
 
-
-
+dependency_overrides:
+  win32: ^5.5.4
 
 dev_dependencies:
   flutter_lints: ^4.0.0
