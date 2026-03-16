@@ -1,8 +1,7 @@
-import 'dart:io';
-
 import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
-import 'package:url_launcher/url_launcher.dart';
 
+import '../../data/playlist.dart';
+import '../../entities/playlist.dart';
 import '../../presentation_logic_holders/audio_service_commands.dart';
 import '../../presentation_logic_holders/playing_sounds_singleton.dart';
 import '../../presentation_logic_holders/singletons/app_state.dart';
@@ -51,7 +50,7 @@ class _GlobalControlsState extends State<GlobalControls> {
                       alignment: Alignment.centerRight,
                       child: MyButton(
                         icon: MyIcons.star,
-                        onTap: _openPlayStore,
+                        onTap: _saveCurrentMixAsPlaylist,
                       ),
                     ),
                   ),
@@ -103,15 +102,81 @@ class _GlobalControlsState extends State<GlobalControls> {
     );
   }
 
-  _openPlayStore() async {
-    final appId = Platform.isIOS ? '1511308478' : 'com.lucaoropallo.rolify';
-    final url = Uri.parse(Platform.isIOS
-        ? 'https://apps.apple.com/app/id$appId'
-        : 'https://play.google.com/store/apps/details?id=$appId');
-    if (await canLaunchUrl(url)) {
-      await launchUrl(url, mode: LaunchMode.externalApplication);
-    }
+  Future<void> _saveCurrentMixAsPlaylist() async {
+  final playingAudios = PlayingSounds().playingAudios.toList();
+
+  if (playingAudios.isEmpty) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('No sounds are currently playing'),
+      ),
+    );
+    return;
   }
+
+  final playlistName = await _showPlaylistNameDialog(
+    defaultName: 'New Playlist',
+  );
+
+  if (playlistName == null) return;
+
+  final trimmedName = playlistName.trim();
+  if (trimmedName.isEmpty) return;
+
+  final playlist = Playlist(
+    name: trimmedName,
+    audios: playingAudios,
+  );
+
+  await PlaylistData.savePlaylist(context, playlist);
+
+  if (!mounted) return;
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(
+      content: Text('Playlist "$trimmedName" saved'),
+    ),
+  );
+}
+
+Future<String?> _showPlaylistNameDialog({
+  required String defaultName,
+}) async {
+  final controller = TextEditingController(text: defaultName);
+
+  final result = await showDialog<String>(
+    context: context,
+    builder: (dialogContext) {
+      return AlertDialog(
+        title: const Text('Save playlist'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          decoration: const InputDecoration(
+            hintText: 'Playlist name',
+          ),
+          onSubmitted: (value) {
+            Navigator.of(dialogContext).pop(value);
+          },
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () =>
+                Navigator.of(dialogContext).pop(controller.text),
+            child: const Text('Save'),
+          ),
+        ],
+      );
+    },
+  );
+
+  controller.dispose();
+  return result;
+}
 
   void playAllSound() async {
     final pausedAudios = PlayingSounds().pausedAudios.toList();

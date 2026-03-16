@@ -1,5 +1,4 @@
 import 'package:flutter_neumorphic_plus/flutter_neumorphic.dart';
-import 'package:rolify/data/audios.dart';
 import 'package:rolify/data/playlist.dart';
 import 'package:rolify/entities/audio.dart';
 import 'package:rolify/entities/playlist.dart';
@@ -20,23 +19,13 @@ class EditPlaylist extends StatefulWidget {
 
 class EditPlaylistState extends State<EditPlaylist> {
   final playlistNameController = TextEditingController();
-  List<Audio>? audios;
   Color? color;
 
   @override
   void initState() {
     super.initState();
-    initAudios();
     playlistNameController.text = widget.playlist.name;
     color = widget.playlist.color;
-  }
-
-  initAudios() {
-    AudioData.getAllAudios().then((value) {
-      setState(() {
-        audios = value;
-      });
-    });
   }
 
   @override
@@ -102,24 +91,29 @@ class EditPlaylistState extends State<EditPlaylist> {
                   ],
                   groupValue: color,
                 ),
-                if (audios != null)
+                if (widget.playlist.audios.isNotEmpty)
                   Expanded(
-                    child: ListView.separated(
-                      physics: const BouncingScrollPhysics(),
+                    child: Padding(
                       padding: const EdgeInsets.all(16.0),
-                      itemCount: audios!.length,
-                      itemBuilder: (context, index) => _AudioRow(
-                        playlist: widget.playlist,
-                        audio: audios![index],
-                        onAdd: () => addSoundToPlaylist(audios![index]),
-                        onRemove: () => removeSoundFromPlaylist(audios![index]),
-                      ),
-                      separatorBuilder: (BuildContext context, int index) =>
-                          const SizedBox(
-                        height: 16.0,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: List.generate(
+                          widget.playlist.audios.length,
+                          (index) {
+                            final audio = widget.playlist.audios[index];
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: 16.0),
+                              child: _AudioRow(
+                                playlist: widget.playlist,
+                                audio: audio,
+                                onRemove: () => removeSoundFromPlaylist(audio),
+                              ),
+                            );
+                          },
+                        ),
                       ),
                     ),
-                  )
+                  ),
               ],
             ),
           ),
@@ -152,17 +146,17 @@ class EditPlaylistState extends State<EditPlaylist> {
     });
   }
 
-  removeSoundFromPlaylist(Audio audio) {
+  void removeSoundFromPlaylist(Audio audio) {
+  setState(() {
     widget.playlist.audios.remove(audio);
+  });
 
-    if (widget.playlist.audios.isEmpty) {
-      removePlaylist();
-    } else {
-      PlaylistData.savePlaylist(context, widget.playlist).then((_) {
-        initAudios();
-      });
-    }
+  if (widget.playlist.audios.isEmpty) {
+    removePlaylist();
+  } else {
+    PlaylistData.savePlaylist(context, widget.playlist);
   }
+}
 }
 
 class _AudioRow extends StatelessWidget {
@@ -170,32 +164,27 @@ class _AudioRow extends StatelessWidget {
     Key? key,
     required this.playlist,
     required this.audio,
-    required this.onAdd,
     required this.onRemove,
   }) : super(key: key);
 
   final Playlist playlist;
   final Audio audio;
-  final Function() onAdd, onRemove;
+  final VoidCallback onRemove;
 
   @override
   Widget build(BuildContext context) {
     return Row(
-      children: <Widget>[
+      children: [
         Expanded(
           child: MyText.body(
             audio.name,
             fontWeight: FontWeight.w500,
           ),
         ),
-        const SizedBox(
-          width: 16.0,
-        ),
+        const SizedBox(width: 16.0),
         MyButton(
-          icon: playlist.audios.contains(audio)
-              ? MyIcons.playlistDelete
-              : MyIcons.playlistAdd,
-          onTap: playlist.audios.contains(audio) ? onRemove : onAdd,
+          icon: MyIcons.playlistDelete,
+          onTap: onRemove,
         ),
       ],
     );
