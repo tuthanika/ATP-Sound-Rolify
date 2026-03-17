@@ -3,6 +3,7 @@ import 'package:flutter_neumorphic/flutter_neumorphic.dart';
 import 'package:rolify/presentation_logic_holders/audio_edit_bloc/audio_edit_bloc.dart';
 import 'package:rolify/presentation_logic_holders/audio_edit_bloc/audio_edit_state.dart';
 import 'package:rolify/presentation_logic_holders/singletons/app_state.dart';
+import 'package:rolify/presentation_logic_holders/singletons/theme_mode_controller.dart';
 import 'package:rolify/root/info_page.dart';
 import 'package:rolify/root/session_sounds.dart';
 import 'package:rolify/root/sound_edit.dart';
@@ -44,31 +45,62 @@ class BaseState extends State<Base> {
                     const EdgeInsets.only(top: 24.0, left: 24.0, right: 24.0),
                 child: Row(
                   children: <Widget>[
-                    Expanded(child: MyText.title(titles[pageSelected])),
-                    const SizedBox(width: 8.0),
+                    Expanded(
+                      child: MyText(
+                        titles[pageSelected],
+                        fontFamily: 'Inter-Regular',
+                        fontSize: 26 * heightFactor,
+                        fontWeight: FontWeight.bold,
+                        height: 1.2,
+                        textOverflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    const SizedBox(width: 6.0),
                     MyRadio(
                       value: pageSelected == 0,
                       onChanged: pageSelected <= 3 ? showSoundPage : null,
                       icon: MyIcons.list(color: _getIconColor(context, 0)),
+                      customSize: 36.0,
+                      customIconSize: 20.0,
                     ),
-                    const SizedBox(width: 8.0),
+                    const SizedBox(width: 6.0),
                     MyRadio(
                       value: pageSelected == 1,
                       onChanged:
                           pageSelected <= 3 ? showSessionSoundPage : null,
                       icon: MyIcons.play(color: _getIconColor(context, 1)),
+                      customSize: 36.0,
+                      customIconSize: 20.0,
                     ),
-                    const SizedBox(width: 8.0),
+                    const SizedBox(width: 6.0),
                     MyRadio(
                       value: pageSelected == 2,
                       onChanged: pageSelected <= 3 ? showPlaylistPage : null,
                       icon: MyIcons.playlist(color: _getIconColor(context, 2)),
+                      customSize: 36.0,
+                      customIconSize: 20.0,
                     ),
-                    const SizedBox(width: 8.0),
+                    const SizedBox(width: 6.0),
                     MyRadio(
                       value: pageSelected == 3,
                       onChanged: pageSelected <= 3 ? showInfoPage : null,
                       icon: MyIcons.about(color: _getIconColor(context, 3)),
+                      customSize: 36.0,
+                      customIconSize: 20.0,
+                    ),
+                    const SizedBox(width: 6.0),
+                    MyRadio(
+                      value: NeumorphicTheme.isUsingDark(context),
+                      onChanged: toggleThemeMode,
+                      icon: Icon(
+                        NeumorphicTheme.isUsingDark(context)
+                            ? Icons.light_mode
+                            : Icons.dark_mode,
+                        color: _getThemeIconColor(context),
+                        size: 20.0 * heightFactor,
+                      ),
+                      customSize: 36.0,
+                      customIconSize: 20.0,
                     ),
                   ],
                 ),
@@ -136,6 +168,14 @@ class BaseState extends State<Base> {
     if (value) {
       changePage(3);
     }
+  }
+
+  Color _getThemeIconColor(BuildContext context) {
+    return NeumorphicTheme.isUsingDark(context) ? Colors.amber : Colors.black54;
+  }
+
+  void toggleThemeMode(bool value) {
+    ThemeModeController().toggle(NeumorphicTheme.isUsingDark(context));
   }
 
   changePage(int? page) {

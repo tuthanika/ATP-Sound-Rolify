@@ -6,6 +6,7 @@ import 'package:rolify/presentation_logic_holders/audio_handler.dart';
 import 'package:rolify/presentation_logic_holders/audio_list_bloc/audio_list_bloc.dart';
 import 'package:rolify/presentation_logic_holders/playlist_list_bloc/playlist_list_bloc.dart';
 import 'package:rolify/presentation_logic_holders/singletons/app_state.dart';
+import 'package:rolify/presentation_logic_holders/singletons/theme_mode_controller.dart';
 import 'package:rolify/root/base.dart';
 
 Future<void> main() async {
@@ -14,28 +15,40 @@ Future<void> main() async {
 
   await _configureAudioSession();
 
-  runApp(
-    NeumorphicTheme(
-      themeMode: ThemeMode.system,
-      darkTheme: const NeumorphicThemeData(
-        baseColor: Color(0xff333333),
-        accentColor: Color(0xFF007aff),
-        variantColor: Colors.cyan,
-        lightSource: LightSource.topLeft,
-        depth: 4,
-        intensity: 0.3,
-      ),
-      theme: const NeumorphicThemeData(
-        baseColor: Color(0xFFF0F0F3),
-        disabledColor: Color(0xFF7b7b7b),
-        accentColor: Color(0xFF007aff),
-        variantColor: Colors.cyan,
-        intensity: 1,
-        lightSource: LightSource.topLeft,
-      ),
-      child: const MyApp(),
-    ),
-  );
+  runApp(const AppRoot());
+}
+
+class AppRoot extends StatelessWidget {
+  const AppRoot({Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return ValueListenableBuilder<ThemeMode>(
+      valueListenable: ThemeModeController().themeMode,
+      builder: (context, themeMode, child) {
+        return NeumorphicTheme(
+          themeMode: themeMode,
+          darkTheme: const NeumorphicThemeData(
+            baseColor: Color(0xff333333),
+            accentColor: Color(0xFF007aff),
+            variantColor: Colors.cyan,
+            lightSource: LightSource.topLeft,
+            depth: 4,
+            intensity: 0.3,
+          ),
+          theme: const NeumorphicThemeData(
+            baseColor: Color(0xFFF0F0F3),
+            disabledColor: Color(0xFF7b7b7b),
+            accentColor: Color(0xFF007aff),
+            variantColor: Colors.cyan,
+            intensity: 1,
+            lightSource: LightSource.topLeft,
+          ),
+          child: const MyApp(),
+        );
+      },
+    );
+  }
 }
 
 Future<void> _configureAudioSession() async {
