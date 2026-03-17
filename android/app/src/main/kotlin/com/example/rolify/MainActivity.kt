@@ -7,6 +7,7 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.provider.OpenableColumns
+import android.view.View
 import com.ryanheise.audioservice.AudioServiceActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
@@ -17,6 +18,12 @@ class MainActivity: AudioServiceActivity() {
     private val COMPAT_CHANNEL = "rolify/compat"
     private val PICK_AUDIO_REQUEST_CODE = 1001
     private var pendingResult: MethodChannel.Result? = null
+    private var didApplySoftwareLayer = false
+
+    override fun onResume() {
+        super.onResume()
+        applyLegacySoftwareLayerIfNeeded()
+    }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -69,6 +76,16 @@ class MainActivity: AudioServiceActivity() {
         val oldAndroid = Build.VERSION.SDK_INT <= Build.VERSION_CODES.O_MR1
 
         return isNote3 || (looksLikeOldQualcomm && (oldAndroid || hasOnly32BitAbis))
+    }
+
+    private fun applyLegacySoftwareLayerIfNeeded() {
+        if (didApplySoftwareLayer || !isLegacyGpuDevice()) {
+            return
+        }
+
+        val rootView = findViewById<View>(android.R.id.content)
+        rootView?.setLayerType(View.LAYER_TYPE_SOFTWARE, null)
+        didApplySoftwareLayer = true
     }
 
     private fun openFilePicker() {
