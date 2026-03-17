@@ -6,9 +6,14 @@ import 'package:rolify/presentation_logic_holders/audio_handler.dart';
 import 'package:rolify/presentation_logic_holders/audio_list_bloc/audio_list_bloc.dart';
 import 'package:rolify/presentation_logic_holders/playlist_list_bloc/playlist_list_bloc.dart';
 import 'package:rolify/presentation_logic_holders/singletons/app_state.dart';
+import 'package:rolify/presentation_logic_holders/singletons/compatibility_flags.dart';
 import 'package:rolify/root/base.dart';
 
 Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  AppState().compatibilityFlags = await CompatibilityFlags.load();
+
   // store this in a singleton
   AppState().audioHandler = await initAudioService();
 

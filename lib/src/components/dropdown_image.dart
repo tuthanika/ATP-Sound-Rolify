@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:rolify/presentation_logic_holders/singletons/app_state.dart';
 import 'package:rolify/src/images/images.dart';
 
 const _height = 48.0;
@@ -12,6 +13,9 @@ class DropdownImage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final useLegacyRendering =
+        AppState().compatibilityFlags.shouldUseLegacyRendering;
+
     return DropdownButton<String>(
       hint: Container(),
       underline: Container(),
@@ -29,6 +33,9 @@ class DropdownImage extends StatelessWidget {
               height: _height,
               width: _height,
               fit: BoxFit.cover,
+              filterQuality:
+                  useLegacyRendering ? FilterQuality.low : FilterQuality.medium,
+              cacheWidth: useLegacyRendering ? 96 : null,
             ),
           ),
         );
@@ -45,6 +52,10 @@ class DropdownImage extends StatelessWidget {
                 height: _height,
                 width: _height,
                 fit: BoxFit.cover,
+                filterQuality: useLegacyRendering
+                    ? FilterQuality.low
+                    : FilterQuality.medium,
+                cacheWidth: useLegacyRendering ? 96 : null,
               ),
             ),
           ),
