@@ -14,28 +14,35 @@ Future<void> main() async {
 
   await _configureAudioSession();
 
-  runApp(
-    NeumorphicTheme(
-      themeMode: ThemeMode.system,
-      darkTheme: const NeumorphicThemeData(
-        baseColor: Color(0xff333333),
-        accentColor: Color(0xFF007aff),
-        variantColor: Colors.cyan,
-        lightSource: LightSource.topLeft,
-        depth: 4,
-        intensity: 0.3,
-      ),
-      theme: const NeumorphicThemeData(
-        baseColor: Color(0xFFF0F0F3),
-        disabledColor: Color(0xFF7b7b7b),
-        accentColor: Color(0xFF007aff),
-        variantColor: Colors.cyan,
-        intensity: 1,
-        lightSource: LightSource.topLeft,
-      ),
-      child: const MyApp(),
-    ),
+  const seedColor = Color(0xFF6750A4);
+  final lightScheme = ColorScheme.fromSeed(seedColor: seedColor);
+  final darkScheme = ColorScheme.fromSeed(
+    seedColor: seedColor,
+    brightness: Brightness.dark,
   );
+
+  runApp(NeumorphicTheme(
+    themeMode: ThemeMode.system,
+    darkTheme: NeumorphicThemeData(
+      baseColor: darkScheme.surface,
+      disabledColor: darkScheme.onSurfaceVariant,
+      accentColor: darkScheme.primary,
+      variantColor: darkScheme.tertiary,
+      lightSource: LightSource.topLeft,
+      depth: 2,
+      intensity: 0.5,
+    ),
+    theme: NeumorphicThemeData(
+      baseColor: lightScheme.surface,
+      disabledColor: lightScheme.onSurfaceVariant,
+      accentColor: lightScheme.primary,
+      variantColor: lightScheme.tertiary,
+      intensity: 0.8,
+      lightSource: LightSource.topLeft,
+      depth: 1,
+    ),
+    child: const MyApp(),
+  ));
 }
 
 Future<void> _configureAudioSession() async {
@@ -66,6 +73,13 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    const seedColor = Color(0xFF6750A4);
+    final lightScheme = ColorScheme.fromSeed(seedColor: seedColor);
+    final darkScheme = ColorScheme.fromSeed(
+      seedColor: seedColor,
+      brightness: Brightness.dark,
+    );
+
     return MultiBlocProvider(
       providers: [
         BlocProvider<PlaylistListBloc>(create: (context) => PlaylistListBloc()),
@@ -75,6 +89,29 @@ class MyApp extends StatelessWidget {
       child: MaterialApp(
         title: 'Rolify',
         debugShowCheckedModeBanner: false,
+        themeMode: ThemeMode.system,
+        theme: ThemeData(
+          useMaterial3: true,
+          colorScheme: lightScheme,
+          scaffoldBackgroundColor: lightScheme.surface,
+          appBarTheme: AppBarTheme(
+            centerTitle: false,
+            scrolledUnderElevation: 0,
+            backgroundColor: lightScheme.surface,
+            foregroundColor: lightScheme.onSurface,
+          ),
+        ),
+        darkTheme: ThemeData(
+          useMaterial3: true,
+          colorScheme: darkScheme,
+          scaffoldBackgroundColor: darkScheme.surface,
+          appBarTheme: AppBarTheme(
+            centerTitle: false,
+            scrolledUnderElevation: 0,
+            backgroundColor: darkScheme.surface,
+            foregroundColor: darkScheme.onSurface,
+          ),
+        ),
         home: ScrollConfiguration(
           behavior: NoScrollGlowBehavior(),
           child: const Base(),
