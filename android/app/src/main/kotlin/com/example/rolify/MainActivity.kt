@@ -57,14 +57,18 @@ class MainActivity: AudioServiceActivity() {
         val device = Build.DEVICE.lowercase(Locale.US)
         val hardware = Build.HARDWARE.lowercase(Locale.US)
         val manufacturer = Build.MANUFACTURER.lowercase(Locale.US)
+        val board = Build.BOARD.lowercase(Locale.US)
 
         val isNote3 = manufacturer.contains("samsung") &&
-                (model.contains("n900") || device.contains("hlte"))
+                (model.contains("n900") || device.contains("hlte") || board.contains("hlte"))
 
-        val looksLikeOldQualcomm = hardware.contains("qcom") || hardware.contains("msm")
-        val oldAndroid = Build.VERSION.SDK_INT <= Build.VERSION_CODES.M
+        val looksLikeOldQualcomm =
+                hardware.contains("qcom") || hardware.contains("msm") || board.contains("msm")
 
-        return isNote3 || (looksLikeOldQualcomm && oldAndroid)
+        val hasOnly32BitAbis = Build.SUPPORTED_64_BIT_ABIS.isEmpty()
+        val oldAndroid = Build.VERSION.SDK_INT <= Build.VERSION_CODES.O_MR1
+
+        return isNote3 || (looksLikeOldQualcomm && (oldAndroid || hasOnly32BitAbis))
     }
 
     private fun openFilePicker() {

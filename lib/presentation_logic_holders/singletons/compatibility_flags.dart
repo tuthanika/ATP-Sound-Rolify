@@ -6,20 +6,28 @@ class CompatibilityFlags {
   const CompatibilityFlags({
     required this.isLegacyGpuDevice,
     required this.isLowRamDevice,
+    required this.forceLegacyFromDefine,
   });
 
   final bool isLegacyGpuDevice;
   final bool isLowRamDevice;
+  final bool forceLegacyFromDefine;
 
-  bool get shouldUseLegacyRendering => isLegacyGpuDevice || isLowRamDevice;
+  bool get shouldUseLegacyRendering =>
+      forceLegacyFromDefine || isLegacyGpuDevice || isLowRamDevice;
 
   static const _channel = MethodChannel('rolify/compat');
+  static const _forceLegacyFromDefine =
+      String.fromEnvironment('ROLIFY_FORCE_LEGACY_RENDER', defaultValue: 'false');
 
   static Future<CompatibilityFlags> load() async {
+    final forceLegacy = _forceLegacyFromDefine.toLowerCase() == 'true';
+
     if (!Platform.isAndroid) {
-      return const CompatibilityFlags(
+      return CompatibilityFlags(
         isLegacyGpuDevice: false,
         isLowRamDevice: false,
+        forceLegacyFromDefine: forceLegacy,
       );
     }
 
@@ -31,11 +39,13 @@ class CompatibilityFlags {
       return CompatibilityFlags(
         isLegacyGpuDevice: data?['isLegacyGpuDevice'] == true,
         isLowRamDevice: data?['isLowRamDevice'] == true,
+        forceLegacyFromDefine: forceLegacy,
       );
     } catch (_) {
-      return const CompatibilityFlags(
+      return CompatibilityFlags(
         isLegacyGpuDevice: false,
         isLowRamDevice: false,
+        forceLegacyFromDefine: forceLegacy,
       );
     }
   }

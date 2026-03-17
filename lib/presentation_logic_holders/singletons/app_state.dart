@@ -10,6 +10,7 @@ class AppState {
   CompatibilityFlags compatibilityFlags = const CompatibilityFlags(
     isLegacyGpuDevice: false,
     isLowRamDevice: false,
+    forceLegacyFromDefine: false,
   );
 
   factory AppState() {

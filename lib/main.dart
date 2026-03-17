@@ -19,23 +19,26 @@ Future<void> main() async {
 
   await _configureAudioSession();
 
+  final useLegacyRendering = AppState().compatibilityFlags.shouldUseLegacyRendering;
+
   runApp(
     NeumorphicTheme(
       themeMode: ThemeMode.system,
-      darkTheme: const NeumorphicThemeData(
-        baseColor: Color(0xff333333),
-        accentColor: Color(0xFF007aff),
+      darkTheme: NeumorphicThemeData(
+        baseColor: const Color(0xff333333),
+        accentColor: const Color(0xFF007aff),
         variantColor: Colors.cyan,
         lightSource: LightSource.topLeft,
-        depth: 4,
-        intensity: 0.3,
+        depth: useLegacyRendering ? 0 : 4,
+        intensity: useLegacyRendering ? 0.15 : 0.3,
       ),
-      theme: const NeumorphicThemeData(
-        baseColor: Color(0xFFF0F0F3),
-        disabledColor: Color(0xFF7b7b7b),
-        accentColor: Color(0xFF007aff),
+      theme: NeumorphicThemeData(
+        baseColor: const Color(0xFFF0F0F3),
+        disabledColor: const Color(0xFF7b7b7b),
+        accentColor: const Color(0xFF007aff),
         variantColor: Colors.cyan,
-        intensity: 1,
+        depth: useLegacyRendering ? 0 : 4,
+        intensity: useLegacyRendering ? 0.75 : 1,
         lightSource: LightSource.topLeft,
       ),
       child: const MyApp(),
