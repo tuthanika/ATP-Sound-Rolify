@@ -47,14 +47,13 @@ class MyText extends StatelessWidget {
   }
 
   Color getTextColor(BuildContext context, TextType textType) {
-    if (NeumorphicTheme.of(context)!.isUsingDark) {
-      return textType == TextType.primary
-          ? Colors.white
-          : NeumorphicTheme.currentTheme(context).disabledColor;
-    } else {
-      return textType == TextType.primary
-          ? Colors.black
-          : NeumorphicTheme.currentTheme(context).disabledColor;
+    final colorScheme = Theme.of(context).colorScheme;
+    switch (textType) {
+      case TextType.primary:
+        return colorScheme.onSurface;
+      case TextType.secondary:
+      case TextType.disabled:
+        return colorScheme.onSurfaceVariant;
     }
   }
 
