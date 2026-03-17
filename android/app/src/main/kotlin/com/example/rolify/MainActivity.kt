@@ -22,6 +22,12 @@ class MainActivity: AudioServiceActivity() {
             if (!baseArgs.contains("--enable-impeller=false")) {
                 baseArgs.add("--enable-impeller=false")
             }
+
+            // Force software renderer on ARMv7 32-bit legacy devices.
+            // This is slower, but can avoid broken vendor GPU drivers.
+            if (!baseArgs.contains("--enable-software-rendering")) {
+                baseArgs.add("--enable-software-rendering")
+            }
         }
 
         return FlutterShellArgs(baseArgs.toTypedArray())
