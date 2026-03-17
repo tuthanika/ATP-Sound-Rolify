@@ -7,14 +7,16 @@ class CompatibilityFlags {
     required this.isLegacyGpuDevice,
     required this.isLowRamDevice,
     required this.forceLegacyFromDefine,
+    required this.isArmV7Device,
   });
 
   final bool isLegacyGpuDevice;
   final bool isLowRamDevice;
   final bool forceLegacyFromDefine;
+  final bool isArmV7Device;
 
   bool get shouldUseLegacyRendering =>
-      forceLegacyFromDefine || isLegacyGpuDevice || isLowRamDevice;
+      forceLegacyFromDefine || isLegacyGpuDevice;
 
   static const _channel = MethodChannel('rolify/compat');
   static const _forceLegacyFromDefine =
@@ -28,6 +30,7 @@ class CompatibilityFlags {
         isLegacyGpuDevice: false,
         isLowRamDevice: false,
         forceLegacyFromDefine: forceLegacy,
+        isArmV7Device: false,
       );
     }
 
@@ -40,12 +43,14 @@ class CompatibilityFlags {
         isLegacyGpuDevice: data?['isLegacyGpuDevice'] == true,
         isLowRamDevice: data?['isLowRamDevice'] == true,
         forceLegacyFromDefine: forceLegacy,
+        isArmV7Device: data?['isArmV7Device'] == true,
       );
     } catch (_) {
       return CompatibilityFlags(
         isLegacyGpuDevice: false,
         isLowRamDevice: false,
         forceLegacyFromDefine: forceLegacy,
+        isArmV7Device: false,
       );
     }
   }

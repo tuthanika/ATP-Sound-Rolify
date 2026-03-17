@@ -22,40 +22,6 @@ class MyRadio extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final useLegacyRendering =
-        AppState().compatibilityFlags.shouldUseLegacyRendering;
-
-    if (useLegacyRendering) {
-      final borderColor = value
-          ? NeumorphicTheme.currentTheme(context).accentColor
-          : NeumorphicTheme.isUsingDark(context)
-              ? Colors.white70
-              : Colors.black54;
-
-      return SizedBox(
-        height: size * heightFactor,
-        width: size * heightFactor,
-        child: Material(
-          color: Colors.transparent,
-          child: InkWell(
-            customBorder: const CircleBorder(),
-            onTap: onChanged == null ? null : () => onChanged!(true),
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(color: borderColor, width: 1.5),
-                color: NeumorphicTheme.currentTheme(context).baseColor,
-              ),
-              child: Padding(
-                padding: padding,
-                child: icon,
-              ),
-            ),
-          ),
-        ),
-      );
-    }
-
     return SizedBox(
       height: size * heightFactor,
       width: size * heightFactor,

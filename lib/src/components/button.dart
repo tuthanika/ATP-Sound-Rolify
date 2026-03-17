@@ -15,38 +15,6 @@ class MyButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final useLegacyRendering =
-        AppState().compatibilityFlags.shouldUseLegacyRendering;
-
-    if (useLegacyRendering) {
-      final borderColor = NeumorphicTheme.isUsingDark(context)
-          ? Colors.white70
-          : Colors.black54;
-
-      return SizedBox(
-        height: size * heightFactor,
-        width: size * heightFactor,
-        child: Material(
-          color: Colors.transparent,
-          child: InkWell(
-            customBorder: const CircleBorder(),
-            onTap: onTap,
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(color: borderColor, width: 1.5),
-                color: NeumorphicTheme.currentTheme(context).baseColor,
-              ),
-              child: Padding(
-                padding: padding,
-                child: icon,
-              ),
-            ),
-          ),
-        ),
-      );
-    }
-
     return SizedBox(
       height: size * heightFactor,
       width: size * heightFactor,

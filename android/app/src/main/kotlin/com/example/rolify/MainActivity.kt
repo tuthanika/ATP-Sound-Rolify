@@ -33,6 +33,7 @@ class MainActivity: AudioServiceActivity() {
                 result.success(
                     mapOf(
                         "isLegacyGpuDevice" to isLegacyGpuDevice(),
+                        "isArmV7Device" to isArmV7Device(),
                         "isLowRamDevice" to isLowRamDevice(),
                         "sdkInt" to Build.VERSION.SDK_INT,
                         "manufacturer" to Build.MANUFACTURER,
@@ -64,10 +65,11 @@ class MainActivity: AudioServiceActivity() {
         val looksLikeOldQualcomm =
                 hardware.contains("qcom") || hardware.contains("msm") || board.contains("msm")
 
-        val hasOnly32BitAbis = Build.SUPPORTED_64_BIT_ABIS.isEmpty()
-        val oldAndroid = Build.VERSION.SDK_INT <= Build.VERSION_CODES.O_MR1
+        return isNote3 || (looksLikeOldQualcomm && isArmV7Device())
+    }
 
-        return isNote3 || (looksLikeOldQualcomm && (oldAndroid || hasOnly32BitAbis))
+    private fun isArmV7Device(): Boolean {
+        return Build.SUPPORTED_ABIS.any { it.equals("armeabi-v7a", ignoreCase = true) }
     }
 
     private fun openFilePicker() {
