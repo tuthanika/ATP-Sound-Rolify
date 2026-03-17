@@ -5,6 +5,8 @@ class MyRadio extends StatelessWidget {
   final bool value, big;
   final Function(bool value)? onChanged;
   final Widget icon;
+  final double? customSize;
+  final double? customIconSize;
 
   const MyRadio({
     Key? key,
@@ -12,11 +14,13 @@ class MyRadio extends StatelessWidget {
     this.onChanged,
     required this.icon,
     this.big = false,
+    this.customSize,
+    this.customIconSize,
   }) : super(key: key);
 
-  double get size => big ? 64.0 : 40.0;
+  double get size => customSize ?? (big ? 64.0 : 40.0);
 
-  double get iconSize => big ? 40.0 : 24.0;
+  double get iconSize => customIconSize ?? (big ? 40.0 : 24.0);
 
   EdgeInsets get padding => EdgeInsets.all((size - iconSize) / 2);
 
