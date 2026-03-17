@@ -3,35 +3,15 @@ package com.example.rolify
 import android.app.Activity
 import android.content.Intent
 import android.net.Uri
-import android.os.Build
 import android.provider.OpenableColumns
 import com.ryanheise.audioservice.AudioServiceActivity
 import io.flutter.embedding.engine.FlutterEngine
-import io.flutter.embedding.engine.FlutterShellArgs
 import io.flutter.plugin.common.MethodChannel
 
 class MainActivity: AudioServiceActivity() {
     private val CHANNEL = "rolify/file_picker"
     private val PICK_AUDIO_REQUEST_CODE = 1001
     private var pendingResult: MethodChannel.Result? = null
-
-    override fun getFlutterShellArgs(): FlutterShellArgs {
-        val baseArgs = FlutterShellArgs.fromIntent(intent).toArray().toMutableList()
-
-        if (isLegacyArm32Device()) {
-            if (!baseArgs.contains("--enable-impeller=false")) {
-                baseArgs.add("--enable-impeller=false")
-            }
-
-            // Force software renderer on ARMv7 32-bit legacy devices.
-            // This is slower, but can avoid broken vendor GPU drivers.
-            if (!baseArgs.contains("--enable-software-rendering")) {
-                baseArgs.add("--enable-software-rendering")
-            }
-        }
-
-        return FlutterShellArgs(baseArgs.toTypedArray())
-    }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -43,13 +23,6 @@ class MainActivity: AudioServiceActivity() {
                 result.notImplemented()
             }
         }
-    }
-
-    private fun isLegacyArm32Device(): Boolean {
-        val hasArmV7Abi = Build.SUPPORTED_ABIS.any { it.equals("armeabi-v7a", ignoreCase = true) }
-        val hasArm64Abi = Build.SUPPORTED_64_BIT_ABIS.any { it.equals("arm64-v8a", ignoreCase = true) }
-
-        return hasArmV7Abi && !hasArm64Abi
     }
 
     private fun openFilePicker() {
