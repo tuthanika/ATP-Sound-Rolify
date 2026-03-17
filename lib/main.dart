@@ -96,8 +96,8 @@ class NoScrollGlowBehavior extends ScrollBehavior {
   const NoScrollGlowBehavior();
 
   @override
-  Widget buildOverscrollIndicator(
-      BuildContext context, Widget child, ScrollableDetails details) {
+  Widget buildViewportChrome(
+      BuildContext context, Widget child, AxisDirection axisDirection) {
     return child;
   }
 }

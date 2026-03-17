@@ -16,7 +16,7 @@ class AudioSlider extends StatelessWidget {
   @override
   Widget build(BuildContext context) => MySlider(
         style: MySliderStyle(
-          accent: Theme.of(context).colorScheme.outlineVariant,
+          accent: Theme.of(context).colorScheme.outline.withOpacity(0.5),
           variant: isActive
               ? Theme.of(context).colorScheme.primary
               : Theme.of(context).colorScheme.outline,

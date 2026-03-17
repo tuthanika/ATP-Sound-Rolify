@@ -36,7 +36,7 @@ class MySlider extends StatelessWidget {
       data: SliderTheme.of(context).copyWith(
         activeTrackColor: style.variant ?? Theme.of(context).colorScheme.primary,
         inactiveTrackColor:
-            style.accent ?? Theme.of(context).colorScheme.surfaceContainerHighest,
+            style.accent ?? Theme.of(context).colorScheme.surfaceVariant,
         thumbColor: Theme.of(context).colorScheme.primary,
       ),
       child: Slider(

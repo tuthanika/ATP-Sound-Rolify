@@ -15,7 +15,7 @@ class MyButton extends StatelessWidget {
     return SizedBox(
       height: size * heightFactor,
       width: size * heightFactor,
-      child: IconButton.filledTonal(
+      child: IconButton(
         onPressed: onTap,
         icon: icon ?? const SizedBox.shrink(),
       ),

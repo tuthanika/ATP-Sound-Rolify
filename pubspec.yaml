@@ -4,7 +4,7 @@ description: The perfect app for your roleplay sessions! Play sounds in backgrou
 version: 3.1.1+25
 
 environment:
-  sdk: '>=3.3.0 <4.0.0'
+  sdk: '>=2.19.0 <4.0.0'
 
 dependencies:
   flutter:

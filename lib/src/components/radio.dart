@@ -25,12 +25,12 @@ class MyRadio extends StatelessWidget {
     return SizedBox(
       height: size * heightFactor,
       width: size * heightFactor,
-      child: IconButton.filledTonal(
+      child: IconButton(
         onPressed: onChanged == null ? null : () => onChanged!(!value),
         style: IconButton.styleFrom(
           backgroundColor: value
               ? Theme.of(context).colorScheme.primaryContainer
-              : Theme.of(context).colorScheme.surfaceContainerHighest,
+              : Theme.of(context).colorScheme.surfaceVariant,
         ),
         icon: icon,
       ),

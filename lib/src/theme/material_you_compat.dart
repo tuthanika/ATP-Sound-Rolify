@@ -57,7 +57,7 @@ class NeumorphicTheme extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = themeMode == ThemeMode.dark ||
-        (themeMode == ThemeMode.system && MediaQuery.platformBrightnessOf(context) == Brightness.dark);
+        (themeMode == ThemeMode.system && MediaQuery.of(context).platformBrightness == Brightness.dark);
     final data = isDark ? darkTheme : theme;
     return _NeumorphicThemeScope(data: data, isUsingDark: isDark, child: child);
   }
@@ -114,7 +114,7 @@ class Neumorphic extends StatelessWidget {
         ? null
         : (style.boxShape?.borderRadius ?? BorderRadius.circular(16));
     final decorated = Material(
-      color: style.color ?? Theme.of(context).colorScheme.surfaceContainerHighest,
+      color: style.color ?? Theme.of(context).colorScheme.surfaceVariant,
       shape: style.boxShape?.isCircle == true ? const CircleBorder() : RoundedRectangleBorder(borderRadius: radius!),
       child: padding == null ? child : Padding(padding: padding!, child: child),
     );
@@ -135,7 +135,7 @@ class NeumorphicButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return IconButton.filledTonal(
+    return IconButton(
       padding: padding,
       style: IconButton.styleFrom(
         shape: style.boxShape?.isCircle == true ? const CircleBorder() : RoundedRectangleBorder(borderRadius: style.boxShape?.borderRadius ?? BorderRadius.circular(12)),
@@ -165,11 +165,11 @@ class NeumorphicRadio<T> extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final selected = value == groupValue;
-    return IconButton.filledTonal(
+    return IconButton(
       padding: padding,
       onPressed: onChanged == null ? null : () => onChanged!(value),
       style: IconButton.styleFrom(
-        backgroundColor: selected ? Theme.of(context).colorScheme.primaryContainer : Theme.of(context).colorScheme.surfaceContainerHighest,
+        backgroundColor: selected ? Theme.of(context).colorScheme.primaryContainer : Theme.of(context).colorScheme.surfaceVariant,
         shape: style.boxShape?.isCircle == true ? const CircleBorder() : RoundedRectangleBorder(borderRadius: style.boxShape?.borderRadius ?? BorderRadius.circular(12)),
       ),
       icon: child,
