@@ -1,6 +1,5 @@
 import 'package:flutter_neumorphic/flutter_neumorphic.dart';
 import 'package:launch_review/launch_review.dart';
-import 'package:rolify/presentation_logic_holders/singletons/app_state.dart';
 import 'package:rolify/src/theme/texts.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -9,9 +8,6 @@ class InfoPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final useLegacyRendering =
-        AppState().compatibilityFlags.shouldUseLegacyRendering;
-
     return Stack(
       children: <Widget>[
         ListView(
@@ -19,15 +15,6 @@ class InfoPage extends StatelessWidget {
           padding: const EdgeInsets.only(
               left: 24.0, right: 24.0, top: 16.0, bottom: 96.0),
           children: <Widget>[
-            if (useLegacyRendering)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 12.0),
-                child: MyText.caption(
-                  'Legacy render mode: ON',
-                  color: Colors.orangeAccent,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
             Row(
               children: <Widget>[
                 ClipRRect(
@@ -35,10 +22,6 @@ class InfoPage extends StatelessWidget {
                   child: Image.asset(
                     'assets/icons/me.jpg',
                     height: 24.0,
-                    filterQuality: useLegacyRendering
-                        ? FilterQuality.low
-                        : FilterQuality.medium,
-                    cacheWidth: useLegacyRendering ? 48 : null,
                   ),
                 ),
                 const SizedBox(width: 8.0),

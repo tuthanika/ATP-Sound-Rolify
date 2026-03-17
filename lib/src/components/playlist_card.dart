@@ -23,11 +23,8 @@ class PlaylistCard extends StatefulWidget {
 }
 
 class PlaylistCardState extends State<PlaylistCard> {
+  final duration = const Duration(milliseconds: 500);
   bool isPlaying = false, expanded = false, showAudioList = false;
-
-  Duration get duration => AppState().compatibilityFlags.shouldUseLegacyRendering
-      ? Duration.zero
-      : const Duration(milliseconds: 500);
 
   double get maxHeight =>
       MediaQuery.of(context).size.height -
