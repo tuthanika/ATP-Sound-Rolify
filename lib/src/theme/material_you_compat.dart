@@ -115,23 +115,26 @@ class Neumorphic extends StatelessWidget {
         ? null
         : (style.boxShape?.borderRadius ?? BorderRadius.circular(16));
     final decoration = BoxDecoration(
-      color: style.color ?? NeumorphicTheme.currentTheme(context).baseColor,
+      color: style.color ?? Colors.transparent,
       shape: isCircle ? BoxShape.circle : BoxShape.rectangle,
       borderRadius: isCircle ? null : radius,
     );
 
     final content = padding == null ? child : Padding(padding: padding!, child: child);
+    final clippedContent = isCircle
+        ? ClipOval(child: content)
+        : ClipRRect(borderRadius: radius ?? BorderRadius.zero, child: content);
 
     if (duration != null) {
       return AnimatedContainer(
         duration: duration!,
         curve: curve ?? Curves.linear,
         decoration: decoration,
-        child: content,
+        child: clippedContent,
       );
     }
 
-    return DecoratedBox(decoration: decoration, child: content);
+    return DecoratedBox(decoration: decoration, child: clippedContent);
   }
 }
 
