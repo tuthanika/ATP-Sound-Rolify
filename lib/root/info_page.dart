@@ -19,6 +19,15 @@ class InfoPage extends StatelessWidget {
           padding: const EdgeInsets.only(
               left: 24.0, right: 24.0, top: 16.0, bottom: 96.0),
           children: <Widget>[
+            if (useLegacyRendering)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 12.0),
+                child: MyText.caption(
+                  'Legacy render mode: ON',
+                  color: Colors.orangeAccent,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
             Row(
               children: <Widget>[
                 ClipRRect(
