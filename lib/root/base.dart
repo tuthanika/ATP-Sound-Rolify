@@ -3,6 +3,7 @@ import 'package:flutter_neumorphic/flutter_neumorphic.dart';
 import 'package:rolify/presentation_logic_holders/audio_edit_bloc/audio_edit_bloc.dart';
 import 'package:rolify/presentation_logic_holders/audio_edit_bloc/audio_edit_state.dart';
 import 'package:rolify/presentation_logic_holders/singletons/app_state.dart';
+import 'package:rolify/presentation_logic_holders/singletons/theme_mode_controller.dart';
 import 'package:rolify/root/info_page.dart';
 import 'package:rolify/root/session_sounds.dart';
 import 'package:rolify/root/sound_edit.dart';
@@ -70,6 +71,17 @@ class BaseState extends State<Base> {
                       onChanged: pageSelected <= 3 ? showInfoPage : null,
                       icon: MyIcons.about(color: _getIconColor(context, 3)),
                     ),
+                    const SizedBox(width: 8.0),
+                    MyRadio(
+                      value: NeumorphicTheme.isUsingDark(context),
+                      onChanged: toggleThemeMode,
+                      icon: Icon(
+                        NeumorphicTheme.isUsingDark(context)
+                            ? Icons.light_mode
+                            : Icons.dark_mode,
+                        color: _getThemeIconColor(context),
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -136,6 +148,14 @@ class BaseState extends State<Base> {
     if (value) {
       changePage(3);
     }
+  }
+
+  Color _getThemeIconColor(BuildContext context) {
+    return NeumorphicTheme.isUsingDark(context) ? Colors.amber : Colors.black54;
+  }
+
+  void toggleThemeMode(bool value) {
+    ThemeModeController().toggle(NeumorphicTheme.isUsingDark(context));
   }
 
   changePage(int? page) {
