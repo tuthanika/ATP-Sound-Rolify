@@ -1,4 +1,4 @@
-import 'package:flutter_neumorphic/flutter_neumorphic.dart';
+import 'package:flutter/material.dart';
 import 'package:rolify/presentation_logic_holders/singletons/app_state.dart';
 
 class MyRadio extends StatelessWidget {
@@ -9,48 +9,31 @@ class MyRadio extends StatelessWidget {
   final double? customIconSize;
 
   const MyRadio({
-    Key? key,
+    super.key,
     this.value = false,
     this.onChanged,
     required this.icon,
     this.big = false,
     this.customSize,
     this.customIconSize,
-  }) : super(key: key);
+  });
 
   double get size => customSize ?? (big ? 64.0 : 40.0);
-
-  double get iconSize => customIconSize ?? (big ? 40.0 : 24.0);
-
-  EdgeInsets get padding => EdgeInsets.all((size - iconSize) / 2);
 
   @override
   Widget build(BuildContext context) {
     return SizedBox(
       height: size * heightFactor,
       width: size * heightFactor,
-      child: NeumorphicRadio<bool>(
-          style: const NeumorphicRadioStyle(
-            boxShape: NeumorphicBoxShape.circle(),
-            intensity: 0.8,
-          ),
-          padding: EdgeInsets.all((size - iconSize) / 2),
-          value: true,
-          groupValue: value,
-          onChanged: (value) {
-            if (onChanged != null) onChanged!(value ?? false);
-          },
-          child: icon),
+      child: IconButton.filledTonal(
+        onPressed: onChanged == null ? null : () => onChanged!(!value),
+        style: IconButton.styleFrom(
+          backgroundColor: value
+              ? Theme.of(context).colorScheme.primaryContainer
+              : Theme.of(context).colorScheme.surfaceContainerHighest,
+        ),
+        icon: icon,
+      ),
     );
-  }
-
-  Color getIconColor(BuildContext context) {
-    if (onChanged == null) {
-      return NeumorphicTheme.currentTheme(context).disabledColor;
-    }
-    if (value) {
-      return NeumorphicTheme.currentTheme(context).accentColor;
-    }
-    return NeumorphicTheme.isUsingDark(context) ? Colors.white : Colors.black;
   }
 }
