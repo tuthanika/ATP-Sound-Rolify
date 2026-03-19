@@ -1,6 +1,7 @@
 import 'package:audio_session/audio_session.dart';
+import 'package:dynamic_color/dynamic_color.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:flutter_neumorphic/flutter_neumorphic.dart';
+import 'package:flutter/material.dart';
 import 'package:rolify/presentation_logic_holders/audio_edit_bloc/audio_edit_bloc.dart';
 import 'package:rolify/presentation_logic_holders/audio_handler.dart';
 import 'package:rolify/presentation_logic_holders/audio_list_bloc/audio_list_bloc.dart';
@@ -14,41 +15,9 @@ Future<void> main() async {
   AppState().audioHandler = await initAudioService();
 
   await _configureAudioSession();
+  await ThemeModeController().init();
 
   runApp(const AppRoot());
-}
-
-class AppRoot extends StatelessWidget {
-  const AppRoot({Key? key}) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    return ValueListenableBuilder<ThemeMode>(
-      valueListenable: ThemeModeController().themeMode,
-      builder: (context, themeMode, child) {
-        return NeumorphicTheme(
-          themeMode: themeMode,
-          darkTheme: const NeumorphicThemeData(
-            baseColor: Color(0xff333333),
-            accentColor: Color(0xFF007aff),
-            variantColor: Colors.cyan,
-            lightSource: LightSource.topLeft,
-            depth: 4,
-            intensity: 0.3,
-          ),
-          theme: const NeumorphicThemeData(
-            baseColor: Color(0xFFF0F0F3),
-            disabledColor: Color(0xFF7b7b7b),
-            accentColor: Color(0xFF007aff),
-            variantColor: Colors.cyan,
-            intensity: 1,
-            lightSource: LightSource.topLeft,
-          ),
-          child: const MyApp(),
-        );
-      },
-    );
-  }
 }
 
 Future<void> _configureAudioSession() async {
@@ -74,25 +43,61 @@ Future<void> _configureAudioSession() async {
   );
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({Key? key}) : super(key: key);
+class AppRoot extends StatelessWidget {
+  const AppRoot({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    return MultiBlocProvider(
-      providers: [
-        BlocProvider<PlaylistListBloc>(create: (context) => PlaylistListBloc()),
-        BlocProvider<AudioListBloc>(create: (context) => AudioListBloc()),
-        BlocProvider<AudioEditBloc>(create: (context) => AudioEditBloc())
-      ],
-      child: MaterialApp(
-        title: 'Rolify',
-        debugShowCheckedModeBanner: false,
-        home: ScrollConfiguration(
-          behavior: NoScrollGlowBehavior(),
-          child: const Base(),
-        ),
-      ),
+    return ValueListenableBuilder<ThemeMode>(
+      valueListenable: ThemeModeController().themeMode,
+      builder: (context, themeMode, child) {
+        return MultiBlocProvider(
+          providers: [
+            BlocProvider<PlaylistListBloc>(create: (context) => PlaylistListBloc()),
+            BlocProvider<AudioListBloc>(create: (context) => AudioListBloc()),
+            BlocProvider<AudioEditBloc>(create: (context) => AudioEditBloc())
+          ],
+          child: DynamicColorBuilder(
+            builder: (lightDynamic, darkDynamic) {
+              ColorScheme lightScheme;
+              ColorScheme darkScheme;
+              if (lightDynamic != null && darkDynamic != null) {
+                lightScheme = lightDynamic.harmonized();
+                darkScheme = darkDynamic.harmonized();
+              } else {
+                lightScheme = ColorScheme.fromSeed(
+                  seedColor: const Color(0xFF007aff),
+                  brightness: Brightness.light,
+                );
+                darkScheme = ColorScheme.fromSeed(
+                  seedColor: const Color(0xFF007aff),
+                  brightness: Brightness.dark,
+                );
+              }
+
+              return MaterialApp(
+                title: 'Rolify',
+                debugShowCheckedModeBanner: false,
+                themeMode: themeMode,
+                theme: ThemeData(
+                  useMaterial3: true,
+                  colorScheme: lightScheme,
+                  scaffoldBackgroundColor: const Color(0xFFF0F0F3),
+                ),
+                darkTheme: ThemeData(
+                  useMaterial3: true,
+                  colorScheme: darkScheme,
+                  scaffoldBackgroundColor: const Color(0xff333333),
+                ),
+                home: ScrollConfiguration(
+                  behavior: NoScrollGlowBehavior(),
+                  child: const Base(),
+                ),
+              );
+            },
+          ),
+        );
+      },
     );
   }
 }

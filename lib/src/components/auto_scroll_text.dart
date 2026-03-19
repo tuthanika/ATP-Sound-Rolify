@@ -1,4 +1,4 @@
-import 'package:flutter_neumorphic/flutter_neumorphic.dart';
+import 'package:flutter/material.dart';
 import 'package:rolify/entities/audio.dart';
 import 'package:rolify/src/theme/texts.dart';
 
@@ -19,7 +19,7 @@ class ScrollText extends StatelessWidget {
           MyText.caption(
             text,
             fontWeight: FontWeight.w500,
-            color: NeumorphicTheme.currentTheme(context).disabledColor,
+            color: Theme.of(context).disabledColor,
           ),
         ],
       ),

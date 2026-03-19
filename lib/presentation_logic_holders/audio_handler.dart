@@ -29,6 +29,7 @@ Future<AudioHandler> initAudioService() async {
 
 class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
   Map<String, AudioPlayer> audioPlayers = {};
+  Map<String, Future<AudioPlayer>> _audioPlayerFutures = {};
   List<AudioPlayer> playingAudio = [];
   List<AudioPlayer> pausedAudio = [];
   bool stoppingAll = false;
@@ -53,22 +54,35 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
   Future<AudioPlayer> getAudioPlayer(Audio audio) async {
     if (audioPlayers.containsKey(audio.path)) {
       return audioPlayers[audio.path]!;
-    } else {
-      final audioPlayer = AudioPlayer(handleInterruptions: false);
-
-      if (audio.audioSource == LocalAudioSource.assets) {
-        await audioPlayer.setAsset(audio.path);
-      } else if (audio.path.startsWith('content://') ||
-          audio.path.startsWith('file://')) {
-        await audioPlayer.setAudioSource(AudioSource.uri(Uri.parse(audio.path)));
-      } else {
-        await audioPlayer.setFilePath(audio.path);
-      }
-      audioPlayer.setVolume(audio.volume * PlayingSounds().masterVolume);
-      audioPlayer.setLoopMode(audio.loopMode);
-      audioPlayers[audio.path] = audioPlayer;
-      return audioPlayer;
     }
+    
+    if (_audioPlayerFutures.containsKey(audio.path)) {
+      return _audioPlayerFutures[audio.path]!;
+    }
+
+    final future = _initAudioPlayer(audio);
+    _audioPlayerFutures[audio.path] = future;
+    
+    final player = await future;
+    audioPlayers[audio.path] = player;
+    _audioPlayerFutures.remove(audio.path);
+    return player;
+  }
+
+  Future<AudioPlayer> _initAudioPlayer(Audio audio) async {
+    final audioPlayer = AudioPlayer(handleInterruptions: false);
+
+    if (audio.audioSource == LocalAudioSource.assets) {
+      await audioPlayer.setAsset(audio.path);
+    } else if (audio.path.startsWith('content://') ||
+        audio.path.startsWith('file://')) {
+      await audioPlayer.setAudioSource(AudioSource.uri(Uri.parse(audio.path)));
+    } else {
+      await audioPlayer.setFilePath(audio.path);
+    }
+    audioPlayer.setVolume(audio.volume * PlayingSounds().masterVolume);
+    audioPlayer.setLoopMode(audio.loopMode);
+    return audioPlayer;
   }
 
   String _getAudioPath(AudioPlayer audioPlayer) {

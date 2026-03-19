@@ -1,5 +1,5 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:flutter_neumorphic/flutter_neumorphic.dart';
+import 'package:flutter/material.dart';
 import 'package:rolify/presentation_logic_holders/audio_edit_bloc/audio_edit_bloc.dart';
 import 'package:rolify/presentation_logic_holders/audio_edit_bloc/audio_edit_state.dart';
 import 'package:rolify/presentation_logic_holders/singletons/app_state.dart';
@@ -36,7 +36,7 @@ class BaseState extends State<Base> {
     return BlocListener<AudioEditBloc, AudioEditState>(
       listener: handleAudioEditing,
       child: Scaffold(
-        backgroundColor: NeumorphicTheme.currentTheme(context).baseColor,
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         body: SafeArea(
           child: Column(
             children: <Widget>[
@@ -90,10 +90,10 @@ class BaseState extends State<Base> {
                     ),
                     const SizedBox(width: 6.0),
                     MyRadio(
-                      value: NeumorphicTheme.isUsingDark(context),
+                      value: Theme.of(context).brightness == Brightness.dark,
                       onChanged: toggleThemeMode,
                       icon: Icon(
-                        NeumorphicTheme.isUsingDark(context)
+                        Theme.of(context).brightness == Brightness.dark
                             ? Icons.light_mode
                             : Icons.dark_mode,
                         color: _getThemeIconColor(context),
@@ -128,10 +128,10 @@ class BaseState extends State<Base> {
 
   Color? _getIconColor(BuildContext context, int pageNumber) {
     if (pageSelected > 3) {
-      return NeumorphicTheme.currentTheme(context).disabledColor;
+      return Theme.of(context).disabledColor;
     }
     if (pageSelected == pageNumber) {
-      return NeumorphicTheme.currentTheme(context).accentColor;
+      return Theme.of(context).colorScheme.primary;
     }
     return null;
   }
@@ -171,11 +171,11 @@ class BaseState extends State<Base> {
   }
 
   Color _getThemeIconColor(BuildContext context) {
-    return NeumorphicTheme.isUsingDark(context) ? Colors.amber : Colors.black54;
+    return Theme.of(context).brightness == Brightness.dark ? Colors.amber : Colors.black54;
   }
 
   void toggleThemeMode(bool value) {
-    ThemeModeController().toggle(NeumorphicTheme.isUsingDark(context));
+    ThemeModeController().toggle(Theme.of(context).brightness == Brightness.dark);
   }
 
   changePage(int? page) {

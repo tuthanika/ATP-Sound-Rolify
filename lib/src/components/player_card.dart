@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:math';
 
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:flutter_neumorphic/flutter_neumorphic.dart';
+import 'package:flutter/material.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:rolify/data/audios.dart';
 import 'package:rolify/entities/audio.dart';
@@ -31,9 +31,9 @@ class PlayerWidget extends StatefulWidget {
 }
 
 class PlayerWidgetState extends State<PlayerWidget> {
-  final _volumeController = StreamController<double>();
+  double currentVolume = 0.0;
   late String audioImage;
-  bool loopAudio = true, isPlaying = false;
+  bool loopAudio = true, isPlaying = false, showVolumeSlider = false;
 
   @override
   void initState() {
@@ -73,7 +73,7 @@ class PlayerWidgetState extends State<PlayerWidget> {
 
         if (volume != 0) {
           setState(() {
-            _volumeController.add(volume);
+            currentVolume = volume;
           });
         }
       }
@@ -91,7 +91,7 @@ class PlayerWidgetState extends State<PlayerWidget> {
     });
 
     loopAudio = widget.audio.loopMode == LoopMode.one;
-    _volumeController.add(widget.audio.volume);
+    currentVolume = widget.audio.volume;
     audioImage = widget.audio.image;
 
     WidgetsBinding.instance.addPostFrameCallback((timeStamp) {
@@ -125,19 +125,37 @@ class PlayerWidgetState extends State<PlayerWidget> {
                   child: Row(
                     children: <Widget>[
                       Expanded(
-                        child: Padding(
-                          padding: const EdgeInsets.all(8.0),
-                          child: MyText.body(
-                            widget.audio.name,
-                            fontWeight: FontWeight.w500,
+                        child: GestureDetector(
+                          behavior: HitTestBehavior.opaque,
+                          onTap: () => setState(() => showVolumeSlider = !showVolumeSlider),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                MyText.body(
+                                  widget.audio.name,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                                if (!showVolumeSlider)
+                                  Padding(
+                                    padding: const EdgeInsets.only(top: 2.0),
+                                    child: MyText.caption(
+                                      '${(currentVolume * 100).round()}%',
+                                      textType: TextType.secondary,
+                                    ),
+                                  ),
+                              ],
+                            ),
                           ),
                         ),
                       ),
                       MyRadio(
                         icon: MyIcons.loop(
                             color: loopAudio
-                                ? NeumorphicTheme.currentTheme(context)
-                                    .accentColor
+                                ? Theme.of(context)
+                                    .colorScheme.primary
                                 : null),
                         value: loopAudio,
                         onChanged: toggleLoop,
@@ -165,17 +183,16 @@ class PlayerWidgetState extends State<PlayerWidget> {
                 ),
               ],
             ),
-            const SizedBox(height: 14),
-            StreamBuilder<double>(
-              stream: _volumeController.stream,
-              builder: (context, snapshot) => AudioSlider(
+            if (showVolumeSlider) ...[
+              const SizedBox(height: 12),
+              AudioSlider(
                 isActive: isPlaying,
-                value: snapshot.data ?? 0,
+                value: currentVolume,
                 onChanged: (value) {
                   setVolume(context, value);
                 },
               ),
-            ),
+            ]
           ],
         ),
       ),
@@ -183,7 +200,9 @@ class PlayerWidgetState extends State<PlayerWidget> {
   }
 
   void setVolume(BuildContext context, double value) {
-    _volumeController.add(value);
+    setState(() {
+      currentVolume = value;
+    });
     AudioServiceCommands.setVolume(
         widget.audio, value * PlayingSounds().masterVolume);
 
@@ -217,7 +236,9 @@ class PlayerWidgetState extends State<PlayerWidget> {
 
   Future<void> checkVolume() async {
     double volume = await AudioServiceCommands.getVolume(widget.audio);
-    _volumeController.add(volume);
+    setState(() {
+      currentVolume = volume;
+    });
   }
 
   Future<void> checkLoop() async {
@@ -233,6 +254,7 @@ class PlayerWidgetState extends State<PlayerWidget> {
   }
 
   Future<void> play() async {
+    PlayingSounds().isPlayingPlaylist.value = false;
     AudioServiceCommands.play(widget.audio);
   }
 }

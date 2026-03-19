@@ -1,6 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:flutter_neumorphic/flutter_neumorphic.dart';
+import 'package:flutter/material.dart';
 import 'package:rolify/entities/audio.dart';
 import 'package:rolify/presentation_logic_holders/audio_edit_bloc/audio_edit_bloc.dart';
 import 'package:rolify/presentation_logic_holders/audio_edit_bloc/audio_edit_event.dart';
@@ -24,11 +24,11 @@ class SoundEdit extends StatelessWidget {
       controller.text = state.audio?.name ?? '';
       return Padding(
         padding: const EdgeInsets.only(left: 24.0, right: 24.0),
-        child: Neumorphic(
-          style: NeumorphicStyle(
-            boxShape: NeumorphicBoxShape.roundRect(
-                const BorderRadius.all(Radius.circular(16.0))),
-          ),
+          child: Container(
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surfaceContainerHighest,
+              borderRadius: const BorderRadius.all(Radius.circular(16.0)),
+            ),
           padding: const EdgeInsets.all(16.0),
           child: Column(
             mainAxisSize: MainAxisSize.min,

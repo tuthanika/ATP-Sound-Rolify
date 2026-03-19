@@ -1,5 +1,4 @@
-import 'package:flutter_neumorphic/flutter_neumorphic.dart';
-import 'package:launch_review/launch_review.dart';
+import 'package:flutter/material.dart';
 
 import '../../presentation_logic_holders/audio_service_commands.dart';
 import '../../presentation_logic_holders/playing_sounds_singleton.dart';
@@ -28,30 +27,34 @@ class GlobalControls extends StatefulWidget {
 class _GlobalControlsState extends State<GlobalControls> {
   @override
   Widget build(BuildContext context) {
-    return Neumorphic(
-      curve: Curves.ease,
-      style: NeumorphicStyle(
-        boxShape: NeumorphicBoxShape.roundRect(
-            const BorderRadius.all(Radius.circular(12.0))),
+    return Container(
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+        borderRadius: const BorderRadius.all(Radius.circular(12.0)),
       ),
       child: Padding(
         padding: EdgeInsets.symmetric(
-            vertical: 16.0 * heightFactor, horizontal: 16.0),
+            vertical: 12.0 * heightFactor, horizontal: 16.0),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: <Widget>[
             Row(
               children: <Widget>[
                 Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.only(right: 16.0),
-                    child: Align(
-                      alignment: Alignment.centerRight,
-                      child: MyButton(
-                        icon: MyIcons.star,
-                        onTap: _openPlayStore,
-                      ),
-                    ),
+                  child: ValueListenableBuilder<bool>(
+                    valueListenable: PlayingSounds().isPlayingPlaylist,
+                    builder: (context, isPlaylist, child) {
+                      if (isPlaylist) {
+                        return Padding(
+                          padding: const EdgeInsets.only(right: 16.0),
+                          child: Align(
+                            alignment: Alignment.centerRight,
+                            child: Icon(Icons.star, color: Theme.of(context).colorScheme.primary),
+                          ),
+                        );
+                      }
+                      return Container();
+                    },
                   ),
                 ),
                 MyRadio(
@@ -60,13 +63,11 @@ class _GlobalControlsState extends State<GlobalControls> {
                         ? MyIcons.pauseBig(
                             color: widget.playPauseEnabled
                                 ? null
-                                : NeumorphicTheme.currentTheme(context)
-                                    .disabledColor)
+                                : Theme.of(context).disabledColor)
                         : MyIcons.playBig(
                             color: widget.playPauseEnabled
                                 ? null
-                                : NeumorphicTheme.currentTheme(context)
-                                    .disabledColor),
+                                : Theme.of(context).disabledColor),
                     value: widget.pauseAll,
                     onChanged: (value) {
                       if (!widget.playPauseEnabled) return;
@@ -89,7 +90,7 @@ class _GlobalControlsState extends State<GlobalControls> {
                 ),
               ],
             ),
-            SizedBox(height: 14 * heightFactor),
+            SizedBox(height: 8 * heightFactor),
             AudioSlider(
               isActive: true,
               value: PlayingSounds().masterVolume,
@@ -101,13 +102,16 @@ class _GlobalControlsState extends State<GlobalControls> {
     );
   }
 
-  _openPlayStore() {
-    LaunchReview.launch(iOSAppId: '1511308478');
-  }
-
   void playAllSound() async {
+    AudioServiceCommands.globalPlayGeneration++;
+    final currentGen = AudioServiceCommands.globalPlayGeneration;
+    final startGlobalStopGen = AudioServiceCommands.globalStopGeneration;
+
     final pausedAudios = PlayingSounds().pausedAudios.toList();
     for (final audio in pausedAudios) {
+      if (AudioServiceCommands.globalPlayGeneration != currentGen) break;
+      if (AudioServiceCommands.globalStopGeneration != startGlobalStopGen) break;
+
       PlayingSounds().replayAudio(audio);
       AudioServiceCommands.play(audio);
       await Future.delayed(const Duration(milliseconds: 100));
@@ -115,6 +119,7 @@ class _GlobalControlsState extends State<GlobalControls> {
   }
 
   void pauseAllSound() async {
+    AudioServiceCommands.globalStopGeneration++;
     final playingAudios = PlayingSounds().playingAudios.toList();
     for (final audio in playingAudios) {
       PlayingSounds().pauseAudio(audio);

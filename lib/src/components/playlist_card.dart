@@ -1,9 +1,10 @@
 import 'dart:async';
 
-import 'package:flutter_neumorphic/flutter_neumorphic.dart';
+import 'package:flutter/material.dart';
 import 'package:rolify/entities/playlist.dart';
 import 'package:rolify/presentation_logic_holders/audio_service_commands.dart';
 import 'package:rolify/presentation_logic_holders/singletons/app_state.dart';
+import 'package:rolify/presentation_logic_holders/playing_sounds_singleton.dart';
 import 'package:rolify/root/edit_playlist.dart';
 import 'package:rolify/src/components/button.dart';
 import 'package:rolify/src/components/player_card.dart';
@@ -25,6 +26,7 @@ class PlaylistCard extends StatefulWidget {
 class PlaylistCardState extends State<PlaylistCard> {
   final duration = const Duration(milliseconds: 500);
   bool isPlaying = false, expanded = false, showAudioList = false;
+  int _localSessionId = 0;
 
   double get maxHeight =>
       MediaQuery.of(context).size.height -
@@ -39,12 +41,10 @@ class PlaylistCardState extends State<PlaylistCard> {
         duration: duration,
         curve: Curves.ease,
         height: expanded ? maxHeight : 170,
-        child: Neumorphic(
-          style: NeumorphicStyle(
-            color: widget.playlist.color?.withOpacity(0.2),
-            boxShape: NeumorphicBoxShape.roundRect(
-              const BorderRadius.all(Radius.circular(16.0)),
-            ),
+        child: Container(
+          decoration: BoxDecoration(
+            color: widget.playlist.color?.withOpacity(0.2) ?? Theme.of(context).colorScheme.surfaceContainerHighest,
+            borderRadius: const BorderRadius.all(Radius.circular(16.0)),
           ),
           padding: const EdgeInsets.only(
               top: 16.0, left: 16.0, right: 16.0, bottom: 8.0),
@@ -96,13 +96,19 @@ class PlaylistCardState extends State<PlaylistCard> {
                 alignment: Alignment.bottomCenter,
                 child: SizedBox(
                   height: 96 * heightFactor,
-                  child: Neumorphic(
+                  child: AnimatedContainer(
                     duration: duration,
                     curve: Curves.ease,
-                    style: NeumorphicStyle(
-                      disableDepth: !expanded,
-                      boxShape: NeumorphicBoxShape.roundRect(
-                          const BorderRadius.all(Radius.circular(12.0))),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                      borderRadius: const BorderRadius.all(Radius.circular(12.0)),
+                      boxShadow: expanded ? [
+                        BoxShadow(
+                          color: Theme.of(context).shadowColor.withOpacity(0.2),
+                          blurRadius: 8,
+                          spreadRadius: 1,
+                        )
+                      ] : [],
                     ),
                     child: Padding(
                       padding: const EdgeInsets.all(16.0),
@@ -134,8 +140,8 @@ class PlaylistCardState extends State<PlaylistCard> {
                               child: MyRadio(
                                 icon: MyIcons.playlistList(
                                     color: expanded
-                                        ? NeumorphicTheme.currentTheme(context)
-                                            .accentColor
+                                        ? Theme.of(context)
+                                            .colorScheme.primary
                                         : null),
                                 value: expanded,
                                 onChanged: (bool value) {
@@ -173,13 +179,22 @@ class PlaylistCardState extends State<PlaylistCard> {
   }
 
   void playAllSoundInPlaylist() async {
+    PlayingSounds().isPlayingPlaylist.value = true;
+    _localSessionId++;
+    final currentSession = _localSessionId;
+    final startGlobalStopGen = AudioServiceCommands.globalStopGeneration;
+
     for (final audio in widget.playlist.audios) {
+      if (_localSessionId != currentSession) break;
+      if (AudioServiceCommands.globalStopGeneration != startGlobalStopGen) break;
+      
       AudioServiceCommands.play(audio);
       await Future.delayed(const Duration(milliseconds: 100));
     }
   }
 
   void stopAllSoundInPlaylist() async {
+    _localSessionId++;
     for (final audio in widget.playlist.audios) {
       AudioServiceCommands.stop(audio);
       await Future.delayed(const Duration(milliseconds: 100));

@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:rolify/entities/audio.dart';
 
 class PlayingSounds {
@@ -5,6 +6,7 @@ class PlayingSounds {
   List<Audio> playingAudios = [];
   List<Audio> pausedAudios = [];
   double masterVolume = 1.0;
+  final ValueNotifier<bool> isPlayingPlaylist = ValueNotifier(false);
 
   factory PlayingSounds() {
     return _singleton;

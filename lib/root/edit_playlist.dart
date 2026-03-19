@@ -1,4 +1,4 @@
-import 'package:flutter_neumorphic/flutter_neumorphic.dart';
+import 'package:flutter/material.dart';
 import 'package:rolify/data/audios.dart';
 import 'package:rolify/data/playlist.dart';
 import 'package:rolify/entities/audio.dart';
@@ -42,14 +42,14 @@ class EditPlaylistState extends State<EditPlaylist> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: NeumorphicTheme.currentTheme(context).baseColor,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(24.0),
-          child: Neumorphic(
-            style: NeumorphicStyle(
-              boxShape: NeumorphicBoxShape.roundRect(
-                  const BorderRadius.all(Radius.circular(16.0))),
+          child: Container(
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surfaceContainerHighest,
+              borderRadius: const BorderRadius.all(Radius.circular(16.0)),
             ),
             child: Column(
               mainAxisSize: MainAxisSize.min,

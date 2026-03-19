@@ -1,7 +1,7 @@
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:flutter_neumorphic/flutter_neumorphic.dart';
+import 'package:flutter/material.dart';
 import 'package:rolify/data/audios.dart';
 import 'package:rolify/entities/audio.dart';
 import 'package:rolify/presentation_logic_holders/audio_list_bloc/audio_list_bloc.dart';
@@ -170,7 +170,7 @@ class AllSoundState extends State<AllSound> with WidgetsBindingObserver {
   void _showAddOptions(BuildContext context) {
     showModalBottomSheet(
       context: context,
-      backgroundColor: NeumorphicTheme.baseColor(context),
+      backgroundColor: Theme.of(context).colorScheme.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -236,7 +236,7 @@ class AllSoundState extends State<AllSound> with WidgetsBindingObserver {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: NeumorphicTheme.baseColor(context),
+        backgroundColor: Theme.of(context).colorScheme.surface,
         title: MyText.body('Enter file path', fontWeight: FontWeight.bold),
         content: TextField(
           controller: controller,
@@ -349,10 +349,10 @@ class _OptionTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListTile(
-      leading: Neumorphic(
-        style: const NeumorphicStyle(
-          boxShape: NeumorphicBoxShape.circle(),
-          depth: 2,
+      leading: Container(
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.surfaceContainerHighest,
+          shape: BoxShape.circle,
         ),
         padding: const EdgeInsets.all(8),
         child: SizedBox(

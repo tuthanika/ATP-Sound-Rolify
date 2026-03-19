@@ -5,6 +5,8 @@ import 'package:rolify/presentation_logic_holders/playing_sounds_singleton.dart'
 import 'package:rolify/presentation_logic_holders/singletons/app_state.dart';
 
 class AudioServiceCommands {
+  static int globalStopGeneration = 0;
+  static int globalPlayGeneration = 0;
   static Future<bool> startAudioService() async {
     await initAudioService();
     return true;

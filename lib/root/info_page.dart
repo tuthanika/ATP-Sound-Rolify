@@ -1,4 +1,4 @@
-import 'package:flutter_neumorphic/flutter_neumorphic.dart';
+import 'package:flutter/material.dart';
 import 'package:launch_review/launch_review.dart';
 import 'package:rolify/src/theme/texts.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -113,7 +113,7 @@ class ClickableText extends StatelessWidget {
       child: MyText.caption(
         text,
         fontWeight: FontWeight.w500,
-        color: NeumorphicTheme.currentTheme(context).accentColor,
+        color: Theme.of(context).colorScheme.primary,
         textDecoration: TextDecoration.underline,
       ),
     );
