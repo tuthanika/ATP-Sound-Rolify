@@ -5,6 +5,7 @@ import 'package:rolify/presentation_logic_holders/audio_list_bloc/audio_list_blo
 import 'package:rolify/presentation_logic_holders/audio_list_bloc/audio_list_state.dart';
 import 'package:rolify/presentation_logic_holders/event_bus/stop_all_event_bus.dart';
 import 'package:rolify/presentation_logic_holders/playing_sounds_singleton.dart';
+import 'package:rolify/presentation_logic_holders/singletons/theme_mode_controller.dart';
 import 'package:rolify/presentation_logic_holders/singletons/app_state.dart';
 import 'package:rolify/root/info_page.dart';
 import 'package:rolify/src/components/player_card.dart';
@@ -25,6 +26,7 @@ class SessionSoundsState extends State<SessionSounds>
   TextEditingController filterController = TextEditingController();
   FocusNode focusNode = FocusNode();
   bool pauseAll = true, audioToPauseExist = false, audioToReplayExist = false;
+  int sortMode = 0; // 0: A-Z, 1: Newest (playing order)
 
   bool get playPauseEnabled =>
       (pauseAll && audioToPauseExist) ||
@@ -39,9 +41,9 @@ class SessionSoundsState extends State<SessionSounds>
         setState(() {
           audioToPauseExist = PlayingSounds().playingAudios.isNotEmpty;
           audioToReplayExist = PlayingSounds().pausedAudios.isNotEmpty;
-          filteredAudios = PlayingSounds().playingAudios;
           pauseAll = audioToPauseExist;
         });
+        filterAudios(context);
       }
     });
     eventBus.on<AudioPaused>().listen((event) {
@@ -49,13 +51,15 @@ class SessionSoundsState extends State<SessionSounds>
         setState(() {
           audioToPauseExist = PlayingSounds().playingAudios.isNotEmpty;
           audioToReplayExist = PlayingSounds().pausedAudios.isNotEmpty;
-          filteredAudios = PlayingSounds().playingAudios;
           pauseAll = audioToPauseExist;
         });
+        filterAudios(context);
       }
     });
     initAudios();
   }
+
+  bool isExpanded = false;
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
@@ -84,57 +88,101 @@ class SessionSoundsState extends State<SessionSounds>
       },
       child: Stack(
         children: <Widget>[
-          Center(
-            child: Padding(
-              padding: const EdgeInsets.only(left: 24.0, right: 24.0),
-              child: Column(
+          ValueListenableBuilder<bool>(
+            valueListenable: ThemeModeController().isCollapsed,
+            builder: (context, isCollapsed, _) {
+              return Column(
                 children: <Widget>[
-                  SizedBox(
-                    height: 56 * heightFactor,
-                    child: Align(
-                      alignment: Alignment.topCenter,
-                      child: Row(
-                        children: <Widget>[
-                          MySearchBar(
-                            filterController: filterController,
-                            focusNode: focusNode,
-                            filterAudios: filterAudios,
-                            resetTextFilter: resetTextFilter,
-                          ),
-                        ],
-                      ),
+                  Padding(
+                    padding:
+                        const EdgeInsets.only(top: 4.0, left: 12.0, right: 12.0, bottom: 0.0),
+                    child: MySearchBar(
+                      filterController: filterController,
+                      focusNode: focusNode,
+                      filterAudios: filterAudios,
+                      resetTextFilter: resetTextFilter,
+                      sortMode: sortMode,
+                      onSortToggle: () {
+                        setState(() {
+                          sortMode = sortMode == 0 ? 1 : 0;
+                          filterAudios(context);
+                        });
+                      },
+                      isCollapsed: isCollapsed,
+                      onLayoutToggle: () {
+                        ThemeModeController().setCollapsed(!isCollapsed);
+                      },
+                      onAddTap: () {},
+                      showAddButton: false,
                     ),
                   ),
-                  Expanded(
-                    child: SingleChildScrollView(
-                        padding: const EdgeInsets.only(bottom: 148),
-                        physics: const BouncingScrollPhysics(),
-                        child: Wrap(
-                          children: filteredAudios
-                              .map(
-                                (e) => PlayerWidget(
-                                    key: Key('${e.path}_session'), audio: e),
-                              )
-                              .toList(),
-                        )),
+                  ValueListenableBuilder<int>(
+                    valueListenable: PlayingSounds().stateChangeNotifier,
+                    builder: (context, _, __) {
+                      final Set<Audio> uniqueSessionAudios = {};
+                      uniqueSessionAudios.addAll(PlayingSounds().playingAudios);
+                      uniqueSessionAudios.addAll(PlayingSounds().pausedAudios);
+                      
+                      final allAudios = uniqueSessionAudios.toList();
+                      List<Audio> currentFiltered = allAudios;
+                      if (filterController.text.isNotEmpty) {
+                        currentFiltered = currentFiltered.where((audio) => 
+                          audio.name.toLowerCase().contains(filterController.text.toLowerCase())
+                        ).toList();
+                      }
+                      if (sortMode == 0) {
+                        currentFiltered.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+                      } else {
+                        currentFiltered = currentFiltered.reversed.toList();
+                      }
+
+                      return Expanded(
+                        child: GridView.builder(
+                          padding: const EdgeInsets.only(bottom: 148, top: 0, left: 12, right: 12),
+                          physics: const BouncingScrollPhysics(),
+                          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 2,
+                            crossAxisSpacing: 8,
+                            mainAxisSpacing: 8,
+                            childAspectRatio: isCollapsed ? 3.0 : 1.15,
+                          ),
+                          itemCount: currentFiltered.length,
+                          itemBuilder: (context, index) {
+                            final e = currentFiltered[index];
+                            return PlayerWidget(
+                              key: Key('${e.path}_session'),
+                              audio: e,
+                              isCollapsedLayout: isCollapsed,
+                            );
+                          },
+                        ),
+                      );
+                    },
                   ),
                 ],
-              ),
-            ),
+              );
+            },
           ),
           Align(
             alignment: Alignment.bottomCenter,
             child: Padding(
               padding: EdgeInsets.symmetric(
                   vertical: 16.0 * heightFactor, horizontal: 16.0),
-              child: GlobalControls(
-                  pauseAll: pauseAll,
-                  playPauseEnabled: playPauseEnabled,
-                  setPauseAll: (value) {
-                    setState(() {
-                      pauseAll = value;
-                    });
-                  }),
+              child: ValueListenableBuilder<int>(
+                valueListenable: PlayingSounds().stateChangeNotifier,
+                builder: (context, _, __) {
+                  return GlobalControls(
+                      isExpanded: isExpanded,
+                      onExpandChanged: (val) => setState(() => isExpanded = val),
+                      pauseAll: PlayingSounds().playingAudios.isNotEmpty,
+                      playPauseEnabled: PlayingSounds().playingAudios.isNotEmpty || PlayingSounds().pausedAudios.isNotEmpty,
+                      setPauseAll: (value) {
+                        setState(() {
+                          pauseAll = value;
+                        });
+                      });
+                }
+              ),
             ),
           )
         ],
@@ -149,15 +197,24 @@ class SessionSoundsState extends State<SessionSounds>
   }
 
   filterAudios(BuildContext context) async {
-    final allAudios = PlayingSounds().playingAudios;
+    final Set<Audio> uniqueSessionAudios = {};
+    uniqueSessionAudios.addAll(PlayingSounds().playingAudios);
+    uniqueSessionAudios.addAll(PlayingSounds().pausedAudios);
+    
+    final allAudios = uniqueSessionAudios.toList();
 
     List<Audio> newFilteredAudios = allAudios;
     if (filterController.text != '') {
       newFilteredAudios =
           filterAudiosByText(newFilteredAudios, filterController.text);
     }
-    newFilteredAudios
-        .sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+    if (sortMode == 0) {
+      newFilteredAudios
+          .sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+    } else {
+      // Newest First (most recently played)
+      newFilteredAudios = newFilteredAudios.reversed.toList();
+    }
     setState(() {
       filteredAudios = newFilteredAudios;
     });

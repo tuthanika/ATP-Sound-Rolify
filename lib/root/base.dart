@@ -2,6 +2,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter/material.dart';
 import 'package:rolify/presentation_logic_holders/audio_edit_bloc/audio_edit_bloc.dart';
 import 'package:rolify/presentation_logic_holders/audio_edit_bloc/audio_edit_state.dart';
+import 'package:rolify/presentation_logic_holders/audio_handler.dart';
+import 'package:rolify/presentation_logic_holders/playing_sounds_singleton.dart';
 import 'package:rolify/presentation_logic_holders/singletons/app_state.dart';
 import 'package:rolify/presentation_logic_holders/singletons/theme_mode_controller.dart';
 import 'package:rolify/root/info_page.dart';
@@ -26,6 +28,25 @@ class Base extends StatefulWidget {
 class BaseState extends State<Base> {
   int pageSelected = 0;
   int? previousPage;
+
+  @override
+  void initState() {
+    super.initState();
+    // Re-enable state broadcasting from the unified background handler
+    AppState().audioHandler.customEvent.listen((event) {
+      if (event['name'] == 'state_update') {
+        final List<dynamic>? playingPaths = event['playingPaths'];
+        final List<dynamic>? pausedPaths = event['pausedPaths'];
+        
+        if (playingPaths != null || pausedPaths != null) {
+          PlayingSounds().syncFromBackground(
+            playingPaths?.cast<String>() ?? [],
+            pausedPaths?.cast<String>() ?? [],
+          );
+        }
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {

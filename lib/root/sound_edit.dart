@@ -42,7 +42,7 @@ class SoundEdit extends StatelessWidget {
                   ),
                   const SizedBox(width: 12.0),
                   MyButton(
-                      icon: MyIcons.done,
+                      icon: MyIcons.done(),
                       onTap: () => saveAudioName(context, state.audio)),
                 ],
               ),
@@ -56,7 +56,7 @@ class SoundEdit extends StatelessWidget {
                             .add(CancelEditing(context, state.audio))),
                     const SizedBox(width: 16.0),
                     MyButton(
-                      icon: MyIcons.playlistAdd,
+                      icon: MyIcons.playlistAdd(),
                       onTap: () => Navigator.push(
                           context,
                           MaterialPageRoute(
@@ -68,7 +68,7 @@ class SoundEdit extends StatelessWidget {
                       child: Container(),
                     ),
                     MyButton(
-                        icon: MyIcons.delete,
+                        icon: MyIcons.delete(),
                         onTap: () => deleteAudio(context, state.audio!)),
                   ],
                 )

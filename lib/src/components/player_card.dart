@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'dart:math';
 
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -19,12 +20,20 @@ import 'package:rolify/src/theme/texts.dart';
 
 import '../../presentation_logic_holders/playing_sounds_singleton.dart';
 import 'dropdown_image.dart';
+import 'marquee_text.dart';
 import 'my_icons.dart';
 
 class PlayerWidget extends StatefulWidget {
   final Audio audio;
+  final bool isCollapsedLayout;
+  final bool autoShrinkText;
 
-  const PlayerWidget({Key? key, required this.audio}) : super(key: key);
+  const PlayerWidget({
+    Key? key,
+    required this.audio,
+    this.isCollapsedLayout = false,
+    this.autoShrinkText = false,
+  }) : super(key: key);
 
   @override
   PlayerWidgetState createState() => PlayerWidgetState();
@@ -35,9 +44,13 @@ class PlayerWidgetState extends State<PlayerWidget> {
   late String audioImage;
   bool loopAudio = true, isPlaying = false, showVolumeSlider = false;
 
+  StreamSubscription? _subscription;
+
   @override
   void initState() {
     super.initState();
+    _initData();
+    
     eventBus.on<OnAppResume>().listen((event) {
       checkIfIsPlaying();
     });
@@ -64,28 +77,21 @@ class PlayerWidgetState extends State<PlayerWidget> {
     });
     eventBus.on<VolumeChange>().listen((event) {
       if (event.path == widget.audio.path && mounted) {
-        double volume;
-        if (PlayingSounds().masterVolume == 0) {
-          volume = event.value;
-        } else {
-          volume = event.value / PlayingSounds().masterVolume;
-        }
-
-        if (volume != 0) {
-          setState(() {
-            currentVolume = volume;
-          });
-        }
+        _updateLocalVolume(event.value);
       }
     });
+
     AppState().audioHandler.customEvent.listen((event) {
-      if (event['name'] == AudioCustomEvents.pauseAll ||
-          (event['name'] == AudioCustomEvents.audioEnded &&
+      if (!mounted) return;
+      if (event['name'] == 'pauseAll' ||
+          (event['name'] == 'audioEnded' &&
               event['audioPath'] == widget.audio.path)) {
-        if (mounted) {
-          setState(() {
-            isPlaying = false;
-          });
+        setState(() {
+          isPlaying = false;
+        });
+        if (event['name'] == 'audioEnded') {
+          // Fix for the original bug: auto-stop when sound naturally finishes
+          stop();
         }
       }
     });
@@ -99,103 +105,195 @@ class PlayerWidgetState extends State<PlayerWidget> {
     });
   }
 
+  void _updateLocalVolume(double value) {
+    double volume;
+    if (PlayingSounds().masterVolume == 0) {
+      volume = value;
+    } else {
+      volume = value / PlayingSounds().masterVolume;
+    }
+    if (volume != 0) {
+      setState(() => currentVolume = volume);
+    }
+  }
+
+  @override
+  void dispose() {
+    _subscription?.cancel();
+    super.dispose();
+  }
+
+  void _initData() {
+    isPlaying = PlayingSounds().playingAudios.any((e) => e.path == widget.audio.path);
+  }
+
+  void checkIfIsPlaying() {
+    final status = PlayingSounds().playingAudios.any((e) => e.path == widget.audio.path);
+    if (status != isPlaying && mounted) {
+      setState(() {
+        isPlaying = status;
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      child: Container(
-        padding: EdgeInsets.symmetric(
-            vertical: 16.0 * heightFactor, horizontal: 8.0),
-        child: Column(
-          children: <Widget>[
-            Row(
-              children: <Widget>[
-                DropdownImage(
-                  value: audioImage,
-                  onChanged: (String? value) {
-                    if (value == null) return;
-                    setState(() {
-                      audioImage = value;
-                    });
-                    AudioData.updateAudio(
-                        context, widget.audio.copyFrom(image: value),
-                        refresh: false);
-                  },
-                ),
-                Expanded(
-                  child: Row(
-                    children: <Widget>[
-                      Expanded(
-                        child: GestureDetector(
-                          behavior: HitTestBehavior.opaque,
-                          onTap: () => setState(() => showVolumeSlider = !showVolumeSlider),
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                MyText.body(
-                                  widget.audio.name,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                                if (!showVolumeSlider)
-                                  Padding(
-                                    padding: const EdgeInsets.only(top: 2.0),
-                                    child: MyText.caption(
-                                      '${(currentVolume * 100).round()}%',
-                                      textType: TextType.secondary,
-                                    ),
-                                  ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                      MyRadio(
-                        icon: MyIcons.loop(
-                            color: loopAudio
-                                ? Theme.of(context)
-                                    .colorScheme.primary
-                                : null),
-                        value: loopAudio,
-                        onChanged: toggleLoop,
-                      ),
-                      const SizedBox(width: 8.0),
-                      MyRadio(
-                        icon: isPlaying ? MyIcons.pause : MyIcons.play(),
-                        value: isPlaying,
-                        onChanged: (_) {
-                          if (isPlaying) {
-                            stop();
-                          } else {
-                            play();
-                          }
-                        },
-                      ),
-                      const SizedBox(width: 8.0),
-                      MyButton(
-                        icon: MyIcons.edit,
-                        onTap: () => BlocProvider.of<AudioEditBloc>(context)
-                            .add(EnableEditing(context, widget.audio)),
-                      )
-                    ],
-                  ),
-                ),
-              ],
+    return ValueListenableBuilder<int>(
+      valueListenable: PlayingSounds().stateChangeNotifier,
+      builder: (context, _, __) {
+        checkIfIsPlaying(); // Re-check on every global state change
+        
+        // Lazy Image Loading: Only even instantiate the provider if not collapsed
+        DecorationImage? decorationImage;
+        if (!widget.isCollapsedLayout && audioImage.isNotEmpty) {
+          final ImageProvider provider = audioImage.startsWith('assets/')
+              ? AssetImage(audioImage)
+              : FileImage(File(audioImage)) as ImageProvider;
+          decorationImage = DecorationImage(
+            image: provider,
+            fit: BoxFit.cover,
+            colorFilter: ColorFilter.mode(
+              Colors.black.withOpacity(0.4),
+              BlendMode.darken,
             ),
-            if (showVolumeSlider) ...[
-              const SizedBox(height: 12),
-              AudioSlider(
-                isActive: isPlaying,
-                value: currentVolume,
-                onChanged: (value) {
-                  setVolume(context, value);
-                },
-              ),
-            ]
-          ],
+          );
+        }
+
+        return Card(
+          clipBehavior: Clip.antiAlias,
+          elevation: widget.isCollapsedLayout ? 0 : 2,
+          color: widget.isCollapsedLayout ? Colors.transparent : null,
+          margin: widget.isCollapsedLayout ? EdgeInsets.zero : const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(widget.isCollapsedLayout ? 20 : 16)),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 300),
+            decoration: BoxDecoration(
+              image: decorationImage,
+              color: (widget.isCollapsedLayout || audioImage.isEmpty)
+                  ? Theme.of(context).colorScheme.surfaceContainer
+                  : null,
+            ),
+            child: widget.isCollapsedLayout ? _buildCollapsed() : _buildExpanded(),
+          ),
+        );
+      }
+    );
+  }
+
+  Widget _buildNameBox() {
+    final colorScheme = Theme.of(context).colorScheme;
+    final isCollapsed = widget.isCollapsedLayout;
+    
+    // Theme-aware colors for better visibility and playing state
+    final Color idleBg = Theme.of(context).brightness == Brightness.light
+        ? colorScheme.surfaceContainerHighest
+        : Colors.black.withOpacity(0.4);
+    
+    final Color playingBg = colorScheme.primary.withOpacity(0.85);
+    
+    final Color textColor = isPlaying 
+        ? colorScheme.onPrimary 
+        : (Theme.of(context).brightness == Brightness.light ? colorScheme.onSurface : Colors.white);
+
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 300),
+      margin: isCollapsed ? EdgeInsets.zero : const EdgeInsets.all(4.0),
+      padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 8.0),
+      width: double.infinity,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: isPlaying ? playingBg : idleBg,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: isPlaying ? colorScheme.primaryContainer.withOpacity(0.6) : Colors.white24,
+          width: 1.5,
         ),
       ),
+      child: MarqueeText(
+        text: widget.audio.name,
+        autoShrink: widget.autoShrinkText,
+        style: TextStyle(
+          height: 1.38,
+          fontFamily: 'Rubik',
+          fontSize: 16 * heightFactor,
+          fontWeight: FontWeight.w700,
+          color: textColor,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCollapsed() {
+    return InkWell(
+      onTap: () {
+        if (isPlaying) stop(); else play();
+      },
+      child: _buildNameBox(),
+    );
+  }
+
+  Widget _buildExpanded() {
+    return Column(
+      children: [
+        Expanded(
+          flex: 2,
+          child: InkWell(
+            onTap: () {
+              if (isPlaying) stop(); else play();
+            },
+            child: Container(
+              alignment: Alignment.center,
+              padding: EdgeInsets.zero,
+              child: _buildNameBox(),
+            ),
+          ),
+        ),
+        Expanded(
+          flex: 1,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12.0),
+            child: AudioSlider(
+              isActive: isPlaying,
+              value: currentVolume,
+              onChanged: (value) {
+                setVolume(context, value);
+              },
+              // High contrast for light mode
+              color: Theme.of(context).brightness == Brightness.light && audioImage.isEmpty
+                  ? Theme.of(context).colorScheme.primary
+                  : Colors.white.withOpacity(0.9),
+            ),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              MyText.caption(
+                '${(currentVolume * 100).round()}%',
+                color: Colors.white70,
+              ),
+              IconButton(
+                onPressed: () => BlocProvider.of<AudioEditBloc>(context)
+                    .add(EnableEditing(context, widget.audio)),
+                icon: const Icon(Icons.edit, size: 16, color: Colors.white70),
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+              ),
+              MyRadio(
+                icon: Icon(
+                  Icons.loop,
+                  size: 16,
+                  color: loopAudio ? Theme.of(context).colorScheme.primary : Colors.white70,
+                ),
+                value: loopAudio,
+                onChanged: toggleLoop,
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 
@@ -219,19 +317,6 @@ class PlayerWidgetState extends State<PlayerWidget> {
     AudioData.updateAudio(context,
         widget.audio.copyFrom(loopMode: value ? LoopMode.one : LoopMode.off),
         refresh: false);
-  }
-
-  Future<void> checkIfIsPlaying() async {
-    bool newValue;
-    try {
-      newValue = await AudioServiceCommands.getPlaying(widget.audio);
-    } catch (e) {
-      newValue = false;
-    }
-    if (newValue != isPlaying) {
-      isPlaying = newValue;
-      if (mounted) setState(() {});
-    }
   }
 
   Future<void> checkVolume() async {

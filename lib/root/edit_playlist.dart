@@ -77,9 +77,9 @@ class EditPlaylistState extends State<EditPlaylist> {
                             ),
                           ),
                           const SizedBox(width: 12.0),
-                          MyButton(icon: MyIcons.done, onTap: savePlaylist),
+                          MyButton(icon: MyIcons.done(), onTap: savePlaylist),
                           const SizedBox(width: 12.0),
-                          MyButton(icon: MyIcons.delete, onTap: removePlaylist),
+                          MyButton(icon: MyIcons.delete(), onTap: removePlaylist),
                         ],
                       ),
                     ],
@@ -193,8 +193,8 @@ class _AudioRow extends StatelessWidget {
         ),
         MyButton(
           icon: playlist.audios.contains(audio)
-              ? MyIcons.playlistDelete
-              : MyIcons.playlistAdd,
+              ? MyIcons.playlistDelete()
+              : MyIcons.playlistAdd(),
           onTap: playlist.audios.contains(audio) ? onRemove : onAdd,
         ),
       ],

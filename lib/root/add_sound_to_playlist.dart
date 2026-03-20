@@ -73,7 +73,7 @@ class AddSoundToPlaylistState extends State<AddSoundToPlaylist> {
                             ),
                           ),
                           const SizedBox(width: 12.0),
-                          MyButton(icon: MyIcons.done, onTap: savePlaylist),
+                          MyButton(icon: MyIcons.done(), onTap: savePlaylist),
                         ],
                       ),
                     ],
@@ -171,8 +171,8 @@ class _PlaylistRow extends StatelessWidget {
         ),
         MyButton(
           icon: playlist.audios.contains(currentAudio)
-              ? MyIcons.playlistDelete
-              : MyIcons.playlistAdd,
+              ? MyIcons.playlistDelete()
+              : MyIcons.playlistAdd(),
           onTap: playlist.audios.contains(currentAudio) ? onRemove : onAdd,
         ),
       ],

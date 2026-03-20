@@ -21,23 +21,23 @@ class IconTemplate extends StatelessWidget {
 class MyIcons {
   static Widget about({Color? color}) =>
       IconTemplate('about.svg', color: color);
-  static const Widget add = IconTemplate('add.svg');
-  static const Widget back = IconTemplate('back.svg');
+  static Widget add({Color? color}) => IconTemplate('add.svg', color: color);
+  static Widget back({Color? color}) => IconTemplate('back.svg', color: color);
   static Widget close({Color? color}) => IconTemplate(
         'close.svg',
         color: color,
       );
-  static const Widget delete = IconTemplate('delete.svg');
-  static const Widget done = IconTemplate('done.svg');
-  static const Widget edit = IconTemplate('edit.svg');
+  static Widget delete({Color? color}) => IconTemplate('delete.svg', color: color);
+  static Widget done({Color? color}) => IconTemplate('done.svg', color: color);
+  static Widget edit({Color? color}) => IconTemplate('edit.svg', color: color);
   static Widget list({Color? color}) => IconTemplate('list.svg', color: color);
   static Widget loop({Color? color}) => IconTemplate(
         'loop.svg',
         color: color,
       );
-  static const Widget love = IconTemplate('love.svg');
-  static const Widget pause = IconTemplate('pause.svg');
-  static pauseBig({Color? color}) =>
+  static Widget love({Color? color}) => IconTemplate('love.svg', color: color);
+  static Widget pause({Color? color}) => IconTemplate('pause.svg', color: color);
+  static Widget pauseBig({Color? color}) =>
       IconTemplate('pause_big.svg', color: color);
   static Widget play({Color? color}) => IconTemplate(
         'play.svg',
@@ -49,11 +49,11 @@ class MyIcons {
       );
   static Widget playlist({Color? color}) =>
       IconTemplate('playlist.svg', color: color);
-  static const Widget playlistAdd = IconTemplate('playlist_add.svg');
-  static const Widget playlistAdded = IconTemplate('playlist_added.svg');
-  static const Widget playlistDelete = IconTemplate(
+  static Widget playlistAdd({Color? color}) => IconTemplate('playlist_add.svg', color: color);
+  static Widget playlistAdded({Color? color}) => IconTemplate('playlist_added.svg', color: color);
+  static Widget playlistDelete({Color? color}) => IconTemplate(
     'playlist_delete.svg',
-    color: Colors.red,
+    color: color ?? Colors.red,
   );
   static Widget playlistList({Color? color}) => IconTemplate(
         'playlist_list.svg',
@@ -63,5 +63,16 @@ class MyIcons {
         'search.svg',
         color: color,
       );
-  static const Widget star = IconTemplate('star.svg');
+  static Widget star({Color? color}) => IconTemplate('star.svg', color: color);
+  static Widget stop({Color? color}) => Center(
+    child: Container(
+      width: 14,
+      height: 14,
+      decoration: BoxDecoration(
+        color: color ?? Colors.white,
+        shape: BoxShape.rectangle,
+        borderRadius: BorderRadius.circular(2),
+      ),
+    ),
+  );
 }

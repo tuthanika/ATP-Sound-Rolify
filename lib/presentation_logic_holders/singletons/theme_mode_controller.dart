@@ -5,6 +5,8 @@ class ThemeModeController {
   static final ThemeModeController _singleton = ThemeModeController._internal();
 
   final ValueNotifier<ThemeMode> themeMode = ValueNotifier(ThemeMode.system);
+  final ValueNotifier<int> sortMode = ValueNotifier(0); // 0: A-Z, 1: Newest
+  final ValueNotifier<bool> isCollapsed = ValueNotifier(false);
 
   factory ThemeModeController() {
     return _singleton;
@@ -20,6 +22,21 @@ class ThemeModeController {
     } else if (savedTheme == 'light') {
       themeMode.value = ThemeMode.light;
     }
+    
+    sortMode.value = prefs.getInt('sortMode') ?? 0;
+    isCollapsed.value = prefs.getBool('isCollapsed') ?? false;
+  }
+
+  Future<void> setSortMode(int mode) async {
+    sortMode.value = mode;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt('sortMode', mode);
+  }
+
+  Future<void> setCollapsed(bool collapsed) async {
+    isCollapsed.value = collapsed;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('isCollapsed', collapsed);
   }
 
   Future<void> toggle(bool isCurrentlyDark) async {

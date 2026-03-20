@@ -1,7 +1,9 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
+import 'package:rolify/entities/audio.dart';
 import 'package:rolify/entities/playlist.dart';
+import 'package:rolify/root/all_sounds/search_bar.dart';
+import 'package:rolify/presentation_logic_holders/audio_handler.dart';
+import 'package:rolify/presentation_logic_holders/event_bus/stop_all_event_bus.dart';
 import 'package:rolify/presentation_logic_holders/audio_service_commands.dart';
 import 'package:rolify/presentation_logic_holders/singletons/app_state.dart';
 import 'package:rolify/presentation_logic_holders/playing_sounds_singleton.dart';
@@ -27,6 +29,46 @@ class PlaylistCardState extends State<PlaylistCard> {
   final duration = const Duration(milliseconds: 500);
   bool isPlaying = false, expanded = false, showAudioList = false;
   int _localSessionId = 0;
+  List<Audio> filteredAudios = [];
+  final TextEditingController filterController = TextEditingController();
+  final FocusNode focusNode = FocusNode();
+  int sortMode = 0;
+  bool isCollapsedItems = true;
+
+  @override
+  void didUpdateWidget(covariant PlaylistCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.playlist.audios != widget.playlist.audios) {
+      _filterPlaylistSounds();
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    filteredAudios = widget.playlist.audios;
+  }
+
+  bool _isPlaylistPlaying() {
+    return widget.playlist.audios.any((a) =>
+        PlayingSounds().playingAudios.any((p) => p.path == a.path));
+  }
+
+  void _filterPlaylistSounds() {
+    List<Audio> result = List<Audio>.from(widget.playlist.audios);
+    if (filterController.text.isNotEmpty) {
+      result = result.where((e) => e.name.toLowerCase().contains(filterController.text.toLowerCase())).toList();
+    }
+    if (sortMode == 0) {
+      result.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+    } else {
+      // Newest First (last added to playlist)
+      result = result.reversed.toList();
+    }
+    setState(() {
+      filteredAudios = result;
+    });
+  }
 
   double get maxHeight =>
       MediaQuery.of(context).size.height -
@@ -70,7 +112,7 @@ class PlaylistCardState extends State<PlaylistCard> {
                       ),
                       const SizedBox(width: 8.0),
                       MyButton(
-                        icon: MyIcons.edit,
+                        icon: MyIcons.edit(),
                         onTap: () => Navigator.push(
                             context,
                             MaterialPageRoute(
@@ -79,17 +121,58 @@ class PlaylistCardState extends State<PlaylistCard> {
                       ),
                     ],
                   ),
-                  if (showAudioList)
-                    Expanded(
-                      child: ListView(
-                        physics: const BouncingScrollPhysics(),
-                        padding: const EdgeInsets.only(bottom: 100),
-                        children: widget.playlist.audios
-                            .map(
-                                (e) => PlayerWidget(key: Key(e.path), audio: e))
-                            .toList(),
+                  if (showAudioList) ...[
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 8.0),
+                      child: MySearchBar(
+                        filterController: filterController,
+                        focusNode: focusNode,
+                        filterAudios: (_) => _filterPlaylistSounds(),
+                        resetTextFilter: (_) {
+                          filterController.clear();
+                          focusNode.unfocus();
+                          _filterPlaylistSounds();
+                        },
+                        sortMode: sortMode,
+                        onSortToggle: () {
+                          setState(() {
+                            sortMode = sortMode == 0 ? 1 : 0;
+                            _filterPlaylistSounds();
+                          });
+                        },
+                        isCollapsed: isCollapsedItems,
+                        onLayoutToggle: () {
+                          setState(() {
+                            isCollapsedItems = !isCollapsedItems;
+                          });
+                        },
+                        onAddTap: () {},
+                        showAddButton: false,
                       ),
                     ),
+                    Expanded(
+                      child: GridView.builder(
+                        padding: const EdgeInsets.only(bottom: 100),
+                        physics: const BouncingScrollPhysics(),
+                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 2,
+                          crossAxisSpacing: 8,
+                          mainAxisSpacing: 8,
+                          childAspectRatio: isCollapsedItems ? 3.0 : 1.15,
+                        ),
+                        itemCount: filteredAudios.length,
+                        itemBuilder: (context, index) {
+                          final e = filteredAudios[index];
+                          return PlayerWidget(
+                            key: Key('${e.path}_playlist_${isCollapsedItems}'),
+                            audio: e,
+                            isCollapsedLayout: isCollapsedItems,
+                            autoShrinkText: true,
+                          );
+                        },
+                      ),
+                    ),
+                  ],
                 ],
               ),
               Align(
@@ -115,21 +198,24 @@ class PlaylistCardState extends State<PlaylistCard> {
                       child: Row(
                         children: <Widget>[
                           Expanded(child: Container()),
-                          MyRadio(
-                            big: true,
-                            icon: isPlaying
-                                ? MyIcons.pauseBig()
-                                : MyIcons.playBig(),
-                            value: isPlaying,
-                            onChanged: (value) {
-                              if (value) {
-                                playAllSoundInPlaylist();
-                              } else {
-                                stopAllSoundInPlaylist();
-                              }
-                              setState(() {
-                                isPlaying = value;
-                              });
+                          ValueListenableBuilder(
+                            valueListenable: PlayingSounds().stateChangeNotifier,
+                            builder: (context, _, __) {
+                              final currentlyPlaying = _isPlaylistPlaying();
+                              return MyRadio(
+                                big: true,
+                                icon: currentlyPlaying
+                                    ? MyIcons.pauseBig()
+                                    : MyIcons.playBig(),
+                                value: currentlyPlaying,
+                                onChanged: (value) {
+                                  if (value) {
+                                    playAllSoundInPlaylist();
+                                  } else {
+                                    stopAllSoundInPlaylist();
+                                  }
+                                },
+                              );
                             },
                           ),
                           Expanded(

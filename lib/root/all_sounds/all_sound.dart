@@ -9,6 +9,7 @@ import 'package:rolify/presentation_logic_holders/audio_list_bloc/audio_list_sta
 import 'package:rolify/presentation_logic_holders/event_bus/stop_all_event_bus.dart';
 import 'package:rolify/presentation_logic_holders/playing_sounds_singleton.dart';
 import 'package:rolify/presentation_logic_holders/singletons/app_state.dart';
+import 'package:rolify/presentation_logic_holders/singletons/theme_mode_controller.dart';
 import 'package:rolify/root/info_page.dart';
 import 'package:rolify/src/components/button.dart';
 import 'package:rolify/src/components/my_icons.dart';
@@ -31,6 +32,7 @@ class AllSoundState extends State<AllSound> with WidgetsBindingObserver {
   TextEditingController filterController = TextEditingController();
   FocusNode focusNode = FocusNode();
   bool pauseAll = true, audioToPauseExist = false, audioToReplayExist = false;
+  final ValueNotifier<bool> isControlsExpanded = ValueNotifier(false);
 
   bool get playPauseEnabled =>
       (pauseAll && audioToPauseExist) ||
@@ -77,8 +79,7 @@ class AllSoundState extends State<AllSound> with WidgetsBindingObserver {
   Future<void> initAudios() async {
     await AudioData.addNewAssetsAudios(context);
     final allAudios = await AudioData.getAllAudios();
-    allAudios
-        .sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+    _sortAudios(allAudios);
     
     if (mounted) {
       setState(() {
@@ -96,71 +97,98 @@ class AllSoundState extends State<AllSound> with WidgetsBindingObserver {
       },
       child: Stack(
         children: <Widget>[
-          Center(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24.0),
-              child: Column(
-                children: <Widget>[
-                  SizedBox(
-                    height: 56 * heightFactor,
-                    child: Align(
-                      alignment: Alignment.topCenter,
-                      child: Row(
-                        children: <Widget>[
-                          MySearchBar(
+          Listener(
+            behavior: HitTestBehavior.opaque,
+            onPointerDown: (details) {
+              if (isControlsExpanded.value) {
+                isControlsExpanded.value = false;
+              }
+              focusNode.unfocus();
+            },
+            child: Column(
+              children: <Widget>[
+                Padding(
+                  padding:
+                      const EdgeInsets.only(top: 4.0, left: 12.0, right: 12.0, bottom: 0.0),
+                  child: ValueListenableBuilder<int>(
+                    valueListenable: ThemeModeController().sortMode,
+                    builder: (context, sortMode, _) {
+                      return ValueListenableBuilder<bool>(
+                        valueListenable: ThemeModeController().isCollapsed,
+                        builder: (context, isCollapsed, _) {
+                          return MySearchBar(
                             filterController: filterController,
                             focusNode: focusNode,
                             filterAudios: filterAudios,
                             resetTextFilter: resetTextFilter,
-                          ),
-                          const SizedBox(width: 8.0),
-                          MyButton(
-                            icon: MyIcons.add,
-                            onTap: () => _showAddOptions(context),
-                          )
-                        ],
-                      ),
-                    ),
+                            sortMode: sortMode,
+                            onSortToggle: () {
+                              final nextMode = (sortMode + 1) % 2;
+                              ThemeModeController().setSortMode(nextMode);
+                              initAudios();
+                            },
+                            isCollapsed: isCollapsed,
+                            onLayoutToggle: () {
+                              ThemeModeController()
+                                  .setCollapsed(!isCollapsed);
+                            },
+                            onAddTap: () => _showAddOptions(context),
+                          );
+                        },
+                      );
+                    },
                   ),
-                  Expanded(
-                    child: ListView.builder(
-                      padding: const EdgeInsets.only(bottom: 148),
-                      physics: const BouncingScrollPhysics(),
-                      itemCount: (filteredAudios.length / 3).ceil(),
-                      itemBuilder: (context, index) {
-                        int start = index * 3;
-                        int end = (index + 1) * 3;
-                        if (end > filteredAudios.length) end = filteredAudios.length;
-                        
-                        List<Audio> rowAudios = filteredAudios.sublist(start, end);
-                        
-                        return Wrap(
-                          children: rowAudios.map((e) => PlayerWidget(
+                ),
+                Expanded(
+                  child: ValueListenableBuilder<bool>(
+                    valueListenable: ThemeModeController().isCollapsed,
+                    builder: (context, isCollapsed, _) {
+                      return GridView.builder(
+                        padding: const EdgeInsets.only(bottom: 148, top: 0, left: 12, right: 12),
+                        physics: const BouncingScrollPhysics(),
+                        gridDelegate:
+                            SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 2,
+                          crossAxisSpacing: 8,
+                          mainAxisSpacing: 8,
+                          childAspectRatio: isCollapsed ? 3.0 : 1.15,
+                        ),
+                        itemCount: filteredAudios.length,
+                        itemBuilder: (context, index) {
+                          final e = filteredAudios[index];
+                          return PlayerWidget(
                             key: Key('${e.path}_all_sounds'),
                             audio: e,
-                          )).toList(),
-                        );
-                      },
-                    ),
+                            isCollapsedLayout: isCollapsed,
+                          );
+                        },
+                      );
+                    },
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
-          Align(
-            alignment: Alignment.bottomCenter,
-            child: Padding(
-              padding: EdgeInsets.symmetric(
-                  vertical: 16.0 * heightFactor, horizontal: 16.0),
-              child: GlobalControls(
-                  pauseAll: pauseAll,
-                  playPauseEnabled: playPauseEnabled,
-                  setPauseAll: (value) {
-                    setState(() {
-                      pauseAll = value;
-                    });
-                  }),
-            ),
+          ValueListenableBuilder<bool>(
+            valueListenable: isControlsExpanded,
+            builder: (context, isExpanded, _) {
+              return Align(
+                alignment: Alignment.bottomCenter,
+                child: ValueListenableBuilder<int>(
+                  valueListenable: PlayingSounds().stateChangeNotifier,
+                  builder: (context, _, __) {
+                    return GlobalControls(
+                      isExpanded: isExpanded,
+                      onExpandChanged: (value) => isControlsExpanded.value = value,
+                      pauseAll: PlayingSounds().playingAudios.isNotEmpty,
+                      playPauseEnabled: filteredAudios.isNotEmpty ||
+                          PlayingSounds().playingAudios.isNotEmpty,
+                      setPauseAll: (value) => setState(() {}),
+                    );
+                  }
+                ),
+              );
+            },
           )
         ],
       ),
@@ -193,7 +221,7 @@ class AllSoundState extends State<AllSound> with WidgetsBindingObserver {
                 },
               ),
               _OptionTile(
-                icon: MyIcons.edit,
+                icon: MyIcons.edit(),
                 title: 'Enter file path',
                 subtitle: 'Manually input the local path',
                 onTap: () {
@@ -303,6 +331,18 @@ class AllSoundState extends State<AllSound> with WidgetsBindingObserver {
     filterAudios(context);
   }
 
+  void _sortAudios(List<Audio> list) {
+    final mode = ThemeModeController().sortMode.value;
+    if (mode == 0) {
+      list.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+    } else {
+      // Newest First: Reverse the natural order
+      final reversed = list.reversed.toList();
+      list.clear();
+      list.addAll(reversed);
+    }
+  }
+
   filterAudios(BuildContext context) async {
     final allAudios = await AudioData.getAllAudios();
 
@@ -311,8 +351,7 @@ class AllSoundState extends State<AllSound> with WidgetsBindingObserver {
       newFilteredAudios =
           filterAudiosByText(newFilteredAudios, filterController.text);
     }
-    newFilteredAudios
-        .sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+    _sortAudios(newFilteredAudios);
     
     if (mounted) {
       setState(() {

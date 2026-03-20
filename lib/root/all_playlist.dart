@@ -62,12 +62,15 @@ class AllPlaylistState extends State<AllPlaylist> {
     List<Widget> list = [];
 
     list.addAll(
-        playlists.map((playlist) => PlaylistCard(playlist: playlist)).toList());
+        playlists.map((playlist) => PlaylistCard(
+          key: ValueKey(playlist.name),
+          playlist: playlist
+        )).toList());
 
     list.add(Align(
       alignment: Alignment.center,
       child: MyButton(
-          icon: MyIcons.add,
+          icon: MyIcons.add(),
           onTap: () => Navigator.push(
                 context,
                 MaterialPageRoute(

@@ -91,6 +91,17 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
         orElse: () => '');
   }
 
+  void _broadcastState() {
+    final playingPaths = playingAudio.map((p) => _getAudioPath(p)).where((path) => path.isNotEmpty).toList();
+    final pausedPaths = pausedAudio.map((p) => _getAudioPath(p)).where((path) => path.isNotEmpty).toList();
+    
+    customEvent.add({
+      'name': 'state_update',
+      'playingPaths': playingPaths,
+      'pausedPaths': pausedPaths,
+    });
+  }
+
   void playAudioPlayer(AudioPlayer audioPlayer) {
     audioPlayer.play().then((_) async {
       if (audioPlayer.playing) {
@@ -99,14 +110,17 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
         playingAudio.remove(audioPlayer);
         customEvent.add(createAudioCustomEvent(
             AudioCustomEvents.audioEnded, _getAudioPath(audioPlayer)));
+        _broadcastState();
       }
     });
 
     playingAudio.add(audioPlayer);
+    _broadcastState();
 
     playbackState.add(PlaybackState(
       controls: [
         MediaControl.pause,
+        MediaControl.stop,
       ],
       processingState: AudioProcessingState.ready,
       playing: true,
@@ -121,6 +135,7 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
     }
     pausedAudio = [];
     customEvent.add(createAudioCustomEvent(AudioCustomEvents.resumeAll));
+    _broadcastState();
   }
 
   @override
@@ -130,16 +145,39 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
       pausedAudio.add(audioPlayer);
     }
     playingAudio = [];
+    _broadcastState();
 
     playbackState.add(PlaybackState(
       controls: [
         MediaControl.play,
+        MediaControl.stop,
       ],
       processingState: AudioProcessingState.ready,
       playing: false,
     ));
 
     customEvent.add(createAudioCustomEvent(AudioCustomEvents.pauseAll));
+  }
+
+  @override
+  Future<void> stop() async {
+    for (final audioPlayer in playingAudio) {
+      await audioPlayer.stop();
+    }
+    for (final audioPlayer in pausedAudio) {
+      await audioPlayer.stop();
+    }
+    playingAudio = [];
+    pausedAudio = [];
+    _broadcastState();
+
+    playbackState.add(PlaybackState(
+      controls: [],
+      processingState: AudioProcessingState.idle,
+      playing: false,
+    ));
+
+    super.stop();
   }
 
   @override
@@ -175,6 +213,8 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
         if (name == 'stop') {
           audioPlayer.stop();
           playingAudio.remove(audioPlayer);
+          pausedAudio.remove(audioPlayer);
+          _broadcastState();
         }
         if (name == 'is_playing') {
           return audioPlayer.playing;
@@ -197,7 +237,7 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
   Map<String, dynamic> createAudioCustomEvent(AudioCustomEvents name,
       [String? audioPath]) {
     return {
-      'name': name,
+      'name': name.toString().split('.').last, // Secure string serialization
       'audioPath': audioPath,
     };
   }
