@@ -65,6 +65,10 @@ class AllSoundWidget : AppWidgetProvider() {
         views.setOnClickPendingIntent(R.id.widget_play_pause, playPendingIntent)
 
         val (activeAudios, activePlaylists) = FlutterDataHelper.getActiveCounts(context)
+        
+        val playIcon = if (activeAudios > 0) R.drawable.ic_widget_pause else R.drawable.ic_widget_play
+        views.setImageViewResource(R.id.widget_play_pause, playIcon)
+
         if (activeAudios > 0) {
             views.setTextViewText(R.id.widget_playlist_name, "Rolify - Sounds ($activeAudios)")
             views.setTextViewText(R.id.widget_status, "Playing")

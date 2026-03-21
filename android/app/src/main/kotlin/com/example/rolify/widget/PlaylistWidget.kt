@@ -55,6 +55,10 @@ class PlaylistWidget : AppWidgetProvider() {
         val views = RemoteViews(context.packageName, R.layout.widget_preset)
 
         val (activeAudios, activePlaylists) = FlutterDataHelper.getActiveCounts(context)
+        
+        val playIcon = if (activePlaylists > 0 || activeAudios > 0) R.drawable.ic_widget_pause else R.drawable.ic_widget_play
+        views.setImageViewResource(R.id.widget_play_pause, playIcon)
+
         if (activePlaylists > 0) {
             views.setTextViewText(R.id.widget_title, "Rolify - Playlists ($activePlaylists)")
         } else {
