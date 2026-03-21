@@ -17,7 +17,7 @@ data class RolifyPlaylist(
     val id: String,
     val name: String,
     var isActive: Boolean = false,
-    val audios: List<RolifyAudio>
+    val audios: List<RolifyAudio> = emptyList()
 )
 
 object FlutterDataHelper {
@@ -62,19 +62,25 @@ object FlutterDataHelper {
                 val obj = jsonArray.getJSONObject(i)
                 val id = obj.optString("id", i.toString())
                 
-                val audiosArray = obj.optJSONArray("audios")
+                // Audios in playlist are encoded as a JSON string in Dart
+                val audiosStr = obj.optString("audios", null)
                 val pAudios = mutableListOf<RolifyAudio>()
-                if (audiosArray != null) {
-                    for (j in 0 until audiosArray.length()) {
-                        val aObj = audiosArray.getJSONObject(j)
-                        pAudios.add(
-                            RolifyAudio(
-                                name = aObj.optString("name", "Unknown Audio"),
-                                path = aObj.optString("path", ""),
-                                image = aObj.optString("image", ""),
-                                loopMode = aObj.optBoolean("loopMode", true)
+                if (audiosStr != null && audiosStr.isNotEmpty()) {
+                    try {
+                        val audiosArray = JSONArray(audiosStr)
+                        for (j in 0 until audiosArray.length()) {
+                            val aObj = audiosArray.getJSONObject(j)
+                            pAudios.add(
+                                RolifyAudio(
+                                    name = aObj.optString("name", "Unknown Audio"),
+                                    path = aObj.optString("path", ""),
+                                    image = aObj.optString("image", ""),
+                                    loopMode = aObj.optBoolean("loopMode", true)
+                                )
                             )
-                        )
+                        }
+                    } catch (e: Exception) {
+                        e.printStackTrace()
                     }
                 }
                 

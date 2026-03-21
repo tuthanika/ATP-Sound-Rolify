@@ -32,7 +32,7 @@ class PlaylistWidget : AppWidgetProvider() {
                     putExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS, appWidgetIds)
                 }
                 context.sendBroadcast(intent)
-                appWidgetManager.notifyAppWidgetViewDataChanged(appWidgetIds, R.id.widget_playlist_list)
+                appWidgetManager.notifyAppWidgetViewDataChanged(appWidgetIds, R.id.widget_preset_list)
             }
         }
     }
@@ -113,7 +113,7 @@ class PlaylistWidget : AppWidgetProvider() {
             putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId)
             data = toUri(Intent.URI_INTENT_SCHEME).toUri()
         }
-        views.setRemoteAdapter(R.id.widget_playlist_list, serviceIntent)
+        views.setRemoteAdapter(R.id.widget_preset_list, serviceIntent)
 
         // PendingIntent for list item clicks
         val itemClickIntent = Intent(context, WidgetActionReceiver::class.java).apply {
@@ -123,7 +123,7 @@ class PlaylistWidget : AppWidgetProvider() {
             context, 13, itemClickIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE
         )
-        views.setPendingIntentTemplate(R.id.widget_playlist_list, itemClickPendingIntent)
+        views.setPendingIntentTemplate(R.id.widget_preset_list, itemClickPendingIntent)
 
         appWidgetManager.updateAppWidget(appWidgetId, views)
     }
