@@ -35,6 +35,7 @@ class MainActivity: AudioServiceActivity() {
                 val command = prefs.getString("command", null)
                 val path = prefs.getString("path", null)
                 val id = prefs.getString("id", null)
+                val volume = prefs.getInt("volume", 100)
                 
                 if (command != null) {
                     // Clear the command
@@ -43,7 +44,8 @@ class MainActivity: AudioServiceActivity() {
                     val response = mapOf(
                         "command" to command,
                         "path" to path,
-                        "id" to id
+                        "id" to id,
+                        "volume" to volume
                     )
                     result.success(response)
                 } else {

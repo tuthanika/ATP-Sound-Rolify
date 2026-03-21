@@ -227,6 +227,28 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
         }
       }
     }
+    if (name == 'set_master_volume' && extras != null) {
+      final double volume = extras['volume'];
+      for (final path in audioPlayers.keys) {
+        final player = audioPlayers[path]!;
+        // Use PlayingSounds().playingAudios to find the original volume if possible
+        Audio? audio;
+        try {
+          audio = PlayingSounds().playingAudios.firstWhere((a) => a.path == path);
+        } catch (_) {
+          try {
+             audio = PlayingSounds().pausedAudios.firstWhere((a) => a.path == path);
+          } catch (_) {}
+        }
+        
+        if (audio != null) {
+          player.setVolume(audio.volume * volume);
+        } else {
+          player.setVolume(volume);
+        }
+      }
+      return null;
+    }
     if (name == 'stop_all') {
       await stop();
       return null;

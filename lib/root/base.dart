@@ -104,6 +104,12 @@ class BaseState extends State<Base> with WidgetsBindingObserver {
               }
             }
           }
+        } else if (command == 'set_volume' && result['volume'] != null) {
+          final int volInt = result['volume'];
+          final double volume = volInt / 100.0;
+          PlayingSounds().masterVolume = volume;
+          PlayingSounds().masterVolumeNotifier.value = volume;
+          AppState().audioHandler.customAction('set_master_volume', {'volume': volume});
         }
       }
     } catch (e) {
