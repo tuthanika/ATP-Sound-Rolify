@@ -32,6 +32,7 @@ class PlaylistWidget : AppWidgetProvider() {
                     putExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS, appWidgetIds)
                 }
                 context.sendBroadcast(intent)
+                appWidgetManager.notifyAppWidgetViewDataChanged(appWidgetIds, R.id.widget_preset_list)
             }
         }
     }
@@ -65,7 +66,7 @@ class PlaylistWidget : AppWidgetProvider() {
             action = ACTION_CYCLE_VOLUME
         }
         val volumePendingIntent = PendingIntent.getBroadcast(
-            context, 0, volumeIntent,
+            context, 10, volumeIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
         views.setOnClickPendingIntent(R.id.widget_master_volume_container, volumePendingIntent)
@@ -79,7 +80,7 @@ class PlaylistWidget : AppWidgetProvider() {
             action = ACTION_STOP_ALL
         }
         val stopPendingIntent = PendingIntent.getBroadcast(
-            context, 0, stopIntent,
+            context, 11, stopIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
         views.setOnClickPendingIntent(R.id.widget_stop, stopPendingIntent)
@@ -91,46 +92,28 @@ class PlaylistWidget : AppWidgetProvider() {
             data = "rolify://widget_playlist".toUri()
         }
         val openAppPendingIntent = PendingIntent.getActivity(
-            context, 0, openAppIntent,
+            context, 12, openAppIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
         views.setOnClickPendingIntent(R.id.widget_title_container, openAppPendingIntent)
 
         // RemoteViewsService for the list of playlists
-        val intent = Intent(context, PlaylistWidgetListService::class.java).apply {
+        val serviceIntent = Intent(context, PlaylistWidgetListService::class.java).apply {
             putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId)
             data = toUri(Intent.URI_INTENT_SCHEME).toUri()
         }
-        views.setRemoteAdapter(R.id.widget_preset_list, intent)
+        views.setRemoteAdapter(R.id.widget_preset_list, serviceIntent)
 
         // PendingIntent for list item clicks
-        val clickIntent = Intent(context, WidgetActionReceiver::class.java).apply {
+        val itemClickIntent = Intent(context, WidgetActionReceiver::class.java).apply {
             action = ACTION_TOGGLE_PLAYLIST
         }
-        val clickPendingIntent = PendingIntent.getBroadcast(
-            context, 0, clickIntent,
+        val itemClickPendingIntent = PendingIntent.getBroadcast(
+            context, 13, itemClickIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE
         )
-        views.setPendingIntentTemplate(R.id.widget_preset_list, clickPendingIntent)
-
-        views.setTextViewText(R.id.widget_title, "Rolify Playlists")
+        views.setPendingIntentTemplate(R.id.widget_preset_list, itemClickPendingIntent)
 
         appWidgetManager.updateAppWidget(appWidgetId, views)
-    }
-
-    private fun setButtonPendingIntent(
-        context: Context,
-        views: RemoteViews,
-        viewId: Int,
-        action: String
-    ) {
-        val intent = Intent(context, WidgetActionReceiver::class.java).apply {
-            setAction(action)
-        }
-        val pendingIntent = PendingIntent.getBroadcast(
-            context, viewId, intent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
-        views.setOnClickPendingIntent(viewId, pendingIntent)
     }
 }

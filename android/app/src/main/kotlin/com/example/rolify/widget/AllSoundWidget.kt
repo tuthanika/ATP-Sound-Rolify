@@ -32,10 +32,10 @@ class AllSoundWidget : AppWidgetProvider() {
                     putExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS, appWidgetIds)
                 }
                 context.sendBroadcast(intent)
+                appWidgetManager.notifyAppWidgetViewDataChanged(appWidgetIds, R.id.widget_playlist_list)
             }
         }
     }
-
 
     override fun onUpdate(
         context: Context,
@@ -54,24 +54,31 @@ class AllSoundWidget : AppWidgetProvider() {
     ) {
         val views = RemoteViews(context.packageName, R.layout.widget_soundaura)
 
-        // Intents for buttons
-        setButtonPendingIntent(context, views, R.id.widget_play_pause, ACTION_PLAY_PAUSE)
-        // setButtonPendingIntent(context, views, R.id.widget_stop, ACTION_STOP) // Replaced below
-        // setButtonPendingIntent(context, views, R.id.widget_master_volume_container, ACTION_TOGGLE_VOLUME_SLIDER) // Replaced below
+        // Action: Play/Pause
+        val playIntent = Intent(context, WidgetActionReceiver::class.java).apply {
+            action = ACTION_PLAY_PAUSE
+        }
+        val playPendingIntent = PendingIntent.getBroadcast(
+            context, 1, playIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        views.setOnClickPendingIntent(R.id.widget_play_pause, playPendingIntent)
 
         val (activeAudios, activePlaylists) = FlutterDataHelper.getActiveCounts(context)
         if (activeAudios > 0) {
             views.setTextViewText(R.id.widget_playlist_name, "Rolify - Sounds ($activeAudios)")
+            views.setTextViewText(R.id.widget_status, "Playing")
         } else {
             views.setTextViewText(R.id.widget_playlist_name, "Rolify - All Sounds")
+            views.setTextViewText(R.id.widget_status, "Stopped")
         }
 
         // Action: Volume Cycle
         val volumeIntent = Intent(context, WidgetActionReceiver::class.java).apply {
-            action = "com.example.rolify.widget.ACTION_CYCLE_VOLUME"
+            action = ACTION_CYCLE_VOLUME
         }
         val volumePendingIntent = PendingIntent.getBroadcast(
-            context, 0, volumeIntent,
+            context, 2, volumeIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
         views.setOnClickPendingIntent(R.id.widget_master_volume_container, volumePendingIntent)
@@ -85,12 +92,11 @@ class AllSoundWidget : AppWidgetProvider() {
             action = ACTION_STOP_ALL
         }
         val stopPendingIntent = PendingIntent.getBroadcast(
-            context, 0, stopIntent,
+            context, 3, stopIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
         views.setOnClickPendingIntent(R.id.widget_stop, stopPendingIntent)
         views.setViewVisibility(R.id.widget_stop, if (activeAudios > 0) View.VISIBLE else View.GONE)
-
 
         // Intent to open App
         val openAppIntent = Intent(context, MainActivity::class.java).apply {
@@ -98,46 +104,28 @@ class AllSoundWidget : AppWidgetProvider() {
             data = "rolify://widget".toUri()
         }
         val openAppPendingIntent = PendingIntent.getActivity(
-            context, 0, openAppIntent,
+            context, 4, openAppIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
         views.setOnClickPendingIntent(R.id.widget_title_container, openAppPendingIntent)
 
         // RemoteViewsService for the list of sounds
-        val intent = Intent(context, AllSoundWidgetListService::class.java).apply {
+        val serviceIntent = Intent(context, AllSoundWidgetListService::class.java).apply {
             putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId)
             data = toUri(Intent.URI_INTENT_SCHEME).toUri()
         }
-        views.setRemoteAdapter(R.id.widget_playlist_list, intent)
+        views.setRemoteAdapter(R.id.widget_playlist_list, serviceIntent)
 
         // PendingIntent for list item clicks
-        val clickIntent = Intent(context, WidgetActionReceiver::class.java).apply {
+        val itemClickIntent = Intent(context, WidgetActionReceiver::class.java).apply {
             action = ACTION_TOGGLE_AUDIO
         }
-        val clickPendingIntent = PendingIntent.getBroadcast(
-            context, 0, clickIntent,
+        val itemClickPendingIntent = PendingIntent.getBroadcast(
+            context, 5, itemClickIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE
         )
-        views.setPendingIntentTemplate(R.id.widget_playlist_list, clickPendingIntent)
-
-        views.setTextViewText(R.id.widget_playlist_name, "Rolify - All Sounds")
+        views.setPendingIntentTemplate(R.id.widget_playlist_list, itemClickPendingIntent)
 
         appWidgetManager.updateAppWidget(appWidgetId, views)
-    }
-
-    private fun setButtonPendingIntent(
-        context: Context,
-        views: RemoteViews,
-        viewId: Int,
-        action: String
-    ) {
-        val intent = Intent(context, WidgetActionReceiver::class.java).apply {
-            setAction(action)
-        }
-        val pendingIntent = PendingIntent.getBroadcast(
-            context, viewId, intent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
-        views.setOnClickPendingIntent(viewId, pendingIntent)
     }
 }

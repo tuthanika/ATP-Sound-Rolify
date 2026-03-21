@@ -30,10 +30,8 @@ class AllSoundRemoteViewsFactory(
 
     override fun onDataSetChanged() {
         // Fetch from SharedPreferences
-        audios = FlutterDataHelper.getAudios(context).apply {
-            // Sort by name or any preferred order
-            sortedBy { it.name.lowercase() }
-        }
+        audios = FlutterDataHelper.getAudios(context).sortedBy { it.name.lowercase() }
+
     }
 
     override fun onDestroy() {

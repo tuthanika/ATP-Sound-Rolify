@@ -26,7 +26,6 @@ class WidgetActionReceiver : BroadcastReceiver() {
                 sendAction(context, "play_playlist", id = playlistId)
             }
             AllSoundWidget.ACTION_CYCLE_VOLUME -> {
-
                 val currentVolume = prefs.getInt("volume", 100)
                 val nextVolume = when {
                     currentVolume < 25 -> 25
@@ -36,6 +35,7 @@ class WidgetActionReceiver : BroadcastReceiver() {
                     else -> 0
                 }
                 prefs.edit().putInt("volume", nextVolume).apply()
+                // Update volume silently in prefs first, then try to send to app
                 sendAction(context, "set_volume", volume = nextVolume)
             }
         }

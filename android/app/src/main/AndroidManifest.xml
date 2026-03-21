@@ -55,11 +55,12 @@
     <receiver android:name=".widget.WidgetActionReceiver" android:exported="false">
       <intent-filter>
         <action android:name="com.example.rolify.widget.ACTION_PLAY_PAUSE" />
-        <action android:name="com.example.rolify.widget.ACTION_STOP" />
+        <action android:name="com.example.rolify.widget.ACTION_STOP_ALL" />
         <action android:name="com.example.rolify.widget.ACTION_TOGGLE_AUDIO" />
         <action android:name="com.example.rolify.widget.playlist.ACTION_PLAY_PAUSE" />
-        <action android:name="com.example.rolify.widget.playlist.ACTION_STOP" />
+        <action android:name="com.example.rolify.widget.ACTION_STOP_ALL" />
         <action android:name="com.example.rolify.widget.playlist.ACTION_TOGGLE_PLAYLIST" />
+
         <action android:name="com.example.rolify.widget.ACTION_CYCLE_VOLUME" />
       </intent-filter>
 
