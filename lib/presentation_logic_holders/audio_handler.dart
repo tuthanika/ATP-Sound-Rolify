@@ -209,39 +209,6 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
   /// }
   @override
   Future customAction(String name, [Map<String, dynamic>? extras]) async {
-    if (extras != null) {
-      final audio = Audio.fromJson(extras["audio"]);
-      final audioPlayer = await getAudioPlayer(audio);
-      if (extras["param"] != null) {
-        final dynamic param = extras["param"];
-
-        if (name == 'set_volume') {
-          audioPlayer.setVolume(param);
-        }
-        if (name == 'loop') {
-          audioPlayer.setLoopMode(param ? LoopMode.one : LoopMode.off);
-        }
-      } else {
-        if (name == 'play') {
-          playAudioPlayer(audioPlayer);
-        }
-        if (name == 'stop') {
-          audioPlayer.stop();
-          playingAudio.remove(audioPlayer);
-          pausedAudio.remove(audioPlayer);
-          _broadcastState();
-        }
-        if (name == 'is_playing') {
-          return audioPlayer.playing;
-        }
-        if (name == 'get_volume') {
-          return audioPlayer.volume;
-        }
-        if (name == 'get_loop') {
-          return audioPlayers[audio.path]!.loopMode == LoopMode.one;
-        }
-      }
-    }
     if (name == 'set_master_volume' && extras != null) {
       final volumeVal = extras['volume'];
       final double volume = volumeVal is int ? volumeVal.toDouble() / 100.0 : (volumeVal?.toDouble() ?? 1.0);
@@ -274,12 +241,11 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
         await pause();
       } else if (pausedAudio.isNotEmpty) {
         await play();
-      } else {
-        await play();
       }
       writeWidgetState();
       return null;
     }
+
     if (name == 'stop_all') {
       await stop();
       PlayingSounds().activePlaylistIds = [];
@@ -290,8 +256,50 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
       return null;
     }
 
+    if (name == 'broadcast_state') {
+      writeWidgetState();
+      _broadcastState();
+      return null;
+    }
+
+    // Audio-specific actions
+    if (extras != null && extras.containsKey("audio")) {
+      final audio = Audio.fromJson(extras["audio"]);
+      final audioPlayer = await getAudioPlayer(audio);
+      if (extras["param"] != null) {
+        final dynamic param = extras["param"];
+
+        if (name == 'set_volume') {
+          audioPlayer.setVolume(param);
+        }
+        if (name == 'loop') {
+          audioPlayer.setLoopMode(param ? LoopMode.one : LoopMode.off);
+        }
+      } else {
+        if (name == 'play') {
+          playAudioPlayer(audioPlayer);
+        }
+        if (name == 'stop') {
+          audioPlayer.stop();
+          playingAudio.remove(audioPlayer);
+          pausedAudio.remove(audioPlayer);
+          _broadcastState();
+        }
+        if (name == 'is_playing') {
+          return audioPlayer.playing;
+        }
+        if (name == 'get_volume') {
+          return audioPlayer.volume;
+        }
+        if (name == 'get_loop') {
+          return audioPlayers[audio.path]!!.loopMode == LoopMode.one;
+        }
+      }
+    }
+
     return super.customAction(name, extras);
   }
+
 
   Map<String, dynamic> createAudioCustomEvent(AudioCustomEvents name,
       [String? audioPath]) {

@@ -62,7 +62,10 @@
         <action android:name="com.example.rolify.widget.playlist.ACTION_TOGGLE_PLAYLIST" />
 
         <action android:name="com.example.rolify.widget.ACTION_CYCLE_VOLUME" />
+        <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+        <action android:name="android.intent.action.BOOT_COMPLETED" />
       </intent-filter>
+
 
     </receiver>
 

@@ -40,7 +40,11 @@ class WidgetActionReceiver : BroadcastReceiver() {
                 sendAction(context, "set_master_volume", volume = nextVolume)
 
             }
+            Intent.ACTION_BOOT_COMPLETED, Intent.ACTION_MY_PACKAGE_REPLACED -> {
+                refreshWidgets(context)
+            }
         }
+
     }
 
     private fun sendAction(context: Context, command: String, path: String? = null, id: String? = null, volume: Int? = null) {
