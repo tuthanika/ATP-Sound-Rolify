@@ -6,7 +6,7 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
     
     <!-- App name (no translation) -->
-    <string name="app_name" translatable="false">SoundAura Plus</string>
+    <string name="app_name" translatable="false">Rolify</string>
 
     <!-- Service descriptions -->
     <string name="app_player_service_description">A service to play the user sound mix.</string>
@@ -352,7 +352,7 @@ Only needed when playing in background</string>
         https://github.com/CliffracerMerchant/SoundAura</string>
 
     <!-- Widget strings -->
-    <string name="widget_name">SoundAura Plus</string>
+    <string name="widget_name">Rolify</string>
     <string name="widget_description">Control your music and activate/deactivate tracks</string>
     <string name="stop">Stop</string>
     <string name="play_pause">Play/Pause</string>

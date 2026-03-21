@@ -16,6 +16,9 @@ import 'package:rolify/src/theme/texts.dart';
 
 import 'all_playlist.dart';
 import 'all_sounds/all_sound.dart';
+import 'package:flutter/services.dart';
+import 'package:rolify/data/audios.dart';
+import 'package:rolify/data/playlist.dart';
 
 const titles = ['Sounds', 'Session', 'Playlists', 'Rolify', 'Edit Sound'];
 
@@ -25,10 +28,6 @@ class Base extends StatefulWidget {
   @override
   BaseState createState() => BaseState();
 }
-
-import 'package:flutter/services.dart';
-import 'package:rolify/data/audios.dart';
-import 'package:rolify/data/playlists.dart';
 
 class BaseState extends State<Base> with WidgetsBindingObserver {
   int pageSelected = 0;
@@ -95,7 +94,7 @@ class BaseState extends State<Base> with WidgetsBindingObserver {
         } else if (command == 'play_playlist' && id != null) {
           final pIndex = int.tryParse(id);
           if (pIndex != null) {
-            final allPlaylists = await PlaylistData.getAllPlaylists();
+            final allPlaylists = await PlaylistData.getAllPlaylist();
             if (pIndex >= 0 && pIndex < allPlaylists.length) {
               final playlist = allPlaylists[pIndex];
               PlayingSounds().isPlayingPlaylist.value = true;
