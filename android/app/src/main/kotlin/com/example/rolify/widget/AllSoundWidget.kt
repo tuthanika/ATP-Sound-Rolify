@@ -32,8 +32,9 @@ class AllSoundWidget : AppWidgetProvider() {
                     putExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS, appWidgetIds)
                 }
                 context.sendBroadcast(intent)
-                appWidgetManager.notifyAppWidgetViewDataChanged(appWidgetIds, R.id.widget_playlist_list)
+                appWidgetManager.notifyAppWidgetViewDataChanged(appWidgetIds, R.id.widget_soundaura_list)
             }
+
         }
     }
 
