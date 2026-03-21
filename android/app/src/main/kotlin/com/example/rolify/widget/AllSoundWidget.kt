@@ -34,7 +34,6 @@ class AllSoundWidget : AppWidgetProvider() {
                 context.sendBroadcast(intent)
                 appWidgetManager.notifyAppWidgetViewDataChanged(appWidgetIds, R.id.widget_playlist_list)
             }
-
         }
     }
 
@@ -66,6 +65,10 @@ class AllSoundWidget : AppWidgetProvider() {
         views.setOnClickPendingIntent(R.id.widget_play_pause, playPendingIntent)
 
         val (activeAudios, activePlaylists) = FlutterDataHelper.getActiveCounts(context)
+        
+        val playIcon = if (activeAudios > 0) R.drawable.ic_widget_pause else R.drawable.ic_widget_play
+        views.setImageViewResource(R.id.widget_play_pause, playIcon)
+
         if (activeAudios > 0) {
             views.setTextViewText(R.id.widget_playlist_name, "Rolify - Sounds ($activeAudios)")
             views.setTextViewText(R.id.widget_status, "Playing")
@@ -126,9 +129,7 @@ class AllSoundWidget : AppWidgetProvider() {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE
         )
         views.setPendingIntentTemplate(R.id.widget_playlist_list, itemClickPendingIntent)
+
         appWidgetManager.updateAppWidget(appWidgetId, views)
     }
 }
-
-
-

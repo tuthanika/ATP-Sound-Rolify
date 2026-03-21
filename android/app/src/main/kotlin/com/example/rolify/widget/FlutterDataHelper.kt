@@ -17,7 +17,7 @@ data class RolifyPlaylist(
     val id: String,
     val name: String,
     var isActive: Boolean = false,
-    val audios: List<RolifyAudio> = emptyList()
+    val audios: List<RolifyAudio>
 )
 
 object FlutterDataHelper {

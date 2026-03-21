@@ -27,7 +27,7 @@ class PlaylistRemoteViewsFactory(
     override fun onCreate() {}
 
     override fun onDataSetChanged() {
-        playlists = FlutterDataHelper.getPlaylists(context).sortedBy { it.name.lowercase() }
+        playlists = FlutterDataHelper.getPlaylists(context)
     }
 
 

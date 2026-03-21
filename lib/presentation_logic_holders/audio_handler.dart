@@ -108,19 +108,13 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
   Future<void> writeWidgetState() async {
     final prefs = await SharedPreferences.getInstance();
     final playingPaths = playingAudio.map((p) => _getAudioPath(p)).where((path) => path.isNotEmpty).toList();
-    final pausedPaths = pausedAudio.map((p) => _getAudioPath(p)).where((path) => path.isNotEmpty).toList();
-    
-    // Combine both so the widget UI retains selection state while paused
-    final allActivePaths = [...playingPaths, ...pausedPaths].toSet().toList();
-
     final state = {
-      'playingPaths': allActivePaths,
+      'playingPaths': playingPaths,
       'activePlaylistIds': PlayingSounds().activePlaylistIds,
       'masterVolume': PlayingSounds().masterVolume,
     };
     await prefs.setString('widget_state', jsonEncode(state));
   }
-
 
   void playAudioPlayer(AudioPlayer audioPlayer) {
     audioPlayer.play().then((_) async {
