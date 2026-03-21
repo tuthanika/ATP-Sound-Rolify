@@ -131,5 +131,6 @@ class AllSoundWidget : AppWidgetProvider() {
         views.setPendingIntentTemplate(R.id.widget_playlist_list, itemClickPendingIntent)
 
         appWidgetManager.updateAppWidget(appWidgetId, views)
+        appWidgetManager.notifyAppWidgetViewDataChanged(appWidgetIds, R.id.widget_playlist_list)
     }
 }
