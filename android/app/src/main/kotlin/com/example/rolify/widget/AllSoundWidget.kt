@@ -126,11 +126,9 @@ class AllSoundWidget : AppWidgetProvider() {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE
         )
         views.setPendingIntentTemplate(R.id.widget_soundaura_list, itemClickPendingIntent)
-
         appWidgetManager.updateAppWidget(appWidgetId, views)
-
-        appWidgetManager.notifyAppWidgetViewDataChanged(appWidgetId, R.id.widget_soundaura_list)
     }
 }
+
 
 
