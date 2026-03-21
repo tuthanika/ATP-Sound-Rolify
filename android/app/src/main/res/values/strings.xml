@@ -380,4 +380,9 @@ Only needed when playing in background</string>
     <string name="relink_sounds_description">Select the folder where your sounds are to fix missing path errors.</string>
     <string name="relink_success">Successfully relinked %1$d sounds!</string>
     <string name="relink_no_matches">No matching sounds found in the selected folder.</string>
+    <string name="add">Add</string>
+    <string name="load">Load</string>
+    <string name="stop">Stop</string>
+    <string name="play_pause">Play/Pause</string>
 </resources>
+

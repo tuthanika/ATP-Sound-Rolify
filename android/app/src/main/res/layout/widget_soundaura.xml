@@ -36,7 +36,7 @@
                 android:id="@+id/widget_status"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="@string/stopped"
+                android:text="Stopped"
                 android:textSize="14sp"
                 android:textColor="@android:color/white"
                 android:alpha="0.8" />
@@ -86,32 +86,8 @@
                 android:layout_height="48dp"
                 android:src="@drawable/ic_baseline_stop_24"
                 android:background="@android:color/transparent"
-                android:contentDescription="@string/stop" />
-
-            <LinearLayout
-                android:id="@+id/widget_master_volume_container"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:layout_marginStart="16dp"
-                android:gravity="center_vertical"
-                android:padding="4dp">
-                <ImageView
-                    android:layout_width="20dp"
-                    android:layout_height="20dp"
-                    android:src="@drawable/ic_widget_volume" />
-                <TextView
-                    android:id="@+id/widget_master_volume_text"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="4dp"
-                    android:textColor="@android:color/white"
-                    android:textSize="13sp"
-                    android:textStyle="bold"
-                    android:text="100%" />
-            </LinearLayout>
-        </LinearLayout>
-    </LinearLayout>
+                android:contentDescription="@string/stop"
+                android:visibility="gone" />
 
             <LinearLayout
                 android:id="@+id/widget_master_volume_container"
