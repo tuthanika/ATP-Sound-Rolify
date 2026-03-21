@@ -155,11 +155,12 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
   @override
   Future<void> pause() async {
     for (final audioPlayer in playingAudio) {
-      await audioPlayer.stop();
+      await audioPlayer.pause();
       pausedAudio.add(audioPlayer);
     }
     playingAudio = [];
     _broadcastState();
+
 
     playbackState.add(PlaybackState(
       controls: [
@@ -242,7 +243,11 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
       }
     }
     if (name == 'set_master_volume' && extras != null) {
-      final double volume = extras['volume'];
+      final volumeVal = extras['volume'];
+      final double volume = volumeVal is int ? volumeVal.toDouble() / 100.0 : (volumeVal?.toDouble() ?? 1.0);
+      
+      PlayingSounds().masterVolume = volume;
+      
       for (final path in audioPlayers.keys) {
         final player = audioPlayers[path]!;
         Audio? audio;
@@ -263,6 +268,7 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
       writeWidgetState();
       return null;
     }
+
     if (name == 'play_pause') {
       if (playingAudio.isNotEmpty) {
         await pause();

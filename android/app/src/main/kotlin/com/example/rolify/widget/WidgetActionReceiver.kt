@@ -37,7 +37,8 @@ class WidgetActionReceiver : BroadcastReceiver() {
                     else -> 0
                 }
                 prefs.edit().putInt("volume", nextVolume).apply()
-                sendAction(context, "set_volume", volume = nextVolume)
+                sendAction(context, "set_master_volume", volume = nextVolume)
+
             }
         }
     }

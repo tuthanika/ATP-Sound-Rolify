@@ -61,6 +61,17 @@ class PlaylistWidget : AppWidgetProvider() {
             views.setTextViewText(R.id.widget_title, "Rolify Playlists")
         }
 
+        // Action: Play/Pause
+        val playIntent = Intent(context, WidgetActionReceiver::class.java).apply {
+            action = ACTION_PLAY_PAUSE
+        }
+        val playPendingIntent = PendingIntent.getBroadcast(
+            context, 9, playIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        views.setOnClickPendingIntent(R.id.widget_play_pause, playPendingIntent)
+
+
         // Action: Volume Cycle
         val volumeIntent = Intent(context, WidgetActionReceiver::class.java).apply {
             action = ACTION_CYCLE_VOLUME
