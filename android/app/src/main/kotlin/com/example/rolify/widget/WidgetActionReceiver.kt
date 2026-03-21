@@ -45,7 +45,7 @@ class WidgetActionReceiver : BroadcastReceiver() {
                 // Also schedule a delayed refresh to be extra sure
                 Handler(Looper.getMainLooper()).postDelayed({
                     refreshWidgets(context)
-                }, 2000)
+                }, 3000)
             }
         }
 
