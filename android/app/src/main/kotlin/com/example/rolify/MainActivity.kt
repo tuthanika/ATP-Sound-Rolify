@@ -5,6 +5,7 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.provider.OpenableColumns
+import android.content.Context
 import com.ryanheise.audioservice.AudioServiceActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
@@ -16,10 +17,38 @@ class MainActivity: AudioServiceActivity() {
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+        
+        // File Picker Channel
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL).setMethodCallHandler { call, result ->
             if (call.method == "pickAudioFiles") {
                 pendingResult = result
                 openFilePicker()
+            } else {
+                result.notImplemented()
+            }
+        }
+        
+        // Widget Command Channel
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "rolify/widget_command").setMethodCallHandler { call, result ->
+            if (call.method == "getPendingWidgetCommand") {
+                val prefs = getSharedPreferences("WidgetCommandPrefs", Context.MODE_PRIVATE)
+                val command = prefs.getString("command", null)
+                val path = prefs.getString("path", null)
+                val id = prefs.getString("id", null)
+                
+                if (command != null) {
+                    // Clear the command
+                    prefs.edit().clear().apply()
+                    
+                    val response = mapOf(
+                        "command" to command,
+                        "path" to path,
+                        "id" to id
+                    )
+                    result.success(response)
+                } else {
+                    result.success(null)
+                }
             } else {
                 result.notImplemented()
             }

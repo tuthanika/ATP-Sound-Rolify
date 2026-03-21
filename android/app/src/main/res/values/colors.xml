@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- This file is part of SoundAura, which is released under
+   ~ the terms of the Apache License 2.0. See license.md in
+   ~ the project's root directory to see the full license. -->
+
+<resources>
+    <color name="lightThemeGradientStart">#FF55D69A</color>
+    <color name="lightThemeGradientEnd">#FF3EC2BD</color>
+    <color name="lightThemeSecondary">#FF46A8FF</color>
+    <color name="lightBackground">#FFF1F3F5</color>
+    <color name="lightSurface">#FFDEE2E6</color>
+    <color name="lightOnSurface">#FF2E3236</color>
+    <color name="lightOnPrimary">#FF2E3236</color>
+
+    <color name="darkThemeGradientStart">#FF4EC18B</color>
+    <color name="darkThemeGradientEnd">#FF38AAA6</color>
+    <color name="darkThemeSecondary">#FF3174AF</color>
+    <color name="darkBackground">#FF212529</color>
+    <color name="darkSurface">#FF2F3335</color>
+    <color name="darkOnSurface">#FFBEC5CC</color>
+    <color name="darkOnPrimary">#FF2B2F32</color>
+    <color name="widget_active_item_bg">#334EC18B</color>
+</resources>
