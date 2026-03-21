@@ -125,8 +125,9 @@ class PlaylistWidget : AppWidgetProvider() {
         )
         views.setPendingIntentTemplate(R.id.widget_preset_list, itemClickPendingIntent)
 
-        appWidgetManager.notifyAppWidgetViewDataChanged(appWidgetId, R.id.widget_preset_list)
         appWidgetManager.updateAppWidget(appWidgetId, views)
+        appWidgetManager.notifyAppWidgetViewDataChanged(appWidgetId, R.id.widget_preset_list)
     }
 }
+
 

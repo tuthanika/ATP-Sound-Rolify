@@ -127,7 +127,10 @@ class AllSoundWidget : AppWidgetProvider() {
         )
         views.setPendingIntentTemplate(R.id.widget_soundaura_list, itemClickPendingIntent)
 
-        appWidgetManager.notifyAppWidgetViewDataChanged(appWidgetId, R.id.widget_soundaura_list)
         appWidgetManager.updateAppWidget(appWidgetId, views)
+
+        appWidgetManager.notifyAppWidgetViewDataChanged(appWidgetId, R.id.widget_soundaura_list)
     }
 }
+
+
