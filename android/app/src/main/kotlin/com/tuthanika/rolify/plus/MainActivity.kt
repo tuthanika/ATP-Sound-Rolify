@@ -1,4 +1,4 @@
-package com.example.rolify
+package com.tuthanika.rolify.plus
 
 import android.app.Activity
 import android.content.Intent
@@ -82,8 +82,8 @@ class MainActivity: AudioServiceActivity() {
                     result.success(null)
                 }
             } else if (call.method == "updateWidgets") {
-                com.example.rolify.widget.AllSoundWidget.updateAllWidgets(this)
-                com.example.rolify.widget.PlaylistWidget.updateAllWidgets(this)
+                com.tuthanika.rolify.plus.widget.AllSoundWidget.updateAllWidgets(this)
+                com.tuthanika.rolify.plus.widget.PlaylistWidget.updateAllWidgets(this)
                 result.success(null)
             } else {
                 result.notImplemented()

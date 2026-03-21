@@ -1,4 +1,4 @@
-package com.example.rolify.widget
+package com.tuthanika.rolify.plus.widget
 
 import android.app.PendingIntent
 import android.appwidget.AppWidgetManager
@@ -9,26 +9,26 @@ import android.widget.RemoteViews
 import android.view.View
 import android.net.Uri
 import androidx.core.net.toUri
-import com.example.rolify.MainActivity
-import com.example.rolify.R
+import com.tuthanika.rolify.plus.MainActivity
+import com.tuthanika.rolify.plus.R
 
-class PlaylistWidget : AppWidgetProvider() {
+class AllSoundWidget : AppWidgetProvider() {
 
     companion object {
-        const val ACTION_PLAY_PAUSE = "com.example.rolify.widget.playlist.ACTION_PLAY_PAUSE"
-        const val ACTION_STOP_ALL = "com.example.rolify.widget.ACTION_STOP_ALL"
-        const val ACTION_TOGGLE_PLAYLIST = "com.example.rolify.widget.playlist.ACTION_TOGGLE_PLAYLIST"
-        const val ACTION_CYCLE_VOLUME = "com.example.rolify.widget.ACTION_CYCLE_VOLUME"
-        const val EXTRA_PLAYLIST_ID = "extra_playlist_id"
-        const val EXTRA_PLAYLIST_NAME = "extra_playlist_name"
+        const val ACTION_PLAY_PAUSE = "com.tuthanika.rolify.plus.widget.ACTION_PLAY_PAUSE"
+        const val ACTION_STOP_ALL = "com.tuthanika.rolify.plus.widget.ACTION_STOP_ALL"
+        const val ACTION_TOGGLE_AUDIO = "com.tuthanika.rolify.plus.widget.ACTION_TOGGLE_AUDIO"
+        const val ACTION_CYCLE_VOLUME = "com.tuthanika.rolify.plus.widget.ACTION_CYCLE_VOLUME"
+        const val EXTRA_AUDIO_PATH = "extra_audio_path"
+        const val EXTRA_AUDIO_NAME = "extra_audio_name"
         const val EXTRA_VOLUME = "extra_volume"
 
         fun updateAllWidgets(context: Context) {
             val appWidgetManager = AppWidgetManager.getInstance(context)
-            val componentName = android.content.ComponentName(context, PlaylistWidget::class.java)
+            val componentName = android.content.ComponentName(context, AllSoundWidget::class.java)
             val appWidgetIds = appWidgetManager.getAppWidgetIds(componentName)
             if (appWidgetIds.isNotEmpty()) {
-                val provider = PlaylistWidget()
+                val provider = AllSoundWidget()
                 for (id in appWidgetIds) {
                     provider.updateAppWidget(context, appWidgetManager, id)
                 }
@@ -51,36 +51,37 @@ class PlaylistWidget : AppWidgetProvider() {
         appWidgetManager: AppWidgetManager,
         appWidgetId: Int
     ) {
-        val views = RemoteViews(context.packageName, R.layout.widget_preset)
-
-        val (activeAudios, activePlaylists) = FlutterDataHelper.getActiveCounts(context)
-        
-        val playIcon = if (FlutterDataHelper.isPlaying(context)) R.drawable.ic_widget_pause else R.drawable.ic_widget_play
-        views.setImageViewResource(R.id.widget_play_pause, playIcon)
-
-        if (activePlaylists > 0) {
-            views.setTextViewText(R.id.widget_title, "Rolify - Playlists ($activePlaylists)")
-        } else {
-            views.setTextViewText(R.id.widget_title, "Rolify Playlists")
-        }
+        val views = RemoteViews(context.packageName, R.layout.widget_soundaura)
 
         // Action: Play/Pause
         val playIntent = Intent(context, WidgetActionReceiver::class.java).apply {
             action = ACTION_PLAY_PAUSE
         }
         val playPendingIntent = PendingIntent.getBroadcast(
-            context, 9, playIntent,
+            context, 1, playIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
         views.setOnClickPendingIntent(R.id.widget_play_pause, playPendingIntent)
 
+        val (activeAudios, activePlaylists) = FlutterDataHelper.getActiveCounts(context)
+        
+        val playIcon = if (FlutterDataHelper.isPlaying(context)) R.drawable.ic_widget_pause else R.drawable.ic_widget_play
+        views.setImageViewResource(R.id.widget_play_pause, playIcon)
+
+        if (activeAudios > 0) {
+            views.setTextViewText(R.id.widget_playlist_name, "Rolify Plus - Sounds ($activeAudios)")
+            views.setTextViewText(R.id.widget_status, "Playing")
+        } else {
+            views.setTextViewText(R.id.widget_playlist_name, "Rolify Plus - All Sounds")
+            views.setTextViewText(R.id.widget_status, "Stopped")
+        }
 
         // Action: Volume Cycle
         val volumeIntent = Intent(context, WidgetActionReceiver::class.java).apply {
             action = ACTION_CYCLE_VOLUME
         }
         val volumePendingIntent = PendingIntent.getBroadcast(
-            context, 10, volumeIntent,
+            context, 2, volumeIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
         views.setOnClickPendingIntent(R.id.widget_master_volume_container, volumePendingIntent)
@@ -94,42 +95,42 @@ class PlaylistWidget : AppWidgetProvider() {
             action = ACTION_STOP_ALL
         }
         val stopPendingIntent = PendingIntent.getBroadcast(
-            context, 11, stopIntent,
+            context, 3, stopIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
         views.setOnClickPendingIntent(R.id.widget_stop, stopPendingIntent)
-        views.setViewVisibility(R.id.widget_stop, if (activeAudios > 0 || activePlaylists > 0) View.VISIBLE else View.GONE)
+        views.setViewVisibility(R.id.widget_stop, if (activeAudios > 0) View.VISIBLE else View.GONE)
 
         // Intent to open App
         val openAppIntent = Intent(context, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
-            data = "rolify://widget_playlist".toUri()
+            data = "rolify://widget".toUri()
         }
         val openAppPendingIntent = PendingIntent.getActivity(
-            context, 12, openAppIntent,
+            context, 4, openAppIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
         views.setOnClickPendingIntent(R.id.widget_title_container, openAppPendingIntent)
 
-        // RemoteViewsService for the list of playlists
-        val serviceIntent = Intent(context, PlaylistWidgetListService::class.java).apply {
+        // RemoteViewsService for the list of sounds
+        val serviceIntent = Intent(context, AllSoundWidgetListService::class.java).apply {
             putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId)
             data = toUri(Intent.URI_INTENT_SCHEME).toUri()
         }
-        views.setRemoteAdapter(R.id.widget_preset_list, serviceIntent)
+        views.setRemoteAdapter(R.id.widget_playlist_list, serviceIntent)
 
         // PendingIntent for list item clicks
         val itemClickIntent = Intent(context, WidgetActionReceiver::class.java).apply {
-            action = ACTION_TOGGLE_PLAYLIST
+            action = ACTION_TOGGLE_AUDIO
         }
         val itemClickPendingIntent = PendingIntent.getBroadcast(
-            context, 13, itemClickIntent,
+            context, 5, itemClickIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE
         )
-        views.setPendingIntentTemplate(R.id.widget_preset_list, itemClickPendingIntent)
+        views.setPendingIntentTemplate(R.id.widget_playlist_list, itemClickPendingIntent)
 
         // CRITICAL: updateAppWidget must be called BEFORE notifyAppWidgetViewDataChanged
         appWidgetManager.updateAppWidget(appWidgetId, views)
-        appWidgetManager.notifyAppWidgetViewDataChanged(appWidgetId, R.id.widget_preset_list)
+        appWidgetManager.notifyAppWidgetViewDataChanged(appWidgetId, R.id.widget_playlist_list)
     }
 }

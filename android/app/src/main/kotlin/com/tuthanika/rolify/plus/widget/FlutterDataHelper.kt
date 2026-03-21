@@ -1,4 +1,4 @@
-package com.example.rolify.widget
+package com.tuthanika.rolify.plus.widget
 
 import android.content.Context
 import android.content.SharedPreferences

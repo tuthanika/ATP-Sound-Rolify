@@ -1,10 +1,10 @@
-package com.example.rolify.widget
+package com.tuthanika.rolify.plus.widget
 
 import android.appwidget.AppWidgetManager
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import com.example.rolify.MainActivity
+import com.tuthanika.rolify.plus.MainActivity
 
 class WidgetActionReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {

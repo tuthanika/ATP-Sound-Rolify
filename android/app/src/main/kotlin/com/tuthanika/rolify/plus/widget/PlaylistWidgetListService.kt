@@ -1,11 +1,11 @@
-package com.example.rolify.widget
+package com.tuthanika.rolify.plus.widget
 
 import android.appwidget.AppWidgetManager
 import android.content.Context
 import android.content.Intent
 import android.widget.RemoteViews
 import android.widget.RemoteViewsService
-import com.example.rolify.R
+import com.tuthanika.rolify.plus.R
 
 class PlaylistWidgetListService : RemoteViewsService() {
     override fun onGetViewFactory(intent: Intent): RemoteViewsFactory {

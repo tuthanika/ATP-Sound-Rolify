@@ -1,11 +1,11 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="com.example.rolify">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="com.tuthanika.rolify.plus">
 
   <uses-permission android:name="android.permission.INTERNET" />
   <uses-permission android:name="android.permission.WAKE_LOCK" />
   <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
   <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
-  <application android:label="rolify" android:name="${applicationName}" android:icon="@mipmap/launcher_icon">
+  <application android:label="Rolify Plus" android:name="${applicationName}" android:icon="@mipmap/launcher_icon">
     <activity android:name=".MainActivity" android:exported="true" android:launchMode="singleTop" android:theme="@style/LaunchTheme" android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode" android:hardwareAccelerated="true" android:windowSoftInputMode="adjustResize">
       <!-- Specifies an Android theme to apply to this Activity as soon as
                  the Android process has started. This theme is visible to the user
@@ -55,14 +55,14 @@
 
     <receiver android:name=".widget.WidgetActionReceiver" android:exported="true">
       <intent-filter>
-        <action android:name="com.example.rolify.widget.ACTION_PLAY_PAUSE" />
-        <action android:name="com.example.rolify.widget.ACTION_STOP_ALL" />
-        <action android:name="com.example.rolify.widget.ACTION_TOGGLE_AUDIO" />
-        <action android:name="com.example.rolify.widget.playlist.ACTION_PLAY_PAUSE" />
-        <action android:name="com.example.rolify.widget.ACTION_STOP_ALL" />
-        <action android:name="com.example.rolify.widget.playlist.ACTION_TOGGLE_PLAYLIST" />
+        <action android:name="com.tuthanika.rolify.plus.widget.ACTION_PLAY_PAUSE" />
+        <action android:name="com.tuthanika.rolify.plus.widget.ACTION_STOP_ALL" />
+        <action android:name="com.tuthanika.rolify.plus.widget.ACTION_TOGGLE_AUDIO" />
+        <action android:name="com.tuthanika.rolify.plus.widget.playlist.ACTION_PLAY_PAUSE" />
+        <action android:name="com.tuthanika.rolify.plus.widget.ACTION_STOP_ALL" />
+        <action android:name="com.tuthanika.rolify.plus.widget.playlist.ACTION_TOGGLE_PLAYLIST" />
 
-        <action android:name="com.example.rolify.widget.ACTION_CYCLE_VOLUME" />
+        <action android:name="com.tuthanika.rolify.plus.widget.ACTION_CYCLE_VOLUME" />
         <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
         <action android:name="android.intent.action.BOOT_COMPLETED" />
       </intent-filter>

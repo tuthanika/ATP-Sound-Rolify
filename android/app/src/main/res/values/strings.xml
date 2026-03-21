@@ -6,13 +6,13 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
     
     <!-- App name (no translation) -->
-    <string name="app_name" translatable="false">Rolify</string>
+    <string name="app_name" translatable="false">Rolify Plus</string>
 
     <!-- Service descriptions -->
     <string name="app_player_service_description">A service to play the user sound mix.</string>
     <string name="player_notification_channel_name">Player controls</string>
     <string name="player_notification_channel_description">
-        A notification with controls for SoundAura background audio service.
+        A notification with controls for Rolify Plus background audio service.
     </string>
     <string name="player_no_active_playlists_warning_message">
         There are no active tracks or playlists. Tap a track or playlist add button first.
@@ -20,8 +20,8 @@
     <string name="player_notification_channel_id" translatable="false">player_controls</string>
 
     <!-- Quick Settings Tile -->
-    <string name="tile_inactive_description">Play SoundAura audio</string>
-    <string name="tile_active_description">Stop SoundAura audio</string>
+    <string name="tile_inactive_description">Play Rolify Plus audio</string>
+    <string name="tile_active_description">Stop Rolify Plus audio</string>
 
     <!-- App bar -->
     <string name="back">Back</string>
@@ -192,8 +192,8 @@ Tap the plus symbol next to an added track or playlist to
     <string name="stopped">Stopped</string>
 
     <!-- Playback controls -->
-    <string name="play_button_description">Play SoundAura audio</string>
-    <string name="pause_button_description">Pause SoundAura audio</string>
+    <string name="play_button_description">Play Rolify Plus audio</string>
+    <string name="pause_button_description">Pause Rolify Plus audio</string>
     <string name="play_pause_button_long_click_description">Set auto stop timer</string>
     <string name="play_button_long_click_hint_text">
         Hint: You can long press the play/pause button to set an automatic stop timer</string>
@@ -222,7 +222,7 @@ Tap the plus symbol next to an added track or playlist to
     <string name="playlist">Playlist</string>
 
     <!-- Settings -->
-    <string name="app_settings_description">SoundAura settings</string>
+    <string name="app_settings_description">Rolify Plus settings</string>
     <string name="settings">Settings</string>
     <string name="display">Display</string>
     <string name="app_theme">App Theme</string>
@@ -251,16 +251,16 @@ Tap the plus symbol next to an added track or playlist to
     <!-- Notification permission -->
     <string name="request_notification_permission_title">Notification permission required</string>
     <string name="request_notification_permission_explanation_p1">
-        When play in background is turned on, SoundAura must use a regular
+        When play in background is turned on, Rolify Plus must use a regular
         notification to display the player controls (as opposed to a media session
         card). In order to do this, it must have permission to post notifications.
-        This is optional, but without permission SoundAura will be unable to display
+        This is optional, but without permission Rolify Plus will be unable to display
         a notification containing player controls when play in background is turned
         on.</string>
     <string name="request_notification_permission_explanation_p2">
         If you would rather not give permission, or if you would like to save
         the notification space, you can alternatively %1$s.</string>
-    <string name="tile_tutorial_link_text">control SoundAura through its quick settings tile</string>
+    <string name="tile_tutorial_link_text">control Rolify Plus through its quick settings tile</string>
 
     <!-- Phone state permission -->
     <string name="auto_pause_during_calls_setting_title">Auto-pause during calls</string>
@@ -268,10 +268,10 @@ Tap the plus symbol next to an added track or playlist to
         Requires read phone state permission
 Only needed when playing in background</string>
     <string name="request_phone_state_permission_explanation">
-        When not playing audio in the background, your device will let SoundAura
+        When not playing audio in the background, your device will let Rolify Plus
         know that it should pause playback during a call. This will not occur when
         audio is playing in the background. The read phone state permission is
-        needed in this case so that SoundAura can detect when a call is ongoing
+        needed in this case so that Rolify Plus can detect when a call is ongoing
         and pause playback accordingly.</string>
 
     <!-- Zero volume behavior -->
@@ -302,11 +302,11 @@ Only needed when playing in background</string>
     <string name="tile_tutorial_title">Tile Tutorial</string>
     <string name="multi_step_dialog_indicator">%1$d of %2$d</string>
     <string name="tile_tutorial_intro_text">
-        In addition to its notification, you can control SoundAura
+        In addition to its notification, you can control Rolify Plus
         through a quick settings tile.</string>
     <string name="tile_tutorial_add_tile_text">
         To add it to your active quick settings tiles, tap the fully
-        expanded status bar edit button, and drag the SoundAura
+        expanded status bar edit button, and drag the Rolify Plus
         tile into your list of current tiles.</string>
     <string name="tile_tutorial_add_tile_help_button_text">
         Help! I cannot figure out how to add tiles.</string>
@@ -322,15 +322,15 @@ Only needed when playing in background</string>
         engine.</string>
     <string name="tile_tutorial_add_tile_button_text">Add tile</string>
     <string name="tile_tutorial_tile_usage_text">
-        Tapping the tile will toggle SoundAura background audio
+        Tapping the tile will toggle Rolify Plus background audio
         service between its playing and stopped states. Long tapping
-        the tile will open SoundAura.</string>
+        the tile will open Rolify Plus.</string>
     <string name="tile_tutorial_hide_notification_text">
-        If you would like to hide SoundAura notification to save
+        If you would like to hide Rolify Plus notification to save
         space, you can hide it yourself in the %1$s. Tap Notifications
         and disable the Player controls notification.</string>
     <string name="tile_tutorial_hide_notification_link_text">
-        system settings page for SoundAura</string>
+        system settings page for Rolify Plus</string>
 
     <!-- Stop instead of pause -->
     <string name="stop_instead_of_pause_setting_title">Stop instead of pause</string>
@@ -341,23 +341,23 @@ Only needed when playing in background</string>
     <string name="about">About</string>
     <string name="privacy_policy_setting_title">Privacy policy</string>
     <string name="privacy_policy_setting_body">
-        SoundAura does not collect, store, or transmit any personal information.</string>
+        Rolify Plus does not collect, store, or transmit any personal information.</string>
     <string name="open_source_licenses">Open source licenses</string>
-    <string name="about_app_setting_title">About SoundAura</string>
+    <string name="about_app_setting_title">About Rolify Plus</string>
     <string name="about_app_setting_body">
-        SoundAura is an open source ambient sound app. The source code
+        Rolify Plus is an open source ambient sound app. The source code
         is available under the terms of the Apache License, version 2.0.</string>
     <string name="view_source_code">View source code</string>
     <string name="github_link" translatable="false">
         https://github.com/CliffracerMerchant/SoundAura</string>
 
     <!-- Widget strings -->
-    <string name="widget_name">Rolify</string>
+    <string name="widget_name">Rolify Plus</string>
     <string name="widget_description">Control your music and activate/deactivate tracks</string>
     <string name="stop">Stop</string>
     <string name="play_pause">Play/Pause</string>
     <string name="no_active_playlists">No playback</string>
-    <string name="presets_widget_label">SoundAura Presets</string>
+    <string name="presets_widget_label">Rolify Plus Presets</string>
     <string name="presets">Presets</string>
     <string name="play_pause_description">Toggle Play/Pause</string>
     <string name="stop_description">Stop Playback</string>
