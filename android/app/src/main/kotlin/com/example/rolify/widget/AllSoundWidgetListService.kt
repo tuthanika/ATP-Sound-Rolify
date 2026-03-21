@@ -72,7 +72,7 @@ class AllSoundRemoteViewsFactory(
 
     override fun getViewTypeCount(): Int = 1
 
-    override fun getItemId(position: Int): Long = position.toLong()
+    override fun getItemId(position: Int): Long = audios[position].path.hashCode().toLong()
 
-    override fun hasStableIds(): Boolean = false
+    override fun hasStableIds(): Boolean = true
 }

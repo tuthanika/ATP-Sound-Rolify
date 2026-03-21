@@ -116,8 +116,7 @@ class AllSoundWidget : AppWidgetProvider() {
         // RemoteViewsService for the list of sounds
         val serviceIntent = Intent(context, AllSoundWidgetListService::class.java).apply {
             putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId)
-            // Force a new binding by adding a timestamp
-            data = (toUri(Intent.URI_INTENT_SCHEME) + "/" + System.currentTimeMillis()).toUri()
+            data = toUri(Intent.URI_INTENT_SCHEME).toUri()
         }
         views.setRemoteAdapter(R.id.widget_playlist_list, serviceIntent)
         appWidgetManager.notifyAppWidgetViewDataChanged(appWidgetId, R.id.widget_playlist_list)
