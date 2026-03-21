@@ -5,6 +5,10 @@ class AppState {
   double deviceHeight = 2000;
   double deviceWidth = 2000;
   late AudioHandler audioHandler;
+  bool stopInsteadOfPause = false;
+  bool playInBackground = true;
+  bool autoPauseDuringCalls = true;
+
 
   factory AppState() {
     return _singleton;

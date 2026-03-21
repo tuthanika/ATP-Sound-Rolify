@@ -7,7 +7,7 @@ import 'package:rolify/presentation_logic_holders/event_bus/stop_all_event_bus.d
 import 'package:rolify/presentation_logic_holders/playing_sounds_singleton.dart';
 import 'package:rolify/presentation_logic_holders/singletons/theme_mode_controller.dart';
 import 'package:rolify/presentation_logic_holders/singletons/app_state.dart';
-import 'package:rolify/root/info_page.dart';
+
 import 'package:rolify/src/components/player_card.dart';
 
 import 'all_sounds/global_controls.dart';
@@ -226,8 +226,5 @@ class SessionSoundsState extends State<SessionSounds>
         .toList();
   }
 
-  void navigateToInfo() {
-    Navigator.push(
-        context, MaterialPageRoute(builder: (context) => const InfoPage()));
-  }
+
 }

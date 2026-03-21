@@ -7,7 +7,7 @@ import 'package:rolify/presentation_logic_holders/audio_service_commands.dart';
 import 'package:rolify/presentation_logic_holders/playing_sounds_singleton.dart';
 import 'package:rolify/presentation_logic_holders/singletons/app_state.dart';
 import 'package:rolify/presentation_logic_holders/singletons/theme_mode_controller.dart';
-import 'package:rolify/root/info_page.dart';
+import 'package:rolify/root/settings_page.dart';
 import 'package:rolify/root/session_sounds.dart';
 import 'package:rolify/root/sound_edit.dart';
 import 'package:rolify/src/components/my_icons.dart';
@@ -20,7 +20,7 @@ import 'package:flutter/services.dart';
 import 'package:rolify/data/audios.dart';
 import 'package:rolify/data/playlist.dart';
 
-const titles = ['Sounds', 'Session', 'Playlists', 'Rolify', 'Edit Sound'];
+const titles = ['Sounds', 'Session', 'Playlists', 'Cài đặt', 'Edit Sound'];
 
 class Base extends StatefulWidget {
   const Base({Key? key}) : super(key: key);
@@ -198,11 +198,16 @@ class BaseState extends State<Base> with WidgetsBindingObserver {
                     const SizedBox(width: 6.0),
                     MyRadio(
                       value: pageSelected == 3,
-                      onChanged: pageSelected <= 3 ? showInfoPage : null,
-                      icon: MyIcons.about(color: _getIconColor(context, 3)),
+                      onChanged: pageSelected <= 3 ? showSettingsPage : null,
+                      icon: Icon(
+                        Icons.settings,
+                        color: _getIconColor(context, 3),
+                        size: 20.0 * heightFactor,
+                      ),
                       customSize: 36.0,
                       customIconSize: 20.0,
                     ),
+
                     const SizedBox(width: 6.0),
                     MyRadio(
                       value: Theme.of(context).brightness == Brightness.dark,
@@ -230,7 +235,7 @@ class BaseState extends State<Base> with WidgetsBindingObserver {
                   const AllSound(),
                   const SessionSounds(),
                   const AllPlaylist(),
-                  const InfoPage(),
+                  const SettingsPage(),
                   SoundEdit(),
                 ],
               ))
@@ -279,11 +284,12 @@ class BaseState extends State<Base> with WidgetsBindingObserver {
     }
   }
 
-  showInfoPage(bool value) {
+  showSettingsPage(bool value) {
     if (value) {
       changePage(3);
     }
   }
+
 
   Color _getThemeIconColor(BuildContext context) {
     return Theme.of(context).brightness == Brightness.dark ? Colors.amber : Colors.black54;

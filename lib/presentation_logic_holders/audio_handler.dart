@@ -1,13 +1,17 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
 import 'package:audio_service/audio_service.dart';
+import 'package:audio_session/audio_session.dart';
 import 'package:flutter/services.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:rolify/entities/audio.dart';
 import 'package:rolify/presentation_logic_holders/playing_sounds_singleton.dart';
+import 'package:rolify/presentation_logic_holders/singletons/app_state.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
 
 enum AudioCustomEvents { audioEnded, resumeAll, pauseAll }
 
@@ -35,6 +39,41 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
   List<AudioPlayer> playingAudio = [];
   List<AudioPlayer> pausedAudio = [];
   bool stoppingAll = false;
+
+
+  MyAudioHandler() {
+    _initFocusListener();
+  }
+
+  void _initFocusListener() async {
+    final session = await AudioSession.instance;
+    session.interruptionEventStream.listen((event) {
+      if (AppState().autoPauseDuringCalls) {
+        if (event.begin) {
+          switch (event.type) {
+            case AudioInterruptionType.duck:
+              // Handle ducking if needed, but just_audio might do it
+              break;
+            case AudioInterruptionType.pause:
+            case AudioInterruptionType.unknown:
+              pause();
+              break;
+          }
+        } else {
+          switch (event.type) {
+            case AudioInterruptionType.duck:
+              break;
+            case AudioInterruptionType.pause:
+            case AudioInterruptionType.unknown:
+              // We don't automatically resume to avoid surprises, 
+              // matching SoundAura's typical behavior of manual resume
+              break;
+          }
+        }
+      }
+    });
+  }
+
 
   Future<void> setMockMediaItem(String path) async {
     final byteData = await rootBundle.load('assets/$path');
@@ -160,6 +199,14 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
 
   @override
   Future<void> pause() async {
+    if (AppState().stopInsteadOfPause) {
+      await stop();
+      PlayingSounds().activePlaylistIds = [];
+      PlayingSounds().playingAudios = [];
+      PlayingSounds().pausedAudios = [];
+      _broadcastState();
+      return;
+    }
     for (final audioPlayer in playingAudio) {
       await audioPlayer.pause();
       pausedAudio.add(audioPlayer);
@@ -203,9 +250,12 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
 
   @override
   Future<void> onTaskRemoved() {
-    stop();
+    if (!AppState().playInBackground) {
+      stop();
+    }
     return super.onTaskRemoved();
   }
+
 
   ///
   /// Expect extras as:
