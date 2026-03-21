@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:audio_service/audio_service.dart';
@@ -6,6 +7,7 @@ import 'package:just_audio/just_audio.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:rolify/entities/audio.dart';
 import 'package:rolify/presentation_logic_holders/playing_sounds_singleton.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 enum AudioCustomEvents { audioEnded, resumeAll, pauseAll }
 
@@ -100,6 +102,24 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
       'playingPaths': playingPaths,
       'pausedPaths': pausedPaths,
     });
+    writeWidgetState();
+  }
+
+  Future<void> writeWidgetState() async {
+    final prefs = await SharedPreferences.getInstance();
+    final playingPaths = playingAudio.map((p) => _getAudioPath(p)).where((path) => path.isNotEmpty).toList();
+    final state = {
+      'playingPaths': playingPaths,
+      'activePlaylistIds': PlayingSounds().activePlaylistIds,
+      'masterVolume': PlayingSounds().masterVolume,
+      'isPlaying': playingAudio.isNotEmpty,
+    };
+    await prefs.setString('widget_state', jsonEncode(state));
+    
+    // Also trigger a native update for the remote views
+    try {
+      const MethodChannel('rolify/widget_command').invokeMethod('updateWidgets');
+    } catch (e) {}
   }
 
   void playAudioPlayer(AudioPlayer audioPlayer) {
@@ -141,11 +161,12 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
   @override
   Future<void> pause() async {
     for (final audioPlayer in playingAudio) {
-      await audioPlayer.stop();
+      await audioPlayer.pause();
       pausedAudio.add(audioPlayer);
     }
     playingAudio = [];
     _broadcastState();
+
 
     playbackState.add(PlaybackState(
       controls: [
@@ -194,7 +215,61 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
   /// }
   @override
   Future customAction(String name, [Map<String, dynamic>? extras]) async {
-    if (extras != null) {
+    if (name == 'set_master_volume' && extras != null) {
+      final volumeVal = extras['volume'];
+      final double volume = volumeVal is int ? volumeVal.toDouble() / 100.0 : (volumeVal?.toDouble() ?? 1.0);
+      
+      PlayingSounds().masterVolume = volume;
+      
+      for (final path in audioPlayers.keys) {
+        final player = audioPlayers[path]!;
+        Audio? audio;
+        try {
+          audio = PlayingSounds().playingAudios.firstWhere((a) => a.path == path);
+        } catch (_) {
+          try {
+             audio = PlayingSounds().pausedAudios.firstWhere((a) => a.path == path);
+          } catch (_) {}
+        }
+        
+        if (audio != null) {
+          player.setVolume(audio.volume * volume);
+        } else {
+          player.setVolume(volume);
+        }
+      }
+      writeWidgetState();
+      return null;
+    }
+
+    if (name == 'play_pause') {
+      if (playingAudio.isNotEmpty) {
+        await pause();
+      } else if (pausedAudio.isNotEmpty) {
+        await play();
+      }
+      writeWidgetState();
+      return null;
+    }
+
+    if (name == 'stop_all') {
+      await stop();
+      PlayingSounds().activePlaylistIds = [];
+      PlayingSounds().playingAudios = [];
+      PlayingSounds().pausedAudios = [];
+      writeWidgetState();
+      _broadcastState();
+      return null;
+    }
+
+    if (name == 'broadcast_state') {
+      writeWidgetState();
+      _broadcastState();
+      return null;
+    }
+
+    // Audio-specific actions
+    if (extras != null && extras.containsKey("audio")) {
       final audio = Audio.fromJson(extras["audio"]);
       final audioPlayer = await getAudioPlayer(audio);
       if (extras["param"] != null) {
@@ -225,14 +300,14 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
         if (name == 'get_loop') {
           return audioPlayers[audio.path]!.loopMode == LoopMode.one;
         }
+
+
       }
     }
-    if (name == 'stop_all') {
-      await stop();
-      return null;
-    }
+
     return super.customAction(name, extras);
   }
+
 
   Map<String, dynamic> createAudioCustomEvent(AudioCustomEvents name,
       [String? audioPath]) {

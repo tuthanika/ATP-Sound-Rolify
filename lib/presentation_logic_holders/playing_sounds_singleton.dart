@@ -6,10 +6,13 @@ class PlayingSounds {
   static final PlayingSounds _singleton = PlayingSounds._internal();
   List<Audio> playingAudios = [];
   List<Audio> pausedAudios = [];
+  List<String> activePlaylistIds = [];
   double masterVolume = 1.0;
   final ValueNotifier<bool> isPlayingPlaylist = ValueNotifier(false);
   final ValueNotifier<int> stateChangeNotifier = ValueNotifier(0);
   final ValueNotifier<double> masterVolumeNotifier = ValueNotifier(1.0);
+  final ValueNotifier<List<String>> activePlaylistIdsNotifier = ValueNotifier([]);
+
 
   factory PlayingSounds() {
     return _singleton;

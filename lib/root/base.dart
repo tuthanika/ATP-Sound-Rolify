@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:rolify/presentation_logic_holders/audio_edit_bloc/audio_edit_bloc.dart';
 import 'package:rolify/presentation_logic_holders/audio_edit_bloc/audio_edit_state.dart';
 import 'package:rolify/presentation_logic_holders/audio_handler.dart';
+import 'package:rolify/presentation_logic_holders/audio_service_commands.dart';
 import 'package:rolify/presentation_logic_holders/playing_sounds_singleton.dart';
 import 'package:rolify/presentation_logic_holders/singletons/app_state.dart';
 import 'package:rolify/presentation_logic_holders/singletons/theme_mode_controller.dart';
@@ -15,6 +16,9 @@ import 'package:rolify/src/theme/texts.dart';
 
 import 'all_playlist.dart';
 import 'all_sounds/all_sound.dart';
+import 'package:flutter/services.dart';
+import 'package:rolify/data/audios.dart';
+import 'package:rolify/data/playlist.dart';
 
 const titles = ['Sounds', 'Session', 'Playlists', 'Rolify', 'Edit Sound'];
 
@@ -25,13 +29,22 @@ class Base extends StatefulWidget {
   BaseState createState() => BaseState();
 }
 
-class BaseState extends State<Base> {
+class BaseState extends State<Base> with WidgetsBindingObserver {
   int pageSelected = 0;
   int? previousPage;
+  static const MethodChannel _widgetChannel = MethodChannel('rolify/widget_command');
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _checkWidgetCommand();
+    _widgetChannel.setMethodCallHandler((call) async {
+      if (call.method == 'triggerCommand') {
+        _handleCommand(call.arguments);
+      }
+    });
+
     // Re-enable state broadcasting from the unified background handler
     AppState().audioHandler.customEvent.listen((event) {
       if (event['name'] == 'state_update') {
@@ -46,6 +59,87 @@ class BaseState extends State<Base> {
         }
       }
     });
+  }
+
+  void _handleCommand(dynamic result) async {
+    if (result != null && result is Map) {
+      final command = result['command'] as String?;
+      final path = result['path'] as String?;
+      final id = result['id'] as String?;
+
+      if (command == 'play_pause') {
+        if (PlayingSounds().playingAudios.isNotEmpty) {
+          AppState().audioHandler.pause();
+        } else if (PlayingSounds().pausedAudios.isNotEmpty) {
+          final toPlay = List.from(PlayingSounds().pausedAudios);
+          for (var a in toPlay) AudioServiceCommands.play(a);
+        }
+      } else if (command == 'stop_all') {
+        AppState().audioHandler.customAction('stop_all');
+      } else if (command == 'play_audio' && path != null) {
+        final allAudios = await AudioData.getAllAudios();
+        try {
+          final audio = allAudios.firstWhere((a) => a.path == path);
+          AudioServiceCommands.play(audio);
+        } catch (e) {}
+      } else if (command == 'play_playlist' && id != null) {
+        final pIndex = int.tryParse(id);
+        if (pIndex != null) {
+          final allPlaylists = await PlaylistData.getAllPlaylist();
+          if (pIndex >= 0 && pIndex < allPlaylists.length) {
+            final playlist = allPlaylists[pIndex];
+            final isAlreadyActive = PlayingSounds().activePlaylistIds.contains(id);
+
+            if (isAlreadyActive) {
+              PlayingSounds().activePlaylistIds.remove(id);
+              for (final audio in playlist.audios) {
+                AudioServiceCommands.stop(audio);
+              }
+            } else {
+              PlayingSounds().activePlaylistIds.add(id);
+              PlayingSounds().isPlayingPlaylist.value = true;
+              for (final audio in playlist.audios) {
+                AudioServiceCommands.play(audio);
+                await Future.delayed(const Duration(milliseconds: 50));
+              }
+            }
+            PlayingSounds().activePlaylistIdsNotifier.value = List.from(PlayingSounds().activePlaylistIds);
+            AppState().audioHandler.customAction('broadcast_state');
+          }
+        }
+      } else if (command == 'set_master_volume' && result['volume'] != null) {
+        final int volInt = result['volume'];
+        final double volume = volInt / 100.0;
+        PlayingSounds().masterVolume = volume;
+        PlayingSounds().masterVolumeNotifier.value = volume;
+        AppState().audioHandler.customAction('set_master_volume', {'volume': volume});
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _checkWidgetCommand();
+      AppState().audioHandler.customAction('broadcast_state');
+    }
+  }
+
+  Future<void> _checkWidgetCommand() async {
+    try {
+      final dynamic result = await _widgetChannel.invokeMethod('getPendingWidgetCommand');
+      if (result != null) {
+        _handleCommand(result);
+      }
+    } catch (e) {
+      debugPrint("Widget command error: $e");
+    }
   }
 
   @override
