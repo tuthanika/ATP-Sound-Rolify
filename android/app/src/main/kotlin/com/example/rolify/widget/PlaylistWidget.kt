@@ -127,7 +127,7 @@ class PlaylistWidget : AppWidgetProvider() {
         }
         val itemClickPendingIntent = PendingIntent.getBroadcast(
             context, 13, itemClickIntent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE
+            PendingIntent.FLAG_UPDATE_CURRENT or PlayerIntent.FLAG_MUTABLE
         )
         views.setPendingIntentTemplate(R.id.widget_preset_list, itemClickPendingIntent)
 
