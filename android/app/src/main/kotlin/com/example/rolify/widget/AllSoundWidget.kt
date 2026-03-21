@@ -27,12 +27,10 @@ class AllSoundWidget : AppWidgetProvider() {
             val componentName = android.content.ComponentName(context, AllSoundWidget::class.java)
             val appWidgetIds = appWidgetManager.getAppWidgetIds(componentName)
             if (appWidgetIds.isNotEmpty()) {
-                val intent = Intent(context, AllSoundWidget::class.java).apply {
-                    action = AppWidgetManager.ACTION_APPWIDGET_UPDATE
-                    putExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS, appWidgetIds)
+                val provider = AllSoundWidget()
+                for (id in appWidgetIds) {
+                    provider.updateAppWidget(context, appWidgetManager, id)
                 }
-                context.sendBroadcast(intent)
-                appWidgetManager.notifyAppWidgetViewDataChanged(appWidgetIds, R.id.widget_playlist_list)
             }
         }
     }
@@ -119,7 +117,6 @@ class AllSoundWidget : AppWidgetProvider() {
             data = toUri(Intent.URI_INTENT_SCHEME).toUri()
         }
         views.setRemoteAdapter(R.id.widget_playlist_list, serviceIntent)
-        appWidgetManager.notifyAppWidgetViewDataChanged(appWidgetId, R.id.widget_playlist_list)
 
         // PendingIntent for list item clicks
         val itemClickIntent = Intent(context, WidgetActionReceiver::class.java).apply {
@@ -131,6 +128,8 @@ class AllSoundWidget : AppWidgetProvider() {
         )
         views.setPendingIntentTemplate(R.id.widget_playlist_list, itemClickPendingIntent)
 
+        // CRITICAL: updateAppWidget must be called BEFORE notifyAppWidgetViewDataChanged
         appWidgetManager.updateAppWidget(appWidgetId, views)
+        appWidgetManager.notifyAppWidgetViewDataChanged(appWidgetId, R.id.widget_playlist_list)
     }
 }
