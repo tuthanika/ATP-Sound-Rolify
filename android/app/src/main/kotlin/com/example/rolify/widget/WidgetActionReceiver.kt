@@ -3,6 +3,8 @@ package com.example.rolify.widget
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.os.Handler
+import android.os.Looper
 import com.example.rolify.MainActivity
 
 class WidgetActionReceiver : BroadcastReceiver() {
@@ -16,16 +18,16 @@ class WidgetActionReceiver : BroadcastReceiver() {
             AllSoundWidget.ACTION_TOGGLE_AUDIO -> {
                 sendAction(context, "play_audio", path = audioPath)
             }
-            AllSoundWidget.ACTION_STOP_ALL -> {
+            AllSoundWidget.ACTION_STOP_ALL, PlaylistWidget.ACTION_STOP_ALL -> {
                 sendAction(context, "stop_all")
             }
-            AllSoundWidget.ACTION_PLAY_PAUSE -> {
+            AllSoundWidget.ACTION_PLAY_PAUSE, PlaylistWidget.ACTION_PLAY_PAUSE -> {
                 sendAction(context, "play_pause")
             }
             PlaylistWidget.ACTION_TOGGLE_PLAYLIST -> {
                 sendAction(context, "play_playlist", id = playlistId)
             }
-            AllSoundWidget.ACTION_CYCLE_VOLUME -> {
+            AllSoundWidget.ACTION_CYCLE_VOLUME, PlaylistWidget.ACTION_CYCLE_VOLUME -> {
                 val currentVolume = prefs.getInt("volume", 100)
                 val nextVolume = when {
                     currentVolume < 25 -> 25
@@ -35,7 +37,6 @@ class WidgetActionReceiver : BroadcastReceiver() {
                     else -> 0
                 }
                 prefs.edit().putInt("volume", nextVolume).apply()
-                // Update volume silently in prefs first, then try to send to app
                 sendAction(context, "set_volume", volume = nextVolume)
             }
         }
@@ -58,7 +59,16 @@ class WidgetActionReceiver : BroadcastReceiver() {
             context.startActivity(launchIntent)
         }
         
-        // Always refresh widgets to show new states
+        // Refresh 1: Immediate feedback
+        refreshWidgets(context)
+        
+        // Refresh 2: Delayed to catch Dart state changes
+        Handler(Looper.getMainLooper()).postDelayed({
+            refreshWidgets(context)
+        }, 500)
+    }
+    
+    private fun refreshWidgets(context: Context) {
         AllSoundWidget.updateAllWidgets(context)
         PlaylistWidget.updateAllWidgets(context)
     }

@@ -263,16 +263,27 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
       writeWidgetState();
       return null;
     }
-    if (name == 'broadcast_state') {
+    if (name == 'play_pause') {
+      if (playingAudio.isNotEmpty) {
+        await pause();
+      } else if (pausedAudio.isNotEmpty) {
+        await play();
+      } else {
+        await play();
+      }
       writeWidgetState();
-      _broadcastState();
       return null;
     }
     if (name == 'stop_all') {
       await stop();
+      PlayingSounds().activePlaylistIds = [];
+      PlayingSounds().playingAudios = [];
+      PlayingSounds().pausedAudios = [];
       writeWidgetState();
+      _broadcastState();
       return null;
     }
+
     return super.customAction(name, extras);
   }
 
