@@ -42,6 +42,10 @@ class WidgetActionReceiver : BroadcastReceiver() {
             }
             Intent.ACTION_BOOT_COMPLETED, Intent.ACTION_MY_PACKAGE_REPLACED -> {
                 refreshWidgets(context)
+                // Also schedule a delayed refresh to be extra sure
+                Handler(Looper.getMainLooper()).postDelayed({
+                    refreshWidgets(context)
+                }, 2000)
             }
         }
 
