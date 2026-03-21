@@ -135,4 +135,7 @@ object FlutterDataHelper {
         return Pair(activeAudios, activePlaylists)
     }
 
+    fun isPlaying(context: Context): Boolean {
+        return getActivePaths(context).isNotEmpty()
+    }
 }

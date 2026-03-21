@@ -41,8 +41,7 @@ class PlaylistRemoteViewsFactory(
         val playlist = playlists[position]
         val views = RemoteViews(context.packageName, R.layout.widget_preset_item)
 
-        val displayName = if (playlist.isActive) "✓ ${playlist.name}" else playlist.name
-        views.setTextViewText(R.id.widget_preset_name, displayName)
+        views.setTextViewText(R.id.widget_preset_name, playlist.name)
 
         if (playlist.isActive) {
             views.setInt(R.id.widget_preset_item_container, "setBackgroundResource", R.drawable.widget_playlist_item_bg)

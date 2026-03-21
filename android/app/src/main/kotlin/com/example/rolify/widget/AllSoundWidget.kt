@@ -66,7 +66,7 @@ class AllSoundWidget : AppWidgetProvider() {
 
         val (activeAudios, activePlaylists) = FlutterDataHelper.getActiveCounts(context)
         
-        val playIcon = if (activeAudios > 0) R.drawable.ic_widget_pause else R.drawable.ic_widget_play
+        val playIcon = if (FlutterDataHelper.isPlaying(context)) R.drawable.ic_widget_pause else R.drawable.ic_widget_play
         views.setImageViewResource(R.id.widget_play_pause, playIcon)
 
         if (activeAudios > 0) {
