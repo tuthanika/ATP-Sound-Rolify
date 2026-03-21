@@ -44,8 +44,7 @@ class AllSoundRemoteViewsFactory(
         val audio = audios[position]
         val views = RemoteViews(context.packageName, R.layout.widget_playlist_item)
 
-        val displayName = if (audio.isActive) "✓ ${audio.name}" else audio.name
-        views.setTextViewText(R.id.widget_playlist_name, displayName)
+        views.setTextViewText(R.id.widget_playlist_name, audio.name)
 
         val buttonIcon = if (audio.isActive) R.drawable.ic_baseline_check_24 else R.drawable.ic_baseline_add_24
         views.setImageViewResource(R.id.widget_playlist_button, buttonIcon)
