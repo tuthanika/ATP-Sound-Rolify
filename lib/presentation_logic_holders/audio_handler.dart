@@ -292,8 +292,10 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
           return audioPlayer.volume;
         }
         if (name == 'get_loop') {
-          return audioPlayers[audio.path]!!.loopMode == LoopMode.one;
+          return audioPlayers[audio.path]!.loopMode == LoopMode.one;
         }
+
+
       }
     }
 
