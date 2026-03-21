@@ -50,14 +50,14 @@ class PlaylistRemoteViewsFactory(
             views.setInt(R.id.widget_preset_item_container, "setBackgroundResource", 0)
         }
 
-        views.setImageViewResource(R.id.widget_preset_button, R.drawable.ic_baseline_play_24)
+        views.setImageViewResource(R.id.widget_preset_icon, R.drawable.ic_baseline_play_24)
 
         val fillInIntent = Intent().apply {
             action = PlaylistWidget.ACTION_TOGGLE_PLAYLIST
             putExtra(PlaylistWidget.EXTRA_PLAYLIST_ID, playlist.id)
             putExtra(PlaylistWidget.EXTRA_PLAYLIST_NAME, playlist.name)
         }
-        views.setOnClickFillInIntent(R.id.widget_preset_button, fillInIntent)
+        views.setOnClickFillInIntent(R.id.widget_preset_icon, fillInIntent)
 
         return views
     }
