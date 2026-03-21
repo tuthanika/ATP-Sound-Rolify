@@ -115,8 +115,7 @@ class PlaylistWidget : AppWidgetProvider() {
         // RemoteViewsService for the list of playlists
         val serviceIntent = Intent(context, PlaylistWidgetListService::class.java).apply {
             putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId)
-            // Force a new binding by adding a timestamp
-            data = (toUri(Intent.URI_INTENT_SCHEME) + "/" + System.currentTimeMillis()).toUri()
+            data = toUri(Intent.URI_INTENT_SCHEME).toUri()
         }
         views.setRemoteAdapter(R.id.widget_preset_list, serviceIntent)
         appWidgetManager.notifyAppWidgetViewDataChanged(appWidgetId, R.id.widget_preset_list)
@@ -127,7 +126,7 @@ class PlaylistWidget : AppWidgetProvider() {
         }
         val itemClickPendingIntent = PendingIntent.getBroadcast(
             context, 13, itemClickIntent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PlayerIntent.FLAG_MUTABLE
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE
         )
         views.setPendingIntentTemplate(R.id.widget_preset_list, itemClickPendingIntent)
 
