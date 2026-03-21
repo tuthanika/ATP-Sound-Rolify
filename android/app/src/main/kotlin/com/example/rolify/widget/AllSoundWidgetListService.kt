@@ -49,15 +49,15 @@ class AllSoundRemoteViewsFactory(
         val displayName = if (audio.isActive) "✓ ${audio.name}" else audio.name
         views.setTextViewText(R.id.widget_playlist_name, displayName)
 
+        val buttonIcon = if (audio.isActive) R.drawable.ic_baseline_check_24 else R.drawable.ic_baseline_add_24
+        views.setImageViewResource(R.id.widget_playlist_button, buttonIcon)
+
         if (audio.isActive) {
-            views.setInt(R.id.widget_playlist_item_container, "setBackgroundResource", R.drawable.widget_playlist_item_bg)
             views.setInt(R.id.widget_playlist_item_container, "setBackgroundColor", context.getColor(R.color.widget_active_item_bg))
         } else {
-            views.setInt(R.id.widget_playlist_item_container, "setBackgroundResource", 0)
+            views.setInt(R.id.widget_playlist_item_container, "setBackgroundColor", 0)
         }
 
-        val buttonIcon = if (audio.isActive) R.drawable.ic_baseline_remove_24 else R.drawable.ic_baseline_add_24
-        views.setImageViewResource(R.id.widget_playlist_button, buttonIcon)
 
         val fillInIntent = Intent().apply {
             action = AllSoundWidget.ACTION_TOGGLE_AUDIO
@@ -65,6 +65,8 @@ class AllSoundRemoteViewsFactory(
             putExtra(AllSoundWidget.EXTRA_AUDIO_NAME, audio.name)
         }
         views.setOnClickFillInIntent(R.id.widget_playlist_button, fillInIntent)
+        views.setOnClickFillInIntent(R.id.widget_playlist_name, fillInIntent)
+
 
         return views
     }

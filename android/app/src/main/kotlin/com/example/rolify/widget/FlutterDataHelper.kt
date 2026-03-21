@@ -26,18 +26,21 @@ object FlutterDataHelper {
     fun getAudios(context: Context): List<RolifyAudio> {
         val prefs: SharedPreferences = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         val audiosJsonStr = prefs.getString("flutter.audios", null) ?: return emptyList()
+        val activePaths = getActivePaths(context)
 
         val results = mutableListOf<RolifyAudio>()
         try {
             val jsonArray = JSONArray(audiosJsonStr)
             for (i in 0 until jsonArray.length()) {
                 val obj = jsonArray.getJSONObject(i)
+                val path = obj.optString("path", "")
                 results.add(
                     RolifyAudio(
                         name = obj.optString("name", "Unknown Audio"),
-                        path = obj.optString("path", ""),
+                        path = path,
                         image = obj.optString("image", ""),
-                        loopMode = obj.optBoolean("loopMode", true)
+                        loopMode = obj.optBoolean("loopMode", true),
+                        isActive = activePaths.contains(path)
                     )
                 )
             }
@@ -49,13 +52,15 @@ object FlutterDataHelper {
 
     fun getPlaylists(context: Context): List<RolifyPlaylist> {
         val prefs: SharedPreferences = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        val playlistsJsonStr = prefs.getString("flutter.playlists", null) ?: return emptyList()
+        val playlistsJsonStr = prefs.getString("flutter.playlist", null) ?: return emptyList()
+        val activeIds = getActivePlaylistIds(context)
 
         val results = mutableListOf<RolifyPlaylist>()
         try {
             val jsonArray = JSONArray(playlistsJsonStr)
             for (i in 0 until jsonArray.length()) {
                 val obj = jsonArray.getJSONObject(i)
+                val id = obj.optString("id", i.toString())
                 
                 val audiosArray = obj.optJSONArray("audios")
                 val pAudios = mutableListOf<RolifyAudio>()
@@ -75,8 +80,9 @@ object FlutterDataHelper {
                 
                 results.add(
                     RolifyPlaylist(
-                        id = obj.optString("id", i.toString()),
+                        id = id,
                         name = obj.optString("name", "Unknown Playlist"),
+                        isActive = activeIds.contains(id),
                         audios = pAudios
                     )
                 )
@@ -86,4 +92,41 @@ object FlutterDataHelper {
         }
         return results
     }
+
+    private fun getActivePaths(context: Context): Set<String> {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val stateJson = prefs.getString("flutter.widget_state", null) ?: return emptySet()
+        return try {
+            val obj = JSONObject(stateJson)
+            val arr = obj.optJSONArray("playingPaths") ?: return emptySet()
+            val set = mutableSetOf<String>()
+            for (i in 0 until arr.length()) set.add(arr.getString(i))
+            set
+        } catch (e: Exception) {
+            emptySet()
+        }
+    }
+
+    private fun getActivePlaylistIds(context: Context): Set<String> {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val stateJson = prefs.getString("flutter.widget_state", null) ?: return emptySet()
+        return try {
+            val obj = JSONObject(stateJson)
+            val arr = obj.optJSONArray("activePlaylistIds") ?: return emptySet()
+            val set = mutableSetOf<String>()
+            for (i in 0 until arr.length()) set.add(arr.getString(i))
+            set
+        } catch (e: Exception) {
+            emptySet()
+        }
+    }
+    
+    fun getActiveCounts(context: Context): Pair<Int, Int> {
+        val audios = getAudios(context)
+        val activeAudios = audios.count { it.isActive }
+        val playlists = getPlaylists(context)
+        val activePlaylists = playlists.count { it.isActive }
+        return Pair(activeAudios, activePlaylists)
+    }
+
 }

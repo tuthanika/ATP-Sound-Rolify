@@ -39,6 +39,12 @@ class BaseState extends State<Base> with WidgetsBindingObserver {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _checkWidgetCommand();
+    _widgetChannel.setMethodCallHandler((call) async {
+      if (call.method == 'triggerCommand') {
+        _handleCommand(call.arguments);
+      }
+    });
+
     // Re-enable state broadcasting from the unified background handler
     AppState().audioHandler.customEvent.listen((event) {
       if (event['name'] == 'state_update') {
@@ -53,6 +59,62 @@ class BaseState extends State<Base> with WidgetsBindingObserver {
         }
       }
     });
+  }
+
+  void _handleCommand(dynamic result) async {
+    if (result != null && result is Map) {
+      final command = result['command'] as String?;
+      final path = result['path'] as String?;
+      final id = result['id'] as String?;
+
+      if (command == 'play_pause') {
+        if (PlayingSounds().playingAudios.isNotEmpty) {
+          AppState().audioHandler.customAction('stop_all');
+        } else if (PlayingSounds().pausedAudios.isNotEmpty) {
+          final toPlay = List.from(PlayingSounds().pausedAudios);
+          for (var a in toPlay) AudioServiceCommands.play(a);
+        }
+      } else if (command == 'stop_all') {
+        AppState().audioHandler.customAction('stop_all');
+      } else if (command == 'play_audio' && path != null) {
+        final allAudios = await AudioData.getAllAudios();
+        try {
+          final audio = allAudios.firstWhere((a) => a.path == path);
+          AudioServiceCommands.play(audio);
+        } catch (e) {}
+      } else if (command == 'play_playlist' && id != null) {
+        final pIndex = int.tryParse(id);
+        if (pIndex != null) {
+          final allPlaylists = await PlaylistData.getAllPlaylist();
+          if (pIndex >= 0 && pIndex < allPlaylists.length) {
+            final playlist = allPlaylists[pIndex];
+            final isAlreadyActive = PlayingSounds().activePlaylistIds.contains(id);
+
+            if (isAlreadyActive) {
+              PlayingSounds().activePlaylistIds.remove(id);
+              for (final audio in playlist.audios) {
+                AudioServiceCommands.stop(audio);
+              }
+            } else {
+              PlayingSounds().activePlaylistIds.add(id);
+              PlayingSounds().isPlayingPlaylist.value = true;
+              for (final audio in playlist.audios) {
+                AudioServiceCommands.play(audio);
+                await Future.delayed(const Duration(milliseconds: 50));
+              }
+            }
+            PlayingSounds().activePlaylistIdsNotifier.value = List.from(PlayingSounds().activePlaylistIds);
+            AppState().audioHandler.customAction('broadcast_state');
+          }
+        }
+      } else if (command == 'set_volume' && result['volume'] != null) {
+        final int volInt = result['volume'];
+        final double volume = volInt / 100.0;
+        PlayingSounds().masterVolume = volume;
+        PlayingSounds().masterVolumeNotifier.value = volume;
+        AppState().audioHandler.customAction('set_master_volume', {'volume': volume});
+      }
+    }
   }
 
   @override
@@ -71,46 +133,8 @@ class BaseState extends State<Base> with WidgetsBindingObserver {
   Future<void> _checkWidgetCommand() async {
     try {
       final dynamic result = await _widgetChannel.invokeMethod('getPendingWidgetCommand');
-      if (result != null && result is Map) {
-        final command = result['command'] as String?;
-        final path = result['path'] as String?;
-        final id = result['id'] as String?;
-
-        if (command == 'play_pause') {
-          if (PlayingSounds().playingAudios.isNotEmpty) {
-             AppState().audioHandler.customAction('stop_all');
-          } else if (PlayingSounds().pausedAudios.isNotEmpty) {
-             final toPlay = List.from(PlayingSounds().pausedAudios);
-             for(var a in toPlay) AudioServiceCommands.play(a);
-          }
-        } else if (command == 'stop_all') {
-          AppState().audioHandler.customAction('stop_all');
-        } else if (command == 'play_audio' && path != null) {
-          final allAudios = await AudioData.getAllAudios();
-          try {
-            final audio = allAudios.firstWhere((a) => a.path == path);
-            AudioServiceCommands.play(audio);
-          } catch(e) {}
-        } else if (command == 'play_playlist' && id != null) {
-          final pIndex = int.tryParse(id);
-          if (pIndex != null) {
-            final allPlaylists = await PlaylistData.getAllPlaylist();
-            if (pIndex >= 0 && pIndex < allPlaylists.length) {
-              final playlist = allPlaylists[pIndex];
-              PlayingSounds().isPlayingPlaylist.value = true;
-              for (final audio in playlist.audios) {
-                AudioServiceCommands.play(audio);
-                await Future.delayed(const Duration(milliseconds: 100));
-              }
-            }
-          }
-        } else if (command == 'set_volume' && result['volume'] != null) {
-          final int volInt = result['volume'];
-          final double volume = volInt / 100.0;
-          PlayingSounds().masterVolume = volume;
-          PlayingSounds().masterVolumeNotifier.value = volume;
-          AppState().audioHandler.customAction('set_master_volume', {'volume': volume});
-        }
+      if (result != null) {
+        _handleCommand(result);
       }
     } catch (e) {
       debugPrint("Widget command error: $e");

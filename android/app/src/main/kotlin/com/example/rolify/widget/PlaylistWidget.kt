@@ -40,10 +40,38 @@ class PlaylistWidget : AppWidgetProvider() {
     ) {
         val views = RemoteViews(context.packageName, R.layout.widget_preset)
 
-        // Intents for buttons
-        setButtonPendingIntent(context, views, R.id.widget_play_pause, ACTION_PLAY_PAUSE)
-        setButtonPendingIntent(context, views, R.id.widget_stop, ACTION_STOP)
-        setButtonPendingIntent(context, views, R.id.widget_master_volume_container, ACTION_TOGGLE_VOLUME_SLIDER)
+        val (activeAudios, activePlaylists) = FlutterDataHelper.getActiveCounts(context)
+        if (activePlaylists > 0) {
+            views.setTextViewText(R.id.widget_title, "Rolify - Playlists ($activePlaylists)")
+        } else {
+            views.setTextViewText(R.id.widget_title, "Rolify Playlists")
+        }
+
+        // Action: Volume Cycle
+        val volumeIntent = Intent(context, WidgetActionReceiver::class.java).apply {
+            action = ACTION_CYCLE_VOLUME
+        }
+        val volumePendingIntent = PendingIntent.getBroadcast(
+            context, 0, volumeIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        views.setOnClickPendingIntent(R.id.widget_master_volume_container, volumePendingIntent)
+
+        val widgetPrefs = context.getSharedPreferences("WidgetCommandPrefs", Context.MODE_PRIVATE)
+        val volume = widgetPrefs.getInt("volume", 100)
+        views.setTextViewText(R.id.widget_master_volume_text, "$volume%")
+
+        // Action: Stop
+        val stopIntent = Intent(context, WidgetActionReceiver::class.java).apply {
+            action = ACTION_STOP_ALL
+        }
+        val stopPendingIntent = PendingIntent.getBroadcast(
+            context, 0, stopIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        views.setOnClickPendingIntent(R.id.widget_stop, stopPendingIntent)
+        views.setViewVisibility(R.id.widget_stop, if (activeAudios > 0 || activePlaylists > 0) View.VISIBLE else View.GONE)
+
 
         // Volume slider buttons
         val volumeButtons = arrayOf(
@@ -63,16 +91,6 @@ class PlaylistWidget : AppWidgetProvider() {
             )
             views.setOnClickPendingIntent(viewId, pendingIntent)
         }
-
-        // Update volume text and slider visibility from prefs
-        val prefs = context.getSharedPreferences("WidgetPrefs", Context.MODE_PRIVATE)
-        val volume = prefs.getInt("master_volume", 100)
-        views.setTextViewText(R.id.widget_master_volume_text, "$volume%")
-        
-        val isSliderVisible = prefs.getBoolean("volume_slider_visible", false)
-        views.setViewVisibility(R.id.widget_volume_slider_container, if (isSliderVisible) android.view.View.VISIBLE else android.view.View.GONE)
-        views.setViewVisibility(R.id.widget_ghost_stop_space, if (isSliderVisible) android.view.View.VISIBLE else android.view.View.GONE)
-
 
         // Intent to open App
         val openAppIntent = Intent(context, MainActivity::class.java).apply {

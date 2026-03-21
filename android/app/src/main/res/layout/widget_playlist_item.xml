@@ -24,6 +24,7 @@
         android:layout_height="40dp"
         android:src="@drawable/ic_baseline_add_24"
         android:background="@android:color/transparent"
+        android:tint="@android:color/white"
         android:contentDescription="@string/add" />
 
 </LinearLayout>

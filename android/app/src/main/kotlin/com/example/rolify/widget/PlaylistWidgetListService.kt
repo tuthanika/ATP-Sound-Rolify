@@ -50,7 +50,14 @@ class PlaylistRemoteViewsFactory(
             views.setInt(R.id.widget_preset_item_container, "setBackgroundResource", 0)
         }
 
-        views.setImageViewResource(R.id.widget_preset_icon, R.drawable.ic_baseline_play_24)
+        val buttonIcon = if (playlist.isActive) R.drawable.ic_baseline_check_24 else R.drawable.ic_baseline_play_24
+        views.setImageViewResource(R.id.widget_preset_icon, buttonIcon)
+
+        if (playlist.isActive) {
+            views.setInt(R.id.widget_preset_item_container, "setBackgroundColor", context.getColor(R.color.widget_active_item_bg))
+        } else {
+            views.setInt(R.id.widget_preset_item_container, "setBackgroundColor", 0)
+        }
 
         val fillInIntent = Intent().apply {
             action = PlaylistWidget.ACTION_TOGGLE_PLAYLIST
@@ -58,6 +65,9 @@ class PlaylistRemoteViewsFactory(
             putExtra(PlaylistWidget.EXTRA_PLAYLIST_NAME, playlist.name)
         }
         views.setOnClickFillInIntent(R.id.widget_preset_icon, fillInIntent)
+        views.setOnClickFillInIntent(R.id.widget_preset_name, fillInIntent)
+
+
 
         return views
     }

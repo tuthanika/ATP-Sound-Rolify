@@ -11,9 +11,39 @@ import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 
 class MainActivity: AudioServiceActivity() {
+    companion object {
+        var instance: MainActivity? = null
+        
+        fun sendSilentCommand(command: String, path: String? = null, id: String? = null, volume: Int? = null) {
+            instance?.let { activity ->
+                val data = mutableMapOf<String, Any?>(
+                    "command" to command,
+                    "path" to path,
+                    "id" to id,
+                    "volume" to volume
+                )
+                activity.runOnUiThread {
+                    val channel = MethodChannel(activity.flutterEngine!!.dartExecutor.binaryMessenger, "rolify/widget_command")
+                    channel.invokeMethod("triggerCommand", data)
+                }
+            }
+        }
+    }
+
     private val CHANNEL = "rolify/file_picker"
     private val PICK_AUDIO_REQUEST_CODE = 1001
     private var pendingResult: MethodChannel.Result? = null
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        instance = this
+    }
+
+    override fun onDestroy() {
+        if (instance == this) instance = null
+        super.onDestroy()
+    }
+
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)

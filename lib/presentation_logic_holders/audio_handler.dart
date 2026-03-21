@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:audio_service/audio_service.dart';
@@ -6,6 +7,7 @@ import 'package:just_audio/just_audio.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:rolify/entities/audio.dart';
 import 'package:rolify/presentation_logic_holders/playing_sounds_singleton.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 enum AudioCustomEvents { audioEnded, resumeAll, pauseAll }
 
@@ -100,6 +102,18 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
       'playingPaths': playingPaths,
       'pausedPaths': pausedPaths,
     });
+    writeWidgetState();
+  }
+
+  Future<void> writeWidgetState() async {
+    final prefs = await SharedPreferences.getInstance();
+    final playingPaths = playingAudio.map((p) => _getAudioPath(p)).where((path) => path.isNotEmpty).toList();
+    final state = {
+      'playingPaths': playingPaths,
+      'activePlaylistIds': PlayingSounds().activePlaylistIds,
+      'masterVolume': PlayingSounds().masterVolume,
+    };
+    await prefs.setString('widget_state', jsonEncode(state));
   }
 
   void playAudioPlayer(AudioPlayer audioPlayer) {
@@ -231,7 +245,6 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
       final double volume = extras['volume'];
       for (final path in audioPlayers.keys) {
         final player = audioPlayers[path]!;
-        // Use PlayingSounds().playingAudios to find the original volume if possible
         Audio? audio;
         try {
           audio = PlayingSounds().playingAudios.firstWhere((a) => a.path == path);
@@ -247,10 +260,17 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
           player.setVolume(volume);
         }
       }
+      writeWidgetState();
+      return null;
+    }
+    if (name == 'broadcast_state') {
+      writeWidgetState();
+      _broadcastState();
       return null;
     }
     if (name == 'stop_all') {
       await stop();
+      writeWidgetState();
       return null;
     }
     return super.customAction(name, extras);
