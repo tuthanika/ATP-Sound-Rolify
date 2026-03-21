@@ -24,24 +24,18 @@ class WidgetActionReceiver : BroadcastReceiver() {
                 }, 10000)
             }
             AllSoundWidget.ACTION_PLAY_PAUSE, PlaylistWidget.ACTION_PLAY_PAUSE -> {
-                MainActivity.sendSilentCommand(context, "play_pause")
-                refreshWidgets(context)
+                sendAction(context, "play_pause")
             }
             AllSoundWidget.ACTION_STOP_ALL, PlaylistWidget.ACTION_STOP_ALL -> {
-                MainActivity.sendSilentCommand(context, "stop_all")
-                refreshWidgets(context)
+                sendAction(context, "stop_all")
             }
             AllSoundWidget.ACTION_TOGGLE_AUDIO -> {
                 val path = intent.getStringExtra(AllSoundWidget.EXTRA_AUDIO_PATH) ?: return
-                val name = intent.getStringExtra(AllSoundWidget.EXTRA_AUDIO_NAME) ?: ""
-                MainActivity.sendSilentCommand(context, "toggle_audio", mapOf("path" to path, "name" to name))
-                refreshWidgets(context)
+                sendAction(context, "play_audio", path = path)
             }
             PlaylistWidget.ACTION_TOGGLE_PLAYLIST -> {
                 val id = intent.getStringExtra(PlaylistWidget.EXTRA_PLAYLIST_ID) ?: return
-                val name = intent.getStringExtra(PlaylistWidget.EXTRA_PLAYLIST_NAME) ?: ""
-                MainActivity.sendSilentCommand(context, "toggle_playlist", mapOf("id" to id, "name" to name))
-                refreshWidgets(context)
+                sendAction(context, "play_playlist", id = id)
             }
             AllSoundWidget.ACTION_CYCLE_VOLUME, PlaylistWidget.ACTION_CYCLE_VOLUME -> {
                 val widgetPrefs = context.getSharedPreferences("WidgetCommandPrefs", Context.MODE_PRIVATE)
@@ -54,10 +48,39 @@ class WidgetActionReceiver : BroadcastReceiver() {
                     else -> 100
                 }
                 widgetPrefs.edit().putInt("volume", newVolume).apply()
-                MainActivity.sendSilentCommand(context, "set_master_volume", mapOf("volume" to newVolume))
-                refreshWidgets(context)
+                sendAction(context, "set_master_volume", volume = newVolume)
             }
         }
+    }
+
+    private fun sendAction(context: Context, command: String, path: String? = null, id: String? = null, volume: Int? = null) {
+        if (MainActivity.instance != null) {
+            MainActivity.sendSilentCommand(command, path, id, volume)
+        } else {
+            // Fallback: Save to preferences so the app can pick it up on next launch
+            val prefs = context.getSharedPreferences("WidgetCommandPrefs", Context.MODE_PRIVATE)
+            prefs.edit().apply {
+                putString("command", command)
+                putString("path", path)
+                putString("id", id)
+                volume?.let { putInt("volume", it) }
+                apply()
+            }
+            // Optional: Launch the app to process the command
+            val launchIntent = context.packageManager.getLaunchIntentForPackage(context.packageName)
+            launchIntent?.apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            context.startActivity(launchIntent)
+        }
+        
+        // Immediate refresh to show UI change (e.g. play/pause icon toggle)
+        refreshWidgets(context)
+        
+        // Delayed refresh to catch updates from the Dart side
+        Handler(Looper.getMainLooper()).postDelayed({
+            refreshWidgets(context)
+        }, 800)
     }
 
     private fun refreshWidgets(context: Context) {
