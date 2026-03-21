@@ -114,7 +114,7 @@ class AllSoundWidget : AppWidgetProvider() {
             putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId)
             data = toUri(Intent.URI_INTENT_SCHEME).toUri()
         }
-        views.setRemoteAdapter(R.id.widget_playlist_list, serviceIntent)
+        views.setRemoteAdapter(R.id.widget_soundaura_list, serviceIntent)
 
         // PendingIntent for list item clicks
         val itemClickIntent = Intent(context, WidgetActionReceiver::class.java).apply {
@@ -124,8 +124,9 @@ class AllSoundWidget : AppWidgetProvider() {
             context, 5, itemClickIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE
         )
-        views.setPendingIntentTemplate(R.id.widget_playlist_list, itemClickPendingIntent)
+        views.setPendingIntentTemplate(R.id.widget_soundaura_list, itemClickPendingIntent)
 
+        appWidgetManager.notifyAppWidgetViewDataChanged(appWidgetId, R.id.widget_soundaura_list)
         appWidgetManager.updateAppWidget(appWidgetId, views)
     }
 }

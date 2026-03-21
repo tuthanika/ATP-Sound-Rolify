@@ -68,12 +68,7 @@ class BaseState extends State<Base> with WidgetsBindingObserver {
       final id = result['id'] as String?;
 
       if (command == 'play_pause') {
-        if (PlayingSounds().playingAudios.isNotEmpty) {
-          AppState().audioHandler.customAction('stop_all');
-        } else if (PlayingSounds().pausedAudios.isNotEmpty) {
-          final toPlay = List.from(PlayingSounds().pausedAudios);
-          for (var a in toPlay) AudioServiceCommands.play(a);
-        }
+        AppState().audioHandler.customAction('play_pause');
       } else if (command == 'stop_all') {
         AppState().audioHandler.customAction('stop_all');
       } else if (command == 'play_audio' && path != null) {
@@ -107,7 +102,7 @@ class BaseState extends State<Base> with WidgetsBindingObserver {
             AppState().audioHandler.customAction('broadcast_state');
           }
         }
-      } else if (command == 'set_volume' && result['volume'] != null) {
+      } else if ((command == 'set_master_volume' || command == 'set_volume') && result['volume'] != null) {
         final int volInt = result['volume'];
         final double volume = volInt / 100.0;
         PlayingSounds().masterVolume = volume;
@@ -116,6 +111,7 @@ class BaseState extends State<Base> with WidgetsBindingObserver {
       }
     }
   }
+
 
   @override
   void dispose() {
