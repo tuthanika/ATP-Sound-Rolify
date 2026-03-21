@@ -6,6 +6,7 @@ import android.appwidget.AppWidgetProvider
 import android.content.Context
 import android.content.Intent
 import android.widget.RemoteViews
+import android.view.View
 import androidx.core.net.toUri
 import com.example.rolify.MainActivity
 import com.example.rolify.R
@@ -14,14 +15,27 @@ class AllSoundWidget : AppWidgetProvider() {
 
     companion object {
         const val ACTION_PLAY_PAUSE = "com.example.rolify.widget.ACTION_PLAY_PAUSE"
-        const val ACTION_STOP = "com.example.rolify.widget.ACTION_STOP"
+        const val ACTION_STOP_ALL = "com.example.rolify.widget.ACTION_STOP_ALL"
         const val ACTION_TOGGLE_AUDIO = "com.example.rolify.widget.ACTION_TOGGLE_AUDIO"
-        const val ACTION_TOGGLE_VOLUME_SLIDER = "com.example.rolify.widget.ACTION_TOGGLE_VOLUME_SLIDER"
-        const val ACTION_SET_VOLUME = "com.example.rolify.widget.ACTION_SET_VOLUME"
+        const val ACTION_CYCLE_VOLUME = "com.example.rolify.widget.ACTION_CYCLE_VOLUME"
         const val EXTRA_AUDIO_PATH = "extra_audio_path"
         const val EXTRA_AUDIO_NAME = "extra_audio_name"
         const val EXTRA_VOLUME = "extra_volume"
+
+        fun updateAllWidgets(context: Context) {
+            val appWidgetManager = AppWidgetManager.getInstance(context)
+            val componentName = android.content.ComponentName(context, AllSoundWidget::class.java)
+            val appWidgetIds = appWidgetManager.getAppWidgetIds(componentName)
+            if (appWidgetIds.isNotEmpty()) {
+                val intent = Intent(context, AllSoundWidget::class.java).apply {
+                    action = AppWidgetManager.ACTION_APPWIDGET_UPDATE
+                    putExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS, appWidgetIds)
+                }
+                context.sendBroadcast(intent)
+            }
+        }
     }
+
 
     override fun onUpdate(
         context: Context,

@@ -25,7 +25,8 @@ class WidgetActionReceiver : BroadcastReceiver() {
             PlaylistWidget.ACTION_TOGGLE_PLAYLIST -> {
                 sendAction(context, "play_playlist", id = playlistId)
             }
-            "com.example.rolify.widget.ACTION_CYCLE_VOLUME" -> {
+            AllSoundWidget.ACTION_CYCLE_VOLUME -> {
+
                 val currentVolume = prefs.getInt("volume", 100)
                 val nextVolume = when {
                     currentVolume < 25 -> 25

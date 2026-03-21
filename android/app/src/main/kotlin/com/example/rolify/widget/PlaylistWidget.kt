@@ -6,6 +6,7 @@ import android.appwidget.AppWidgetProvider
 import android.content.Context
 import android.content.Intent
 import android.widget.RemoteViews
+import android.view.View
 import androidx.core.net.toUri
 import com.example.rolify.MainActivity
 import com.example.rolify.R
@@ -14,13 +15,25 @@ class PlaylistWidget : AppWidgetProvider() {
 
     companion object {
         const val ACTION_PLAY_PAUSE = "com.example.rolify.widget.playlist.ACTION_PLAY_PAUSE"
-        const val ACTION_STOP = "com.example.rolify.widget.playlist.ACTION_STOP"
+        const val ACTION_STOP_ALL = "com.example.rolify.widget.ACTION_STOP_ALL"
         const val ACTION_TOGGLE_PLAYLIST = "com.example.rolify.widget.playlist.ACTION_TOGGLE_PLAYLIST"
-        const val ACTION_TOGGLE_VOLUME_SLIDER = "com.example.rolify.widget.playlist.ACTION_TOGGLE_VOLUME_SLIDER"
-        const val ACTION_SET_VOLUME = "com.example.rolify.widget.playlist.ACTION_SET_VOLUME"
+        const val ACTION_CYCLE_VOLUME = "com.example.rolify.widget.ACTION_CYCLE_VOLUME"
         const val EXTRA_PLAYLIST_ID = "extra_playlist_id"
         const val EXTRA_PLAYLIST_NAME = "extra_playlist_name"
         const val EXTRA_VOLUME = "extra_volume"
+
+        fun updateAllWidgets(context: Context) {
+            val appWidgetManager = AppWidgetManager.getInstance(context)
+            val componentName = android.content.ComponentName(context, PlaylistWidget::class.java)
+            val appWidgetIds = appWidgetManager.getAppWidgetIds(componentName)
+            if (appWidgetIds.isNotEmpty()) {
+                val intent = Intent(context, PlaylistWidget::class.java).apply {
+                    action = AppWidgetManager.ACTION_APPWIDGET_UPDATE
+                    putExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS, appWidgetIds)
+                }
+                context.sendBroadcast(intent)
+            }
+        }
     }
 
     override fun onUpdate(
@@ -71,26 +84,6 @@ class PlaylistWidget : AppWidgetProvider() {
         )
         views.setOnClickPendingIntent(R.id.widget_stop, stopPendingIntent)
         views.setViewVisibility(R.id.widget_stop, if (activeAudios > 0 || activePlaylists > 0) View.VISIBLE else View.GONE)
-
-
-        // Volume slider buttons
-        val volumeButtons = arrayOf(
-            R.id.widget_volume_10 to 10, R.id.widget_volume_20 to 20, R.id.widget_volume_30 to 30,
-            R.id.widget_volume_40 to 40, R.id.widget_volume_50 to 50, R.id.widget_volume_60 to 60,
-            R.id.widget_volume_70 to 70, R.id.widget_volume_80 to 80, R.id.widget_volume_90 to 90,
-            R.id.widget_volume_100 to 100
-        )
-        for ((viewId, volume) in volumeButtons) {
-            val intent = Intent(context, WidgetActionReceiver::class.java).apply {
-                action = ACTION_SET_VOLUME
-                putExtra(EXTRA_VOLUME, volume)
-            }
-            val pendingIntent = PendingIntent.getBroadcast(
-                context, viewId, intent,
-                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-            )
-            views.setOnClickPendingIntent(viewId, pendingIntent)
-        }
 
         // Intent to open App
         val openAppIntent = Intent(context, MainActivity::class.java).apply {
