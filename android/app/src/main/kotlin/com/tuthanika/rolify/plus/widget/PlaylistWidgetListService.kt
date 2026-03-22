@@ -66,6 +66,8 @@ class PlaylistRemoteViewsFactory(
         }
         views.setOnClickFillInIntent(R.id.widget_preset_icon, fillInIntent)
         views.setOnClickFillInIntent(R.id.widget_preset_name, fillInIntent)
+        views.setOnClickFillInIntent(R.id.widget_preset_item_container, fillInIntent)
+
 
 
 

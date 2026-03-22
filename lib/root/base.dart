@@ -50,15 +50,18 @@ class BaseState extends State<Base> with WidgetsBindingObserver {
       if (event['name'] == 'state_update') {
         final List<dynamic>? playingPaths = event['playingPaths'];
         final List<dynamic>? pausedPaths = event['pausedPaths'];
+        final double? masterVolume = event['masterVolume'];
         
         if (playingPaths != null || pausedPaths != null) {
           PlayingSounds().syncFromBackground(
             playingPaths?.cast<String>() ?? [],
             pausedPaths?.cast<String>() ?? [],
+            masterVolume,
           );
         }
       }
     });
+
   }
 
   void _handleCommand(dynamic result) async {
@@ -112,8 +115,9 @@ class BaseState extends State<Base> with WidgetsBindingObserver {
         final double volume = volInt / 100.0;
         PlayingSounds().masterVolume = volume;
         PlayingSounds().masterVolumeNotifier.value = volume;
-        AppState().audioHandler.customAction('set_master_volume', {'volume': volume});
+        AppState().audioHandler.customAction('set_master_volume', {'volume': volInt});
       }
+
     }
   }
 

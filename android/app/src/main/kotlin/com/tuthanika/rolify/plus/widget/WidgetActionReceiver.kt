@@ -4,11 +4,17 @@ import android.appwidget.AppWidgetManager
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.os.Bundle
+import android.support.v4.media.MediaBrowserCompat
+import android.support.v4.media.session.MediaControllerCompat
+import android.content.ComponentName
+import android.util.Log
 import com.tuthanika.rolify.plus.MainActivity
 
 class WidgetActionReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         val action = intent.action ?: return
+        Log.d("RolifyWidget", "onReceive: $action")
 
         when (action) {
             Intent.ACTION_BOOT_COMPLETED, Intent.ACTION_MY_PACKAGE_REPLACED -> {
@@ -45,25 +51,62 @@ class WidgetActionReceiver : BroadcastReceiver() {
     }
 
     private fun sendAction(context: Context, command: String, path: String? = null, id: String? = null, volume: Int? = null) {
-        if (MainActivity.instance != null) {
-            MainActivity.sendSilentCommand(command, path, id, volume)
-        } else {
-            val prefs = context.getSharedPreferences("WidgetCommandPrefs", Context.MODE_PRIVATE)
-            prefs.edit().apply {
-                putString("command", command)
-                putString("path", path)
-                putString("id", id)
-                volume?.let { putInt("volume", it) }
-                apply()
-            }
-            val launchIntent = context.packageManager.getLaunchIntentForPackage(context.packageName)
-            launchIntent?.apply {
-                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            }
-            context.startActivity(launchIntent)
+        val extras = Bundle().apply {
+            putString("path", path)
+            putString("id", id)
+            volume?.let { putInt("volume", it) }
         }
+
+        Log.d("RolifyWidget", "Sending action: $command")
+
+        // Path 1: If MainActivity is alive, use MethodChannel (very fast)
+        if (MainActivity.instance != null) {
+            Log.d("RolifyWidget", "Sending via MainActivity instance")
+            MainActivity.sendSilentCommand(command, path, id, volume)
+        }
+
+        // Path 2: Always try MediaBrowser as well (handles background service better)
+        var mediaBrowser: MediaBrowserCompat? = null
         
-        // Immediate refresh
+        mediaBrowser = MediaBrowserCompat(
+            context,
+            ComponentName(context.packageName, "com.ryanheise.audioservice.AudioService"),
+            object : MediaBrowserCompat.ConnectionCallback() {
+                override fun onConnected() {
+                    Log.d("RolifyWidget", "Connected to AudioService")
+                    try {
+                        val browser = mediaBrowser ?: return
+                        val controller = MediaControllerCompat(context, browser.sessionToken!!)
+                        controller.transportControls.sendCustomAction(command, extras)
+                        
+                        android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                            if (browser.isConnected) {
+                                browser.disconnect()
+                                Log.d("RolifyWidget", "Disconnected after action")
+                            }
+                        }, 1000)
+                    } catch (e: Exception) {
+                        Log.e("RolifyWidget", "Error in MediaBrowser path: ${e.message}")
+                        mediaBrowser?.let { if (it.isConnected) it.disconnect() }
+                    }
+                }
+
+                override fun onConnectionFailed() {
+                    Log.e("RolifyWidget", "Connection to AudioService FAILED")
+                }
+            },
+            null
+        )
+        mediaBrowser.connect()
+        
+        // Path 3: Ensure service is running silently
+        try {
+            val serviceIntent = Intent(context, Class.forName("com.ryanheise.audioservice.AudioService"))
+            context.startService(serviceIntent)
+        } catch (e: Exception) {
+            Log.e("RolifyWidget", "Failed to start service: ${e.message}")
+        }
+
         refreshWidgets(context)
     }
 

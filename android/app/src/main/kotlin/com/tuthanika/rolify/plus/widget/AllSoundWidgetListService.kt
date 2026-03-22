@@ -63,6 +63,8 @@ class AllSoundRemoteViewsFactory(
         }
         views.setOnClickFillInIntent(R.id.widget_playlist_button, fillInIntent)
         views.setOnClickFillInIntent(R.id.widget_playlist_name, fillInIntent)
+        views.setOnClickFillInIntent(R.id.widget_playlist_item_container, fillInIntent)
+
 
 
         return views

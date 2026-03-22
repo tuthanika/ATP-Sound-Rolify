@@ -8,6 +8,8 @@ import 'package:flutter/services.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:phone_state/phone_state.dart';
+import 'package:rolify/data/audios.dart';
+import 'package:rolify/data/playlist.dart';
 import 'package:rolify/entities/audio.dart';
 import 'package:rolify/presentation_logic_holders/playing_sounds_singleton.dart';
 import 'package:rolify/presentation_logic_holders/singletons/app_state.dart';
@@ -140,8 +142,27 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
       'name': 'state_update',
       'playingPaths': playingPaths,
       'pausedPaths': pausedPaths,
+      'masterVolume': PlayingSounds().masterVolume,
     });
     writeWidgetState();
+
+  }
+
+  Future<void> playAudio(Audio audio) async {
+    final player = await getAudioPlayer(audio);
+    if (!player.playing) {
+      PlayingSounds().playAudio(audio);
+      playAudioPlayer(player);
+    }
+  }
+
+  Future<void> stopAudio(Audio audio) async {
+    final player = await getAudioPlayer(audio);
+    await player.stop();
+    playingAudio.remove(player);
+    pausedAudio.remove(player);
+    PlayingSounds().removeAudio(audio);
+    _broadcastState();
   }
 
   Future<void> writeWidgetState() async {
@@ -265,27 +286,74 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
   /// }
   @override
   Future customAction(String name, [Map<String, dynamic>? extras]) async {
-    if (name == 'set_master_volume' && extras != null) {
-      final volumeVal = extras['volume'];
-      final double volume = volumeVal is int ? volumeVal.toDouble() / 100.0 : (volumeVal?.toDouble() ?? 1.0);
-      
+    if (name == 'set_master_volume') {
+      final double volume = (extras?['volume'] as int? ?? 100) / 100.0;
       PlayingSounds().masterVolume = volume;
+      PlayingSounds().masterVolumeNotifier.value = volume;
       
-      for (final path in audioPlayers.keys) {
-        final player = audioPlayers[path]!;
+      final allAudios = await AudioData.getAllAudios();
+      
+      for (var entry in audioPlayers.entries) {
+        final String path = entry.key;
+        final player = entry.value;
+        
         Audio? audio;
         try {
-          audio = PlayingSounds().playingAudios.firstWhere((a) => a.path == path);
-        } catch (_) {
-          try {
-             audio = PlayingSounds().pausedAudios.firstWhere((a) => a.path == path);
-          } catch (_) {}
-        }
+           audio = allAudios.firstWhere((a) => a.path == path);
+        } catch (_) {}
         
         if (audio != null) {
           player.setVolume(audio.volume * volume);
         } else {
           player.setVolume(volume);
+        }
+      }
+      writeWidgetState();
+
+      return null;
+    }
+
+    if (name == 'play_audio') {
+      final String? path = extras?['path'];
+      if (path != null) {
+        final allAudios = await AudioData.getAllAudios();
+        try {
+          final audio = allAudios.firstWhere((a) => a.path == path);
+          if (PlayingSounds().playingAudios.contains(audio)) {
+             await stopAudio(audio);
+          } else {
+             await playAudio(audio);
+          }
+        } catch (e) {}
+      }
+      writeWidgetState();
+      return null;
+    }
+
+    if (name == 'play_playlist') {
+      final String? id = extras?['id'];
+      if (id != null) {
+        final allPlaylists = await PlaylistData.getAllPlaylist();
+        final pIndex = int.tryParse(id);
+        if (pIndex != null && pIndex >= 0 && pIndex < allPlaylists.length) {
+          final playlist = allPlaylists[pIndex];
+          final isAlreadyActive = PlayingSounds().activePlaylistIds.contains(id);
+
+          if (isAlreadyActive) {
+            PlayingSounds().activePlaylistIds.remove(id);
+            for (final audio in playlist.audios) {
+              await stopAudio(audio);
+            }
+          } else {
+            PlayingSounds().activePlaylistIds.add(id);
+            PlayingSounds().isPlayingPlaylist.value = true;
+            for (final audio in playlist.audios) {
+              await playAudio(audio);
+              await Future.delayed(const Duration(milliseconds: 50));
+            }
+          }
+          PlayingSounds().activePlaylistIdsNotifier.value = 
+              List.from(PlayingSounds().activePlaylistIds);
         }
       }
       writeWidgetState();

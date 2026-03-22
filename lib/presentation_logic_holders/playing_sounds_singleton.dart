@@ -53,7 +53,7 @@ class PlayingSounds {
     _notify();
   }
 
-  syncFromBackground(List<String> playingPaths, List<String> pausedPaths) async {
+  syncFromBackground(List<String> playingPaths, List<String> pausedPaths, [double? newMasterVolume]) async {
     final allAudios = await AudioData.getAllAudios();
     
     final newPlaying = allAudios.where((a) => playingPaths.contains(a.path)).toList();
@@ -71,7 +71,14 @@ class PlayingSounds {
       pausedAudios = newPaused;
       changed = true;
     }
+
+    if (newMasterVolume != null && newMasterVolume != masterVolume) {
+      masterVolume = newMasterVolume;
+      masterVolumeNotifier.value = newMasterVolume;
+      changed = true;
+    }
     
     if (changed) _notify();
   }
 }
+
