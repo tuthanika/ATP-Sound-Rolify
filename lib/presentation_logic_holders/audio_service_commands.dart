@@ -13,22 +13,17 @@ class AudioServiceCommands {
   }
 
   static play(Audio audio) async {
-    PlayingSounds().playAudio(audio);
-    eventBus.fire(AudioPlayed(audio.path));
     AppState().audioHandler.customAction('play', {"audio": audio.toJson()});
   }
 
   static stop(Audio audio) async {
-    PlayingSounds().removeAudio(audio);
     AppState().audioHandler.customAction('stop', {"audio": audio.toJson()});
-    eventBus.fire(AudioPaused(audio.path));
   }
 
   static setLoop(bool value, Audio audio) async {
     AppState()
         .audioHandler
         .customAction('loop', {"audio": audio.toJson(), "param": value});
-    eventBus.fire(ToggleLoop(audio.path, value));
   }
 
   static Future getLoop(Audio audio) async {
@@ -42,7 +37,6 @@ class AudioServiceCommands {
     AppState()
         .audioHandler
         .customAction('set_volume', {"audio": audio.toJson(), "param": value});
-    if (!global) eventBus.fire(VolumeChange(audio.path, value));
   }
 
   static Future getVolume(Audio audio) async {

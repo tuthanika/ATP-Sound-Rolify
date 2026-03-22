@@ -81,10 +81,17 @@ class MainActivity: AudioServiceActivity() {
                 } else {
                     result.success(null)
                 }
-            } else if (call.method == "updateWidgets") {
+            } else {
+                result.notImplemented()
+            }
+        }
+
+        // Widget Channel (New for synchronization)
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "com.tuthanika.rolify/widget").setMethodCallHandler { call, result ->
+            if (call.method == "updateWidgets") {
                 com.tuthanika.rolify.plus.widget.AllSoundWidget.updateAllWidgets(this)
                 com.tuthanika.rolify.plus.widget.PlaylistWidget.updateAllWidgets(this)
-                result.success(null)
+                result.success(true)
             } else {
                 result.notImplemented()
             }

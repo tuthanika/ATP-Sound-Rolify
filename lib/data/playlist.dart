@@ -11,8 +11,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 class PlaylistData {
   static Future<List<Playlist>> getAllPlaylist() async {
     final preferences = await SharedPreferences.getInstance();
-    if (preferences.containsKey('playlist')) {
-      List savedPlaylist = jsonDecode(preferences.getString('playlist')!);
+    if (preferences.containsKey('playlists')) {
+      List savedPlaylist = jsonDecode(preferences.getString('playlists')!);
       return savedPlaylist
           .map((playlist) => Playlist.fromJson(playlist))
           .toList();
@@ -44,7 +44,7 @@ class PlaylistData {
       BuildContext context, List<Playlist> allPlaylist) async {
     final preferences = await SharedPreferences.getInstance();
     final encodedAudios = allPlaylist.map((play) => play.toJson()).toList();
-    preferences.setString('playlist', jsonEncode(encodedAudios));
+    preferences.setString('playlists', jsonEncode(encodedAudios));
     BlocProvider.of<PlaylistListBloc>(context)
         .add(PlaylistListUpdate(allPlaylist));
   }

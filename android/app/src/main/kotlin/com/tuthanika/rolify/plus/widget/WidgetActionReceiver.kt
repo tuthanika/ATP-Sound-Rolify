@@ -63,6 +63,8 @@ class WidgetActionReceiver : BroadcastReceiver() {
         if (MainActivity.instance != null) {
             Log.d("RolifyWidget", "Sending via MainActivity instance")
             MainActivity.sendSilentCommand(command, path, id, volume)
+            refreshWidgets(context)
+            return // QUAN TRỌNG: Ngắt luôn tại đây để không chạy xuống Path 2 (MediaBrowser) gây double-action
         }
 
         // Path 2: Always try MediaBrowser as well (handles background service better)

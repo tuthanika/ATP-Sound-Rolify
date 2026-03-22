@@ -52,7 +52,7 @@ object FlutterDataHelper {
 
     fun getPlaylists(context: Context): List<RolifyPlaylist> {
         val prefs: SharedPreferences = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        val playlistsJsonStr = prefs.getString("flutter.playlist", null) ?: return emptyList()
+        val playlistsJsonStr = prefs.getString("flutter.playlists", null) ?: return emptyList()
         val activeIds = getActivePlaylistIds(context)
 
         val results = mutableListOf<RolifyPlaylist>()
@@ -128,10 +128,8 @@ object FlutterDataHelper {
     }
     
     fun getActiveCounts(context: Context): Pair<Int, Int> {
-        val audios = getAudios(context)
-        val activeAudios = audios.count { it.isActive }
-        val playlists = getPlaylists(context)
-        val activePlaylists = playlists.count { it.isActive }
+        val activeAudios = getActivePaths(context).size
+        val activePlaylists = getActivePlaylistIds(context).size
         return Pair(activeAudios, activePlaylists)
     }
 

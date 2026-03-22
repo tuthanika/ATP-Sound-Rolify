@@ -12,6 +12,7 @@ class ThemeModeController {
   final ValueNotifier<bool> stopInsteadOfPause = ValueNotifier(false);
   final ValueNotifier<bool> playInBackground = ValueNotifier(true);
   final ValueNotifier<bool> autoPauseDuringCalls = ValueNotifier(true);
+  final ValueNotifier<int> maxConcurrentAudios = ValueNotifier(30);
 
 
 
@@ -38,6 +39,7 @@ class ThemeModeController {
     AppState().playInBackground = playInBackground.value;
     autoPauseDuringCalls.value = prefs.getBool('autoPauseDuringCalls') ?? true;
     AppState().autoPauseDuringCalls = autoPauseDuringCalls.value;
+    maxConcurrentAudios.value = prefs.getInt('max_concurrent_audios') ?? 30;
   }
 
 
@@ -80,6 +82,13 @@ class ThemeModeController {
     AppState().autoPauseDuringCalls = value;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('autoPauseDuringCalls', value);
+  }
+
+  Future<void> setMaxConcurrentAudios(int value) async {
+    maxConcurrentAudios.value = value;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt('max_concurrent_audios', value);
+    AppState().audioHandler.customAction('update_max_limit', {'limit': value});
   }
 }
 

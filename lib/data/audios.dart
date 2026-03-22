@@ -44,19 +44,30 @@ class AudioData {
     final preferences = await SharedPreferences.getInstance();
     for (int i = 0; i < versionNumberWithAudioUpdates.length; i++) {
       final vn = versionNumberWithAudioUpdates[i];
-      if (preferences.containsKey(vn.toString()) == false) {
+      if (!preferences.containsKey(vn.toString())) {
         audiosToAdd.addAll(assetsAudios
             .where((element) => element['version_number'] == vn)
             .map((e) => Audio.fromJson(e))
             .toList()
-            .where((element) => allAudios.contains(element) == false)
+            .where((element) => !allAudios.contains(element))
             .toList());
-        preferences.setBool(vn.toString(), true);
       }
     }
+
     if (audiosToAdd.isNotEmpty) {
       audiosToAdd.addAll(allAudios);
-      await saveAllAudios(context, audiosToAdd);
+      try {
+        await saveAllAudios(context, audiosToAdd);
+        // LƯU THÀNH CÔNG MỚI ĐÁNH DẤU VERSION LÀ TRUE
+        for (int i = 0; i < versionNumberWithAudioUpdates.length; i++) {
+          final vn = versionNumberWithAudioUpdates[i].toString();
+          if (!preferences.containsKey(vn)) {
+            preferences.setBool(vn, true);
+          }
+        }
+      } catch (e) {
+        debugPrint("Lỗi cập nhật version âm thanh: $e");
+      }
     }
   }
 }

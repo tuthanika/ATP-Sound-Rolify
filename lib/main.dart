@@ -40,7 +40,6 @@ Future<void> _configureAudioSession() async {
       androidAudioFocusGainType: AndroidAudioFocusGainType.gainTransientMayDuck,
       androidWillPauseWhenDucked: false,
     ),
-
   );
 }
 
@@ -56,7 +55,7 @@ class AppRoot extends StatelessWidget {
           providers: [
             BlocProvider<PlaylistListBloc>(create: (context) => PlaylistListBloc()),
             BlocProvider<AudioListBloc>(create: (context) => AudioListBloc()),
-            BlocProvider<AudioEditBloc>(create: (context) => AudioEditBloc())
+            BlocProvider<AudioEditBloc>(create: (context) => AudioEditBloc()),
           ],
           child: DynamicColorBuilder(
             builder: (lightDynamic, darkDynamic) {
@@ -104,8 +103,9 @@ class AppRoot extends StatelessWidget {
 }
 
 class NoScrollGlowBehavior extends ScrollBehavior {
-  Widget buildViewportChrome(
-      BuildContext context, Widget child, AxisDirection axisDirection) {
+  @override
+  Widget buildOverscrollIndicator(
+      BuildContext context, Widget child, ScrollableDetails details) {
     return child;
   }
 }

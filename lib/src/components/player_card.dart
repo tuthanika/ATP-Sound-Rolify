@@ -45,6 +45,7 @@ class PlayerWidgetState extends State<PlayerWidget> {
   bool loopAudio = true, isPlaying = false, showVolumeSlider = false;
 
   StreamSubscription? _subscription;
+  Timer? _volumeDebounce;
 
   @override
   void initState() {
@@ -120,6 +121,7 @@ class PlayerWidgetState extends State<PlayerWidget> {
   @override
   void dispose() {
     _subscription?.cancel();
+    _volumeDebounce?.cancel();
     super.dispose();
   }
 
@@ -304,9 +306,12 @@ class PlayerWidgetState extends State<PlayerWidget> {
     AudioServiceCommands.setVolume(
         widget.audio, value * PlayingSounds().masterVolume);
 
-    final updatedAudio = widget.audio.copyFrom(volume: value);
-    PlayingSounds().updateAudio(updatedAudio);
-    AudioData.updateAudio(context, updatedAudio, refresh: false);
+    if (_volumeDebounce?.isActive ?? false) _volumeDebounce!.cancel();
+    _volumeDebounce = Timer(const Duration(milliseconds: 400), () {
+      final updatedAudio = widget.audio.copyFrom(volume: value);
+      PlayingSounds().updateAudio(updatedAudio);
+      AudioData.updateAudio(context, updatedAudio, refresh: false);
+    });
   }
 
   toggleLoop(value) {

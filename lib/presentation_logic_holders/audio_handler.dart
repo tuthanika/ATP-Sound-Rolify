@@ -4,6 +4,7 @@ import 'dart:io';
 
 import 'package:audio_service/audio_service.dart';
 import 'package:audio_session/audio_session.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:path_provider/path_provider.dart';
@@ -22,10 +23,10 @@ Future<AudioHandler> initAudioService() async {
   final audioHandler = await AudioService.init(
     builder: () => MyAudioHandler(),
     config: const AudioServiceConfig(
-      androidNotificationChannelId: 'com.rolify.app.audio',
-      androidNotificationChannelName: 'Rolify',
-      androidNotificationOngoing: false,
-      androidStopForegroundOnPause: false,
+      androidNotificationChannelId: 'com.tuthanika.rolify.channel.audio',
+      androidNotificationChannelName: 'Audio playback',
+      androidNotificationOngoing: true,
+      androidStopForegroundOnPause: true,
 
       androidShowNotificationBadge: true,
 
@@ -34,6 +35,22 @@ Future<AudioHandler> initAudioService() async {
     ),
   );
   audioHandler.setMockMediaItem('launcher_icon/512px_512px.png');
+
+  final prefs = await SharedPreferences.getInstance();
+  int maxLimit = int.tryParse(prefs.get('max_concurrent_audios').toString()) ?? 30;
+  (audioHandler as MyAudioHandler).setMaxLimit(maxLimit);
+
+  // Force sync All Audios to SharedPreferences for AppWidget on fresh install
+  final allAudios = await AudioData.getAllAudios();
+  final audiosJsonList = allAudios.map((a) => a.toJson()).toList();
+  await prefs.setString('audios', jsonEncode(audiosJsonList));
+
+  // Cập nhật giao diện Widget ngay lập tức cho lần cài đặt đầu tiên
+  try {
+    const MethodChannel('com.tuthanika.rolify/widget').invokeMethod('updateWidgets');
+  } catch (e) {
+    debugPrint("Init update widget error: $e");
+  }
 
   return audioHandler;
 }
@@ -44,6 +61,14 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
   List<AudioPlayer> playingAudio = [];
   List<AudioPlayer> pausedAudio = [];
   bool stoppingAll = false;
+  bool _wasAutoPausedByCall = false;
+  int _maxConcurrentAudios = 30;
+  final Set<String> _loadingPaths = {};
+  Timer? _debounceTimer;
+
+  void setMaxLimit(int limit) {
+    _maxConcurrentAudios = limit;
+  }
 
 
   MyAudioHandler() {
@@ -57,7 +82,15 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
         if (AppState().autoPauseDuringCalls) {
           if (status == PhoneStateStatus.CALL_INCOMING || 
               status == PhoneStateStatus.CALL_STARTED) {
-            pause();
+            if (playingAudio.isNotEmpty) {
+              _wasAutoPausedByCall = true;
+              pause();
+            }
+          } else if (status == PhoneStateStatus.CALL_ENDED) {
+            if (_wasAutoPausedByCall) {
+              _wasAutoPausedByCall = false;
+              play();
+            }
           }
         }
       });
@@ -125,6 +158,18 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
     }
     audioPlayer.setVolume(audio.volume * PlayingSounds().masterVolume);
     audioPlayer.setLoopMode(audio.loopMode);
+
+    // Lắng nghe sự kiện kết thúc để giải phóng slot (BƯỚC 3)
+    audioPlayer.playerStateStream.listen((state) {
+      if (state.processingState == ProcessingState.completed) {
+        if (playingAudio.contains(audioPlayer)) {
+          playingAudio.remove(audioPlayer);
+          customEvent.add(createAudioCustomEvent(AudioCustomEvents.audioEnded, audio.path));
+          _broadcastState();
+        }
+      }
+    });
+
     return audioPlayer;
   }
 
@@ -148,21 +193,93 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
 
   }
 
-  Future<void> playAudio(Audio audio) async {
-    final player = await getAudioPlayer(audio);
-    if (!player.playing) {
-      PlayingSounds().playAudio(audio);
-      playAudioPlayer(player);
+  Future<void> playAudio(Audio audio, {bool broadcast = true}) async {
+    playingAudio.removeWhere((p) => _getAudioPath(p) == audio.path);
+    pausedAudio.removeWhere((p) => _getAudioPath(p) == audio.path);
+
+    if ((playingAudio.length + _loadingPaths.length) >= _maxConcurrentAudios) {
+      debugPrint("Đạt giới hạn phát âm thanh đồng thời!");
+      customEvent.add({'name': 'limit_reached', 'limit': _maxConcurrentAudios});
+      return; 
     }
+
+    if (_loadingPaths.contains(audio.path)) return; 
+    _loadingPaths.add(audio.path);
+
+    try {
+      if (!audioPlayers.containsKey(audio.path)) {
+        final player = AudioPlayer(handleInterruptions: false);
+        audioPlayers[audio.path] = player; 
+
+        if (audio.audioSource == LocalAudioSource.assets) {
+          await player.setAsset(audio.path);
+        } else if (audio.path.startsWith('content://') || audio.path.startsWith('file://')) {
+          await player.setAudioSource(AudioSource.uri(Uri.parse(audio.path)));
+        } else {
+          await player.setFilePath(audio.path);
+        }
+        
+        if (!audioPlayers.containsKey(audio.path)) {
+             await player.stop();
+             await player.dispose();
+             return;
+        }
+
+        player.setVolume(audio.volume * PlayingSounds().masterVolume);
+        player.setLoopMode(audio.loopMode);
+        
+        player.playerStateStream.listen((state) {
+          if (state.processingState == ProcessingState.completed) {
+            if (playingAudio.contains(player)) {
+              playingAudio.remove(player);
+              customEvent.add(createAudioCustomEvent(AudioCustomEvents.audioEnded, audio.path));
+              _broadcastState();
+            }
+          }
+        });
+
+        PlayingSounds().playAudio(audio);
+        playAudioPlayer(player);
+      } else {
+        final player = audioPlayers[audio.path]!;
+        await player.seek(Duration.zero);
+        if (!player.playing) {
+          PlayingSounds().playAudio(audio);
+          playAudioPlayer(player);
+        }
+      }
+    } catch (e) {
+      debugPrint("Lỗi Play Audio: $e");
+      playingAudio.removeWhere((p) => _getAudioPath(p) == audio.path);
+      final brokenPlayer = audioPlayers.remove(audio.path);
+      try { brokenPlayer?.dispose(); } catch(_) {}
+      PlayingSounds().removeAudio(audio);
+      _broadcastState();
+    } finally {
+      // CHỐT CHẶN QUAN TRỌNG NHẤT: Bất chấp lỗi hay thành công, phải trả lại Slot
+      _loadingPaths.remove(audio.path);
+    }
+
+    if (broadcast) _broadcastState();
   }
 
   Future<void> stopAudio(Audio audio) async {
-    final player = await getAudioPlayer(audio);
-    await player.stop();
-    playingAudio.remove(player);
-    pausedAudio.remove(player);
+    // 1. XÓA ĐỒNG BỘ: Cập nhật UI Widget ngay lập tức để chặn lệnh rác
+    playingAudio.removeWhere((p) => _getAudioPath(p) == audio.path);
+    pausedAudio.removeWhere((p) => _getAudioPath(p) == audio.path);
     PlayingSounds().removeAudio(audio);
     _broadcastState();
+
+    // 2. XÓA BẤT ĐỒNG BỘ: Dọn dẹp engine an toàn
+    final player = audioPlayers.remove(audio.path);
+    if (player != null) {
+      try {
+        await player.stop();
+        await player.dispose(); 
+      } catch (e) {
+        debugPrint("Lỗi stopAudio: $e");
+      }
+    }
   }
 
   Future<void> writeWidgetState() async {
@@ -176,25 +293,39 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
     };
     await prefs.setString('widget_state', jsonEncode(state));
     
-    // Also trigger a native update for the remote views
-    try {
-      const MethodChannel('rolify/widget_command').invokeMethod('updateWidgets');
-    } catch (e) {}
+    // Lưu thành String bình thường để chống crash ClassCastException trên Android
+    await prefs.setString('widget_playing_paths_csv', playingPaths.join(',,'));
+
+    // Debounce chặn Spam MethodChannel làm đứng UI
+    if (_debounceTimer?.isActive ?? false) _debounceTimer!.cancel();
+    _debounceTimer = Timer(const Duration(milliseconds: 300), () {
+      try {
+        const MethodChannel('com.tuthanika.rolify/widget').invokeMethod('updateWidgets');
+      } catch (e) {
+        debugPrint("Lỗi update Widget: $e");
+      }
+    });
   }
 
   void playAudioPlayer(AudioPlayer audioPlayer) {
-    audioPlayer.play().then((_) async {
-      if (audioPlayer.playing) {
-        await audioPlayer.stop();
-        await audioPlayer.seek(Duration.zero);
-        playingAudio.remove(audioPlayer);
-        customEvent.add(createAudioCustomEvent(
-            AudioCustomEvents.audioEnded, _getAudioPath(audioPlayer)));
-        _broadcastState();
+    audioPlayer.play().catchError((e) {
+      debugPrint("Lỗi playAudioPlayer: $e");
+      playingAudio.remove(audioPlayer);
+      
+      final path = _getAudioPath(audioPlayer);
+      if (path.isNotEmpty) {
+        audioPlayers.remove(path);
       }
+      try {
+        audioPlayer.dispose();
+      } catch (_) {}
+      
+      _broadcastState();
     });
 
-    playingAudio.add(audioPlayer);
+    if (!playingAudio.contains(audioPlayer)) {
+      playingAudio.add(audioPlayer);
+    }
     _broadcastState();
 
     playbackState.add(PlaybackState(
@@ -209,11 +340,12 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
 
   @override
   Future<void> play() async {
-    for (final audioPlayer in pausedAudio) {
+    final toPlay = List<AudioPlayer>.from(pausedAudio);
+    pausedAudio.clear();
+
+    for (final audioPlayer in toPlay) {
       playAudioPlayer(audioPlayer);
-      playingAudio.add(audioPlayer);
     }
-    pausedAudio = [];
     customEvent.add(createAudioCustomEvent(AudioCustomEvents.resumeAll));
     _broadcastState();
   }
@@ -228,11 +360,15 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
       _broadcastState();
       return;
     }
-    for (final audioPlayer in playingAudio) {
+    final toPause = List<AudioPlayer>.from(playingAudio);
+    playingAudio.clear();
+
+    for (final audioPlayer in toPause) {
       await audioPlayer.pause();
-      pausedAudio.add(audioPlayer);
+      if (!pausedAudio.contains(audioPlayer)) {
+        pausedAudio.add(audioPlayer);
+      }
     }
-    playingAudio = [];
     _broadcastState();
 
 
@@ -256,8 +392,18 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
     for (final audioPlayer in pausedAudio) {
       await audioPlayer.stop();
     }
+    
+    // MỚI: Dọn dẹp triệt để rác, giải phóng RAM và bộ giải mã của just_audio
+    for (final player in audioPlayers.values) {
+      try {
+        await player.dispose();
+      } catch (_) {}
+    }
+    audioPlayers.clear();
+
     playingAudio = [];
     pausedAudio = [];
+    _loadingPaths.clear();
     _broadcastState();
 
     playbackState.add(PlaybackState(
@@ -297,12 +443,9 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
         final String path = entry.key;
         final player = entry.value;
         
-        Audio? audio;
-        try {
-           audio = allAudios.firstWhere((a) => a.path == path);
-        } catch (_) {}
-        
-        if (audio != null) {
+        final int audioIndex = allAudios.indexWhere((a) => a.path == path);
+        if (audioIndex >= 0) {
+          final Audio audio = allAudios[audioIndex];
           player.setVolume(audio.volume * volume);
         } else {
           player.setVolume(volume);
@@ -324,7 +467,9 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
           } else {
              await playAudio(audio);
           }
-        } catch (e) {}
+        } catch (e) {
+           debugPrint("Lỗi tại customAction: $e");
+        }
       }
       writeWidgetState();
       return null;
@@ -389,6 +534,18 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
     // Audio-specific actions
     if (extras != null && extras.containsKey("audio")) {
       final audio = Audio.fromJson(extras["audio"]);
+      
+      if (extras["param"] == null) {
+        if (name == 'play') {
+          await playAudio(audio);
+          return null;
+        }
+        if (name == 'stop') {
+          await stopAudio(audio);
+          return null;
+        }
+      }
+
       final audioPlayer = await getAudioPlayer(audio);
       if (extras["param"] != null) {
         final dynamic param = extras["param"];
@@ -400,15 +557,6 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
           audioPlayer.setLoopMode(param ? LoopMode.one : LoopMode.off);
         }
       } else {
-        if (name == 'play') {
-          playAudioPlayer(audioPlayer);
-        }
-        if (name == 'stop') {
-          audioPlayer.stop();
-          playingAudio.remove(audioPlayer);
-          pausedAudio.remove(audioPlayer);
-          _broadcastState();
-        }
         if (name == 'is_playing') {
           return audioPlayer.playing;
         }
@@ -418,9 +566,12 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
         if (name == 'get_loop') {
           return audioPlayers[audio.path]!.loopMode == LoopMode.one;
         }
-
-
       }
+    }
+
+    if (name == 'update_max_limit') {
+      _maxConcurrentAudios = int.tryParse(extras?['limit'].toString() ?? '30') ?? 30;
+      return null;
     }
 
     return super.customAction(name, extras);

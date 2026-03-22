@@ -90,6 +90,45 @@ class SettingsPage extends StatelessWidget {
             );
           },
         ),
+        const SizedBox(height: 8.0),
+        ValueListenableBuilder<int>(
+          valueListenable: ThemeModeController().maxConcurrentAudios,
+          builder: (context, value, child) {
+            return _buildSettingItem(
+              context,
+              title: "Giới hạn âm thanh phát cùng lúc",
+              subtitle: "Số luồng tối đa có thể phát đồng thời.",
+              trailing: SizedBox(
+                width: 60,
+                child: TextField(
+                  keyboardType: TextInputType.number,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontFamily: 'Rubik',
+                    fontSize: 16 * heightFactor,
+                    fontWeight: FontWeight.w600,
+                    color: Theme.of(context).textTheme.bodyMedium?.color,
+                  ),
+                  decoration: InputDecoration(
+                    hintText: value.toString(),
+                    isDense: true,
+                    contentPadding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: BorderSide(color: Theme.of(context).dividerColor),
+                    ),
+                  ),
+                  onSubmitted: (newValue) {
+                    final int? limit = int.tryParse(newValue);
+                    if (limit != null && limit > 0) {
+                      ThemeModeController().setMaxConcurrentAudios(limit);
+                    }
+                  },
+                ),
+              ),
+            );
+          },
+        ),
       ],
     );
   }

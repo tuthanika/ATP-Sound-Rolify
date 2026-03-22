@@ -43,21 +43,26 @@ class PlaylistRemoteViewsFactory(
 
         views.setTextViewText(R.id.widget_preset_name, playlist.name)
 
-        if (playlist.isActive) {
+        // 2. Đọc danh sách đang phát từ Flutter SharedPreferences
+        val prefs = context.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
+        // Lấy CSV String và split thành List thay vì dùng getStringSet (Gây crash)
+        val playingCsv = prefs.getString("flutter.widget_playing_paths_csv", "") ?: ""
+        val playingPaths = playingCsv.split(",,")
+
+        // 3. Kiểm tra và set Icon Play / Stop
+        // Nếu bất kỳ âm thanh nào trong playlist đang phát, coi như playlist đang phát
+        val isPaused = playlist.audios.any { playingPaths.contains(it.path) }
+
+        if (playlist.isActive || isPaused) {
             views.setInt(R.id.widget_preset_item_container, "setBackgroundResource", R.drawable.widget_playlist_item_bg)
             views.setInt(R.id.widget_preset_item_container, "setBackgroundColor", context.getColor(R.color.widget_active_item_bg))
         } else {
             views.setInt(R.id.widget_preset_item_container, "setBackgroundResource", 0)
-        }
-
-        val buttonIcon = if (playlist.isActive) R.drawable.ic_baseline_check_24 else R.drawable.ic_baseline_play_24
-        views.setImageViewResource(R.id.widget_preset_icon, buttonIcon)
-
-        if (playlist.isActive) {
-            views.setInt(R.id.widget_preset_item_container, "setBackgroundColor", context.getColor(R.color.widget_active_item_bg))
-        } else {
             views.setInt(R.id.widget_preset_item_container, "setBackgroundColor", 0)
         }
+
+        val buttonIcon = if (isPaused) R.drawable.ic_widget_pause else R.drawable.ic_baseline_play_24
+        views.setImageViewResource(R.id.widget_preset_icon, buttonIcon)
 
         val fillInIntent = Intent().apply {
             action = PlaylistWidget.ACTION_TOGGLE_PLAYLIST

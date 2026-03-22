@@ -18,13 +18,22 @@ class BackupService {
     try {
       final prefs = await SharedPreferences.getInstance();
       final String? audiosJson = prefs.getString('audios');
-      final String? playlistsJson = prefs.getString('playlist');
+      final String? playlistsJson = prefs.getString('playlists');
+
+      // Quét tự động toàn bộ cài đặt (Sort, Collapse, Luồng...)
+      Map<String, dynamic> settings = {};
+      for (String key in prefs.getKeys()) {
+        if (key != 'audios' && key != 'playlists' && !key.startsWith('widget_')) {
+          settings[key] = prefs.get(key);
+        }
+      }
 
       final data = {
         'version': 1,
         'timestamp': DateTime.now().toIso8601String(),
         'audios': audiosJson != null ? jsonDecode(audiosJson) : [],
         'playlists': playlistsJson != null ? jsonDecode(playlistsJson) : [],
+        'settings': settings,
       };
 
       final tempDir = await getTemporaryDirectory();
@@ -36,8 +45,6 @@ class BackupService {
         [XFile(file.path)],
         subject: 'Rolify Plus Backup',
       );
-
-
 
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -66,7 +73,26 @@ class BackupService {
         if (data.containsKey('audios') && data.containsKey('playlists')) {
           final prefs = await SharedPreferences.getInstance();
           await prefs.setString('audios', jsonEncode(data['audios']));
-          await prefs.setString('playlist', jsonEncode(data['playlists']));
+          await prefs.setString('playlists', jsonEncode(data['playlists']));
+
+          // Khôi phục tự động toàn bộ cài đặt
+          if (data.containsKey('settings')) {
+            final Map<String, dynamic> settings = data['settings'];
+            for (String key in settings.keys) {
+              final value = settings[key];
+              if (value is int) {
+                await prefs.setInt(key, value);
+              } else if (value is double) {
+                await prefs.setDouble(key, value);
+              } else if (value is bool) {
+                await prefs.setBool(key, value);
+              } else if (value is String) {
+                await prefs.setString(key, value);
+              } else if (value is List) {
+                await prefs.setStringList(key, List<String>.from(value));
+              }
+            }
+          }
 
           // Refresh the app state by reloading data into Blocs
           final audios = await AudioData.getAllAudios();
@@ -77,7 +103,6 @@ class BackupService {
 
            // Re-add any missing built-in assets
            await AudioData.addNewAssetsAudios(context);
-
 
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Data restored successfully! Please restart the app if changes don\'t appear.')),
@@ -216,4 +241,3 @@ class BackupService {
     }
   }
 }
-

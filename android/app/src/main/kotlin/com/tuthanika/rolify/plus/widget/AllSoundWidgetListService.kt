@@ -23,6 +23,7 @@ class AllSoundRemoteViewsFactory(
 ) : RemoteViewsService.RemoteViewsFactory {
 
     private var audios: List<RolifyAudio> = emptyList()
+    private var playingPaths: List<String> = emptyList() // THÊM BIẾN NÀY
 
     override fun onCreate() {
         // Nothing heavy
@@ -32,6 +33,10 @@ class AllSoundRemoteViewsFactory(
         // Fetch from SharedPreferences
         audios = FlutterDataHelper.getAudios(context)
 
+        // ĐỌC TRẠNG THÁI PLAYING 1 LẦN DUY NHẤT Ở ĐÂY THAY VÌ TRONG getViewAt
+        val prefs = context.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
+        val playingCsv = prefs.getString("flutter.widget_playing_paths_csv", "") ?: ""
+        playingPaths = playingCsv.split(",,")
     }
 
     override fun onDestroy() {
@@ -46,10 +51,13 @@ class AllSoundRemoteViewsFactory(
 
         views.setTextViewText(R.id.widget_playlist_name, audio.name)
 
-        val buttonIcon = if (audio.isActive) R.drawable.ic_baseline_check_24 else R.drawable.ic_baseline_add_24
+        // XÓA ĐOẠN ĐỌC SHAREDPREFERENCES Ở ĐÂY VÀ DÙNG BIẾN ĐÃ LƯU
+        val isPlaying = playingPaths.contains(audio.path)
+
+        val buttonIcon = if (isPlaying) R.drawable.ic_widget_pause else R.drawable.ic_baseline_add_24
         views.setImageViewResource(R.id.widget_playlist_button, buttonIcon)
 
-        if (audio.isActive) {
+        if (isPlaying || audio.isActive) {
             views.setInt(R.id.widget_playlist_item_container, "setBackgroundColor", context.getColor(R.color.widget_active_item_bg))
         } else {
             views.setInt(R.id.widget_playlist_item_container, "setBackgroundColor", 0)
