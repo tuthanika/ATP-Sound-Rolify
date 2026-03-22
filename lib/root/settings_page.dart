@@ -3,6 +3,7 @@ import 'package:rolify/presentation_logic_holders/singletons/app_state.dart';
 import 'package:rolify/presentation_logic_holders/singletons/backup_service.dart';
 import 'package:rolify/presentation_logic_holders/singletons/theme_mode_controller.dart';
 import 'package:rolify/src/theme/texts.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:launch_review/launch_review.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -80,12 +81,12 @@ class SettingsPage extends StatelessWidget {
             return _buildSettingItem(
               context,
               title: "Tạm dừng khi có cuộc gọi",
-              subtitle: "Tự động tạm dừng âm thanh khi có cuộc gọi đến hoặc tiêu điểm âm thanh bị mất.",
+              subtitle: "Tự động tạm dừng âm thanh khi có cuộc gọi đến (yêu cầu quyền Truy cập điện thoại).",
               trailing: Switch(
                 value: value,
-                onChanged: (val) => ThemeModeController().setAutoPauseDuringCalls(val),
+                onChanged: (val) => _handleAutoPauseToggle(context, val),
               ),
-              onTap: () => ThemeModeController().setAutoPauseDuringCalls(!value),
+              onTap: () => _handleAutoPauseToggle(context, !value),
             );
           },
         ),
@@ -124,6 +125,22 @@ class SettingsPage extends StatelessWidget {
       ],
     );
   }
+
+  Future<void> _handleAutoPauseToggle(BuildContext context, bool value) async {
+    if (value) {
+      final status = await Permission.phone.request();
+      if (!status.isGranted) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Cần quyền Truy cập điện thoại để nhận diện cuộc gọi.')),
+          );
+        }
+        return;
+      }
+    }
+    ThemeModeController().setAutoPauseDuringCalls(value);
+  }
+
 
 
   Widget _buildSettingItem(

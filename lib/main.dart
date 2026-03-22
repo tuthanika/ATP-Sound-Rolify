@@ -38,8 +38,9 @@ Future<void> _configureAudioSession() async {
         usage: AndroidAudioUsage.media,
       ),
       androidAudioFocusGainType: AndroidAudioFocusGainType.gainTransientMayDuck,
-      androidWillPauseWhenDucked: true,
+      androidWillPauseWhenDucked: false,
     ),
+
   );
 }
 
