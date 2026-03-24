@@ -13,6 +13,7 @@ class ThemeModeController {
   final ValueNotifier<bool> playInBackground = ValueNotifier(true);
   final ValueNotifier<bool> autoPauseDuringCalls = ValueNotifier(true);
   final ValueNotifier<int> maxConcurrentAudios = ValueNotifier(30);
+  final ValueNotifier<bool> enableMarqueeText = ValueNotifier(false);
 
 
 
@@ -40,6 +41,7 @@ class ThemeModeController {
     autoPauseDuringCalls.value = prefs.getBool('autoPauseDuringCalls') ?? true;
     AppState().autoPauseDuringCalls = autoPauseDuringCalls.value;
     maxConcurrentAudios.value = prefs.getInt('max_concurrent_audios') ?? 30;
+    enableMarqueeText.value = prefs.getBool('enableMarqueeText') ?? false;
   }
 
 
@@ -89,6 +91,12 @@ class ThemeModeController {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt('max_concurrent_audios', value);
     AppState().audioHandler.customAction('update_max_limit', {'limit': value});
+  }
+
+  Future<void> setEnableMarqueeText(bool value) async {
+    enableMarqueeText.value = value;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('enableMarqueeText', value);
   }
 }
 

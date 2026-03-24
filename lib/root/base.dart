@@ -233,16 +233,32 @@ class BaseState extends State<Base> with WidgetsBindingObserver {
                 height: 16.0,
               ),
               Expanded(
-                  child: IndexedStack(
-                index: pageSelected,
-                children: <Widget>[
-                  const AllSound(),
-                  const SessionSounds(),
-                  const AllPlaylist(),
-                  const SettingsPage(),
-                  SoundEdit(),
-                ],
-              ))
+                child: IndexedStack(
+                  index: pageSelected,
+                  children: <Widget>[
+                    TickerMode(
+                      enabled: pageSelected == 0,
+                      child: const AllSound(),
+                    ),
+                    TickerMode(
+                      enabled: pageSelected == 1,
+                      child: const SessionSounds(),
+                    ),
+                    TickerMode(
+                      enabled: pageSelected == 2,
+                      child: const AllPlaylist(),
+                    ),
+                    TickerMode(
+                      enabled: pageSelected == 3,
+                      child: const SettingsPage(),
+                    ),
+                    TickerMode(
+                      enabled: pageSelected == 4,
+                      child: SoundEdit(),
+                    ),
+                  ],
+                ),
+              )
             ],
           ),
         ),

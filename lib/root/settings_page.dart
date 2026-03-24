@@ -129,6 +129,22 @@ class SettingsPage extends StatelessWidget {
             );
           },
         ),
+        const SizedBox(height: 8.0),
+        ValueListenableBuilder<bool>(
+          valueListenable: ThemeModeController().enableMarqueeText,
+          builder: (context, value, child) {
+            return _buildSettingItem(
+              context,
+              title: "Chạy chữ tên âm thanh",
+              subtitle: "Cuộn chữ khi tên quá dài. Tắt đi sẽ ép chữ nhỏ lại để tiết kiệm CPU.",
+              trailing: Switch(
+                value: value,
+                onChanged: (val) => ThemeModeController().setEnableMarqueeText(val),
+              ),
+              onTap: () => ThemeModeController().setEnableMarqueeText(!value),
+            );
+          },
+        ),
       ],
     );
   }
