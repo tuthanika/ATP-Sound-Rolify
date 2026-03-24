@@ -42,68 +42,59 @@ class PlayerWidget extends StatefulWidget {
 class PlayerWidgetState extends State<PlayerWidget> {
   double currentVolume = 0.0;
   late String audioImage;
-  bool loopAudio = true, isPlaying = false, showVolumeSlider = false;
+  bool loopAudio = true, showVolumeSlider = false;
 
-  StreamSubscription? _subscription;
+  final List<StreamSubscription> _subscriptions = [];
   Timer? _volumeDebounce;
+
+  bool get isPlaying => PlayingSounds().playingAudios.any((e) => e.path == widget.audio.path);
 
   @override
   void initState() {
     super.initState();
-    _initData();
     
-    eventBus.on<OnAppResume>().listen((event) {
-      checkIfIsPlaying();
-    });
-    eventBus.on<AudioPlayed>().listen((event) {
+    _subscriptions.add(eventBus.on<OnAppResume>().listen((event) {
+      if (mounted) setState(() {});
+    }));
+    _subscriptions.add(eventBus.on<AudioPlayed>().listen((event) {
       if (event.path == widget.audio.path && mounted) {
-        setState(() {
-          isPlaying = true;
-        });
+        setState(() {});
       }
-    });
-    eventBus.on<AudioPaused>().listen((event) {
+    }));
+    _subscriptions.add(eventBus.on<AudioPaused>().listen((event) {
       if (event.path == widget.audio.path && mounted) {
-        setState(() {
-          isPlaying = false;
-        });
+        setState(() {});
       }
-    });
-    eventBus.on<ToggleLoop>().listen((event) {
+    }));
+    _subscriptions.add(eventBus.on<ToggleLoop>().listen((event) {
       if (event.path == widget.audio.path && mounted) {
         setState(() {
           loopAudio = event.value;
         });
       }
-    });
-    eventBus.on<VolumeChange>().listen((event) {
+    }));
+    _subscriptions.add(eventBus.on<VolumeChange>().listen((event) {
       if (event.path == widget.audio.path && mounted) {
         _updateLocalVolume(event.value);
       }
-    });
+    }));
 
-    AppState().audioHandler.customEvent.listen((event) {
+    _subscriptions.add(AppState().audioHandler.customEvent.listen((event) {
       if (!mounted) return;
       if (event['name'] == 'pauseAll' ||
           (event['name'] == 'audioEnded' &&
               event['audioPath'] == widget.audio.path)) {
-        setState(() {
-          isPlaying = false;
-        });
+        setState(() {});
         if (event['name'] == 'audioEnded') {
           // Fix for the original bug: auto-stop when sound naturally finishes
           stop();
         }
       }
-    });
+    }));
 
     loopAudio = widget.audio.loopMode == LoopMode.one;
     currentVolume = widget.audio.volume;
     audioImage = widget.audio.image;
-
-    WidgetsBinding.instance.addPostFrameCallback((timeStamp) {
-      checkIfIsPlaying();
-    });
   }
 
   void _updateLocalVolume(double value) {
@@ -120,22 +111,11 @@ class PlayerWidgetState extends State<PlayerWidget> {
 
   @override
   void dispose() {
-    _subscription?.cancel();
+    for (var subscription in _subscriptions) {
+      subscription.cancel();
+    }
     _volumeDebounce?.cancel();
     super.dispose();
-  }
-
-  void _initData() {
-    isPlaying = PlayingSounds().playingAudios.any((e) => e.path == widget.audio.path);
-  }
-
-  void checkIfIsPlaying() {
-    final status = PlayingSounds().playingAudios.any((e) => e.path == widget.audio.path);
-    if (status != isPlaying && mounted) {
-      setState(() {
-        isPlaying = status;
-      });
-    }
   }
 
   @override
@@ -143,8 +123,6 @@ class PlayerWidgetState extends State<PlayerWidget> {
     return ValueListenableBuilder<int>(
       valueListenable: PlayingSounds().stateChangeNotifier,
       builder: (context, _, __) {
-        checkIfIsPlaying(); // Re-check on every global state change
-        
         // Lazy Image Loading: Only even instantiate the provider if not collapsed
         DecorationImage? decorationImage;
         if (!widget.isCollapsedLayout && audioImage.isNotEmpty) {
