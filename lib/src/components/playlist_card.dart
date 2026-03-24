@@ -49,6 +49,30 @@ class PlaylistCardState extends State<PlaylistCard> {
     filteredAudios = widget.playlist.audios;
   }
 
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Collapse if the tab is hidden (TickerMode is false)
+    if (!TickerMode.of(context) && expanded) {
+      _collapse();
+    }
+  }
+
+  void _collapse() {
+    if (!expanded) return;
+    setState(() {
+      expanded = false;
+    });
+
+    Future.delayed(duration).then((_) {
+      if (mounted && !expanded) {
+        setState(() {
+          showAudioList = false;
+        });
+      }
+    });
+  }
+
   bool _isPlaylistPlaying() {
     return widget.playlist.audios.any((a) =>
         PlayingSounds().playingAudios.any((p) => p.path == a.path));
@@ -242,9 +266,11 @@ class PlaylistCardState extends State<PlaylistCard> {
                                     });
 
                                     Future.delayed(duration).then((_) {
-                                      setState(() {
-                                        showAudioList = false;
-                                      });
+                                      if (mounted && !expanded) {
+                                        setState(() {
+                                          showAudioList = false;
+                                        });
+                                      }
                                     });
                                   }
                                 },
