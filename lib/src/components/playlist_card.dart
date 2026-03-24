@@ -27,7 +27,7 @@ class PlaylistCard extends StatefulWidget {
 
 class PlaylistCardState extends State<PlaylistCard> {
   final duration = const Duration(milliseconds: 500);
-  bool isPlaying = false, expanded = false, showAudioList = false;
+  bool expanded = false, showAudioList = false;
   int _localSessionId = 0;
   List<Audio> filteredAudios = [];
   final TextEditingController filterController = TextEditingController();
@@ -73,10 +73,14 @@ class PlaylistCardState extends State<PlaylistCard> {
     });
   }
 
-  bool _isPlaylistPlaying() {
-    return widget.playlist.audios.any((a) =>
-        PlayingSounds().playingAudios.any((p) => p.path == a.path));
+  bool get isPlaying {
+    if (widget.playlist.audios.isEmpty) return false;
+    return widget.playlist.audios.every((playlistAudio) =>
+        PlayingSounds().playingAudios.any((playing) => playing.path == playlistAudio.path)
+    );
   }
+
+  bool _isPlaylistPlaying() => isPlaying;
 
   void _filterPlaylistSounds() {
     List<Audio> result = List<Audio>.from(widget.playlist.audios);
@@ -299,9 +303,12 @@ class PlaylistCardState extends State<PlaylistCard> {
     for (final audio in widget.playlist.audios) {
       if (_localSessionId != currentSession) break;
       if (AudioServiceCommands.globalStopGeneration != startGlobalStopGen) break;
-      
-      AudioServiceCommands.play(audio);
-      await Future.delayed(const Duration(milliseconds: 100));
+
+      bool isSoundPlaying = PlayingSounds().playingAudios.any((p) => p.path == audio.path);
+      if (!isSoundPlaying) {
+        AudioServiceCommands.play(audio);
+        await Future.delayed(const Duration(milliseconds: 100));
+      }
     }
   }
 

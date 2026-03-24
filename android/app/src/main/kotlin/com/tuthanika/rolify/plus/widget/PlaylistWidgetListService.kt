@@ -50,10 +50,11 @@ class PlaylistRemoteViewsFactory(
         val playingPaths = playingCsv.split(",,")
 
         // 3. Kiểm tra và set Icon Play / Stop
-        // Nếu bất kỳ âm thanh nào trong playlist đang phát, coi như playlist đang phát
-        val isPaused = playlist.audios.any { playingPaths.contains(it.path) }
+        // The widget item is playing ONLY if all its sounds are in the playing pool
+        val playlistAudios = playlist.audios.map { it.path }
+        val isPlaying = playlistAudios.isNotEmpty() && playingPaths.containsAll(playlistAudios)
 
-        if (playlist.isActive || isPaused) {
+        if (playlist.isActive || isPlaying) {
             views.setInt(R.id.widget_preset_item_container, "setBackgroundResource", R.drawable.widget_playlist_item_bg)
             views.setInt(R.id.widget_preset_item_container, "setBackgroundColor", context.getColor(R.color.widget_active_item_bg))
         } else {
@@ -61,7 +62,7 @@ class PlaylistRemoteViewsFactory(
             views.setInt(R.id.widget_preset_item_container, "setBackgroundColor", 0)
         }
 
-        val buttonIcon = if (isPaused) R.drawable.ic_widget_pause else R.drawable.ic_baseline_play_24
+        val buttonIcon = if (isPlaying) R.drawable.ic_widget_pause else R.drawable.ic_baseline_play_24
         views.setImageViewResource(R.id.widget_preset_icon, buttonIcon)
 
         val fillInIntent = Intent().apply {
