@@ -215,6 +215,7 @@ class PlayerWidgetState extends State<PlayerWidget> {
   Widget _buildExpanded() {
     return Column(
       children: [
+        // Khối này chứa logic chạm vào để bật/tắt (Giữ nguyên của bạn)
         Expanded(
           flex: 2,
           child: InkWell(
@@ -228,6 +229,7 @@ class PlayerWidgetState extends State<PlayerWidget> {
             ),
           ),
         ),
+        // Khối thanh trượt âm lượng (Giữ nguyên của bạn)
         Expanded(
           flex: 1,
           child: Padding(
@@ -238,13 +240,13 @@ class PlayerWidgetState extends State<PlayerWidget> {
               onChanged: (value) {
                 setVolume(context, value);
               },
-              // High contrast for light mode
               color: Theme.of(context).brightness == Brightness.light && audioImage.isEmpty
                   ? Theme.of(context).colorScheme.primary
                   : Colors.white.withOpacity(0.9),
             ),
           ),
         ),
+        // Khối các nút bấm (Đã fix bug Edit)
         Padding(
           padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
           child: Row(
@@ -254,13 +256,24 @@ class PlayerWidgetState extends State<PlayerWidget> {
                 '${(currentVolume * 100).round()}%',
                 color: Colors.white70,
               ),
+              
+              // === ĐOẠN ĐƯỢC CẬP NHẬT FIX BUG ===
               IconButton(
-                onPressed: () => BlocProvider.of<AudioEditBloc>(context)
-                    .add(EnableEditing(context, widget.audio)),
+                onPressed: () {
+                  BlocProvider.of<AudioEditBloc>(context)
+                      .add(EnableEditing(context, widget.audio));
+                  
+                  final isFirstRoute = ModalRoute.of(context)?.isFirst ?? true;
+                  if (!isFirstRoute) {
+                    Navigator.pop(context); // Tự đóng UI Folder để hiện UI Edit ở main app
+                  }
+                },
                 icon: const Icon(Icons.edit, size: 16, color: Colors.white70),
                 padding: EdgeInsets.zero,
                 constraints: const BoxConstraints(),
               ),
+              // ===================================
+
               MyRadio(
                 icon: Icon(
                   Icons.loop,
@@ -324,5 +337,136 @@ class PlayerWidgetState extends State<PlayerWidget> {
   Future<void> play() async {
     PlayingSounds().isPlayingPlaylist.value = false;
     AudioServiceCommands.play(widget.audio);
+  }
+}
+
+// Thêm class model phụ để truyền dữ liệu
+class AudioFolder {
+  final String name;
+  final List<Audio> audios;
+  AudioFolder(this.name, this.audios);
+}
+
+// Giao diện Thẻ Folder
+class FolderWidget extends StatelessWidget {
+  final AudioFolder folder;
+  final bool isCollapsedLayout;
+  final VoidCallback onTapList;
+  final VoidCallback onEdit; // <-- Thêm callback onEdit
+
+  const FolderWidget({
+    Key? key,
+    required this.folder,
+    this.isCollapsedLayout = false,
+    required this.onTapList,
+    required this.onEdit, // <-- Khởi tạo
+  }) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final isLight = Theme.of(context).brightness == Brightness.light;
+    
+    final Color idleBg = isLight
+        ? colorScheme.surfaceContainerHighest
+        : Colors.black.withOpacity(0.4);
+    
+    final textColor = isLight ? colorScheme.onSurface : Colors.white;
+
+    Widget nameBox = Container(
+      margin: isCollapsedLayout ? EdgeInsets.zero : const EdgeInsets.all(4.0),
+      padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 8.0),
+      width: double.infinity,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: idleBg,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white24, width: 1.5),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.folder_open, color: textColor, size: 20),
+          const SizedBox(width: 8),
+          Expanded(
+            child: MarqueeText(
+              text: folder.name,
+              autoShrink: false,
+              style: TextStyle(
+                height: 1.38,
+                fontFamily: 'Rubik',
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                color: textColor,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (isCollapsedLayout) {
+      return InkWell(
+        onTap: onTapList,
+        onLongPress: onEdit, // <-- Bổ sung: Nhấn giữ tên nhóm để sửa ở chế độ thu gọn
+        child: nameBox,
+      );
+    }
+
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      elevation: 2,
+      margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Container(
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.surfaceContainer,
+        ),
+        child: Column(
+          children: [
+            Expanded(
+              flex: 2,
+              child: InkWell(
+                onTap: onTapList,
+                onLongPress: onEdit, // <-- Nhấn giữ để sửa
+                child: Container(
+                  alignment: Alignment.center,
+                  child: nameBox,
+                ),
+              ),
+            ),
+            Expanded(
+              flex: 1,
+              child: Center(
+                child: Text(
+                  '${folder.audios.length} sounds', 
+                  style: TextStyle(color: textColor.withOpacity(0.7), fontWeight: FontWeight.bold)
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly, // <-- Dàn đều 2 nút edit và list
+                children: [
+                  IconButton(
+                    onPressed: onEdit, // <-- Nút sửa tên
+                    icon: const Icon(Icons.edit, size: 20, color: Colors.white70),
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                  ),
+                  IconButton(
+                    onPressed: onTapList,
+                    icon: const Icon(Icons.list, size: 20, color: Colors.white70),
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }

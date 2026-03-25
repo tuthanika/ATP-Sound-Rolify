@@ -6,6 +6,7 @@ import 'package:rolify/data/audios.dart';
 import 'package:rolify/entities/audio.dart';
 import 'package:rolify/presentation_logic_holders/audio_list_bloc/audio_list_bloc.dart';
 import 'package:rolify/presentation_logic_holders/audio_list_bloc/audio_list_state.dart';
+import 'package:rolify/presentation_logic_holders/audio_list_bloc/audio_list_event.dart';
 import 'package:rolify/presentation_logic_holders/event_bus/stop_all_event_bus.dart';
 import 'package:rolify/presentation_logic_holders/playing_sounds_singleton.dart';
 import 'package:rolify/presentation_logic_holders/singletons/app_state.dart';
@@ -13,14 +14,16 @@ import 'package:rolify/presentation_logic_holders/singletons/theme_mode_controll
 
 import 'package:rolify/src/components/button.dart';
 import 'package:rolify/src/components/my_icons.dart';
-import 'package:rolify/src/components/player_card.dart';
+import 'package:rolify/src/components/player_card.dart'; // import FolderWidget và PlayerWidget
 
 import 'search_bar.dart';
 import 'global_controls.dart';
 import 'package:rolify/src/theme/texts.dart';
 
 class AllSound extends StatefulWidget {
-  const AllSound({Key? key}) : super(key: key);
+  final String? folderName; // <-- Cho phép nhận folderName
+
+  const AllSound({Key? key, this.folderName}) : super(key: key);
 
   @override
   AllSoundState createState() => AllSoundState();
@@ -28,7 +31,10 @@ class AllSound extends StatefulWidget {
 
 class AllSoundState extends State<AllSound> with WidgetsBindingObserver {
   static const platform = MethodChannel('rolify/file_picker');
-  List<Audio> audios = [], filteredAudios = [];
+  
+  // Đổi List<Audio> thành List<dynamic> để chứa cả Audio và AudioFolder
+  List<dynamic> items = [], filteredItems = []; 
+  
   TextEditingController filterController = TextEditingController();
   FocusNode focusNode = FocusNode();
   bool pauseAll = true, audioToPauseExist = false, audioToReplayExist = false;
@@ -79,12 +85,83 @@ class AllSoundState extends State<AllSound> with WidgetsBindingObserver {
   Future<void> initAudios() async {
     await AudioData.addNewAssetsAudios(context);
     final allAudios = await AudioData.getAllAudios();
-    _sortAudios(allAudios);
+
+    List<dynamic> initialItems = [];
+    if (widget.folderName == null) {
+      // Màn hình chính: Nhóm các folder lại
+      Map<String, List<Audio>> folders = {};
+      List<Audio> standalones = [];
+      for (var a in allAudios) {
+        if (a.folderName != null && a.folderName!.isNotEmpty) {
+          folders.putIfAbsent(a.folderName!, () => []).add(a);
+        } else {
+          standalones.add(a);
+        }
+      }
+      initialItems.addAll(standalones);
+      folders.forEach((key, val) => initialItems.add(AudioFolder(key, val)));
+    } else {
+      // Màn hình trong Folder: Chỉ lấy file thuộc folder
+      initialItems = allAudios.where((a) => a.folderName == widget.folderName).toList();
+    }
+
+    _sortItems(initialItems);
     
     if (mounted) {
       setState(() {
-        audios = allAudios;
-        filteredAudios = allAudios;
+        items = initialItems;
+        filteredItems = initialItems;
+      });
+    }
+  }
+
+  void _sortItems(List<dynamic> list) {
+    final mode = ThemeModeController().sortMode.value;
+    if (mode == 0) {
+      list.sort((a, b) {
+        String nameA = a is AudioFolder ? a.name : (a as Audio).name;
+        String nameB = b is AudioFolder ? b.name : (b as Audio).name;
+        return nameA.toLowerCase().compareTo(nameB.toLowerCase());
+      });
+    } else {
+      final reversed = list.reversed.toList();
+      list.clear();
+      list.addAll(reversed);
+    }
+  }
+
+  filterAudios(BuildContext context) async {
+    final allAudios = await AudioData.getAllAudios();
+    List<dynamic> newFiltered = [];
+
+    if (widget.folderName == null) {
+      Map<String, List<Audio>> folders = {};
+      List<Audio> standalones = [];
+      for (var a in allAudios) {
+        if (a.folderName != null && a.folderName!.isNotEmpty) {
+          folders.putIfAbsent(a.folderName!, () => []).add(a);
+        } else {
+          standalones.add(a);
+        }
+      }
+      newFiltered.addAll(standalones);
+      folders.forEach((key, val) => newFiltered.add(AudioFolder(key, val)));
+    } else {
+      newFiltered = allAudios.where((a) => a.folderName == widget.folderName).toList();
+    }
+
+    if (filterController.text.isNotEmpty) {
+      newFiltered = newFiltered.where((item) {
+        String name = item is AudioFolder ? item.name : (item as Audio).name;
+        return name.toLowerCase().contains(filterController.text.toLowerCase());
+      }).toList();
+    }
+
+    _sortItems(newFiltered);
+    
+    if (mounted) {
+      setState(() {
+        filteredItems = newFiltered;
       });
     }
   }
@@ -153,14 +230,52 @@ class AllSoundState extends State<AllSound> with WidgetsBindingObserver {
                           mainAxisSpacing: 8,
                           childAspectRatio: isCollapsed ? 3.0 : 1.15,
                         ),
-                        itemCount: filteredAudios.length,
+                        itemCount: filteredItems.length,
                         itemBuilder: (context, index) {
-                          final e = filteredAudios[index];
-                          return PlayerWidget(
-                            key: Key('${e.path}_all_sounds'),
-                            audio: e,
-                            isCollapsedLayout: isCollapsed,
-                          );
+                          final item = filteredItems[index];
+                          
+                          // Trả về Widget tương ứng với loại Data
+                          if (item is Audio) {
+                            return PlayerWidget(
+                              key: Key('${item.path}_all_sounds'),
+                              audio: item,
+                              isCollapsedLayout: isCollapsed,
+                            );
+                          } else if (item is AudioFolder) {
+                            return FolderWidget(
+                              folder: item,
+                              isCollapsedLayout: isCollapsed,
+                              onEdit: () => _renameFolder(item.name), // Gọi hàm đổi tên trực tiếp trên thẻ
+                              onTapList: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => Scaffold(
+                                      appBar: AppBar(
+                                        title: Text(item.name),
+                                        backgroundColor: Theme.of(context).colorScheme.surface,
+                                        elevation: 0,
+                                        actions: [
+                                          IconButton(
+                                            icon: const Icon(Icons.edit), // Nút đổi tên trên Appbar (trong Folder)
+                                            onPressed: () async {
+                                              final newName = await _renameFolder(item.name);
+                                              // Nếu đổi tên thành công, tự thoát ra ngoài để cập nhật lại danh sách gốc
+                                              if (newName != null && context.mounted) {
+                                                Navigator.pop(context); 
+                                              }
+                                            },
+                                          )
+                                        ],
+                                      ),
+                                      body: AllSound(folderName: item.name),
+                                    ),
+                                  ),
+                                );
+                              },
+                            );
+                          }
+                          return const SizedBox.shrink();
                         },
                       );
                     },
@@ -181,7 +296,7 @@ class AllSoundState extends State<AllSound> with WidgetsBindingObserver {
                       isExpanded: isExpanded,
                       onExpandChanged: (value) => isControlsExpanded.value = value,
                       pauseAll: PlayingSounds().playingAudios.isNotEmpty,
-                      playPauseEnabled: filteredAudios.isNotEmpty ||
+                      playPauseEnabled: items.isNotEmpty ||
                           PlayingSounds().playingAudios.isNotEmpty,
                       setPauseAll: (value) => setState(() {}),
                     );
@@ -292,14 +407,70 @@ class AllSoundState extends State<AllSound> with WidgetsBindingObserver {
   }
 
   Future<void> _addAudiosByPaths(List<String> paths) async {
-    final List<Map<String, String>> items = paths.map((path) => {
+    final List<Map<String, String>> pickItems = paths.map((path) => {
       'name': removeFileExtension(path),
       'path': path,
     }).toList();
-    _addAudiosWithNames(items);
+    _addAudiosWithNames(pickItems);
   }
 
   Future<void> _addAudiosWithNames(List<Map<String, String>> items) async {
+    String? targetFolder = widget.folderName;
+
+    // Nếu đang ở màn hình chính và thêm > 1 file -> Hỏi xem có gộp nhóm không
+    if (widget.folderName == null && items.length > 1) {
+      bool? isGroup = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          backgroundColor: Theme.of(context).colorScheme.surface,
+          title: const Text('Thêm nhiều âm thanh'),
+          content: const Text('Bạn muốn thêm từng âm thanh riêng lẻ hay gom chúng thành một Nhóm (Folder) mới?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Riêng lẻ'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Tạo nhóm'),
+            ),
+          ],
+        ),
+      );
+
+      // Nếu người dùng chọn Tạo Nhóm -> Hiện ô nhập tên
+      if (isGroup == true) {
+        final folderNameController = TextEditingController();
+        targetFolder = await showDialog<String>(
+          context: context,
+          builder: (context) => AlertDialog(
+            backgroundColor: Theme.of(context).colorScheme.surface,
+            title: const Text('Tên nhóm mới'),
+            content: TextField(
+              controller: folderNameController,
+              autofocus: true,
+              decoration: const InputDecoration(hintText: 'Nhập tên nhóm...'),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, null),
+                child: const Text('Hủy'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(context, folderNameController.text),
+                child: const Text('Xong'),
+              ),
+            ],
+          ),
+        );
+        
+        // Nếu nhấn huỷ nhập tên thư mục -> huỷ thêm file luôn
+        if (targetFolder == null || targetFolder.trim().isEmpty) {
+          return; 
+        }
+      }
+    }
+
     final allAudios = await AudioData.getAllAudios();
     bool added = false;
     
@@ -311,6 +482,7 @@ class AllSoundState extends State<AllSound> with WidgetsBindingObserver {
         name: name,
         path: path,
         audioSource: LocalAudioSource.file,
+        folderName: targetFolder, // Gán folderName
       );
       
       if (!allAudios.any((e) => e.path == audio.path)) {
@@ -322,6 +494,9 @@ class AllSoundState extends State<AllSound> with WidgetsBindingObserver {
     if (added) {
       await AudioData.saveAllAudios(context, allAudios);
       resetTextFilter(context);
+      
+      // Notify components to update
+      BlocProvider.of<AudioListBloc>(context).add(AudioListUpdate(allAudios));
     }
   }
 
@@ -331,44 +506,57 @@ class AllSoundState extends State<AllSound> with WidgetsBindingObserver {
     filterAudios(context);
   }
 
-  void _sortAudios(List<Audio> list) {
-    final mode = ThemeModeController().sortMode.value;
-    if (mode == 0) {
-      list.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
-    } else {
-      // Newest First: Reverse the natural order
-      final reversed = list.reversed.toList();
-      list.clear();
-      list.addAll(reversed);
+  // --- HÀM _renameFolder PHẢI NẰM Ở ĐÂY (BÊN TRONG AllSoundState) ---
+  Future<String?> _renameFolder(String oldName) async {
+    final controller = TextEditingController(text: oldName);
+    final newName = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: Theme.of(context).colorScheme.surface,
+        title: const Text('Đổi tên nhóm'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          decoration: const InputDecoration(hintText: 'Nhập tên mới...'),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, null),
+            child: const Text('Hủy'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, controller.text),
+            child: const Text('Lưu'),
+          ),
+        ],
+      ),
+    );
+
+    if (newName != null && newName.trim().isNotEmpty && newName != oldName) {
+      final allAudios = await AudioData.getAllAudios();
+      bool changed = false;
+      
+      for (int i = 0; i < allAudios.length; i++) {
+        if (allAudios[i].folderName == oldName) {
+          allAudios[i] = allAudios[i].copyFrom(folderName: newName.trim());
+          changed = true;
+        }
+      }
+      
+      if (changed) {
+        await AudioData.saveAllAudios(context, allAudios);
+        if (mounted) {
+          BlocProvider.of<AudioListBloc>(context).add(AudioListUpdate(allAudios));
+        }
+        return newName.trim();
+      }
     }
+    return null;
   }
 
-  filterAudios(BuildContext context) async {
-    final allAudios = await AudioData.getAllAudios();
+} // <-- KẾT THÚC CLASS AllSoundState Ở ĐÂY
 
-    List<Audio> newFilteredAudios = allAudios;
-    if (filterController.text != '') {
-      newFilteredAudios =
-          filterAudiosByText(newFilteredAudios, filterController.text);
-    }
-    _sortAudios(newFilteredAudios);
-    
-    if (mounted) {
-      setState(() {
-        filteredAudios = newFilteredAudios;
-      });
-    }
-  }
-
-  filterAudiosByText(List<Audio> audios, String text) {
-    return audios
-        .where((audio) => audio.name.toLowerCase().contains(text.toLowerCase()))
-        .toList();
-  }
-
-
-}
-
+// --- PHẦN OPTION TILE BÊN DƯỚI ---
 class _OptionTile extends StatelessWidget {
   final Widget icon;
   final String title;
@@ -403,4 +591,3 @@ class _OptionTile extends StatelessWidget {
     );
   }
 }
-

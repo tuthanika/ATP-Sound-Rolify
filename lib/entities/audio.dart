@@ -8,6 +8,7 @@ class Audio extends Equatable {
   final LocalAudioSource audioSource;
   final LoopMode loopMode;
   final double volume;
+  final String? folderName; // <-- THÊM MỚI
 
   const Audio({
     required this.name,
@@ -16,6 +17,7 @@ class Audio extends Equatable {
     this.audioSource = LocalAudioSource.assets,
     this.loopMode = LoopMode.one,
     this.volume = 0.5,
+    this.folderName, // <-- THÊM MỚI
   });
 
   Audio.fromJson(Map json)
@@ -26,7 +28,8 @@ class Audio extends Equatable {
             ? LocalAudioSource.assets
             : LocalAudioSource.file,
         loopMode = json['loop_mode'] == 'off' ? LoopMode.off : LoopMode.one,
-        volume = json['volume']?.toDouble() ?? 0.5;
+        volume = json['volume']?.toDouble() ?? 0.5,
+        folderName = json['folder_name']; // <-- THÊM MỚI
 
   toJson() => {
         'name': name,
@@ -36,6 +39,7 @@ class Audio extends Equatable {
             audioSource == LocalAudioSource.assets ? 'assets' : 'file',
         'loop_mode': loopMode == LoopMode.off ? 'off' : 'one',
         'volume': volume,
+        'folder_name': folderName, // <-- THÊM MỚI
       };
 
   Audio copyFrom({
@@ -45,6 +49,7 @@ class Audio extends Equatable {
     LocalAudioSource? audioSource,
     LoopMode? loopMode,
     double? volume,
+    String? folderName, // <-- THÊM MỚI
   }) =>
       Audio(
         name: name ?? this.name,
@@ -53,6 +58,7 @@ class Audio extends Equatable {
         audioSource: audioSource ?? this.audioSource,
         loopMode: loopMode ?? this.loopMode,
         volume: volume ?? this.volume,
+        folderName: folderName ?? this.folderName, // <-- THÊM MỚI
       );
 
   @override
@@ -60,6 +66,7 @@ class Audio extends Equatable {
 }
 
 String removeFileExtension(String path) {
+  // ... (giữ nguyên logic hàm này như cũ)
   if (path.isEmpty) return 'Unknown';
   final uri = Uri.tryParse(path);
   String fileName = path;
