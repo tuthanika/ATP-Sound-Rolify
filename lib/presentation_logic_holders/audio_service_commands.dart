@@ -19,6 +19,21 @@ class AudioServiceCommands {
   static stop(Audio audio) async {
     AppState().audioHandler.customAction('stop', {"audio": audio.toJson()});
   }
+  
+  static playFolderSpecial(String folderName, List<Audio> audios, String mode) async {
+    AppState().audioHandler.customAction('play_special_folder', {
+      'folderName': folderName,
+      'mode': mode,
+      'audios': audios.map((a) => a.toJson()).toList(),
+    });
+  }
+
+  static stopFolderSpecial(String folderName, List<Audio> audios) async {
+    AppState().audioHandler.customAction('stop_special_folder', {
+      'folderName': folderName,
+      'audios': audios.map((a) => a.toJson()).toList(),
+    });
+  }
 
   static setLoop(bool value, Audio audio) async {
     AppState()

@@ -4,6 +4,10 @@ import 'package:rolify/entities/audio.dart';
 
 class PlayingSounds {
   static final PlayingSounds _singleton = PlayingSounds._internal();
+   // --- THÊM DÒNG NÀY VÀO ĐÂY ---
+  // Key: folderName, Value: {'mode': 'sequential' | 'random', 'audios': List<Audio>}
+  Map<String, Map<String, dynamic>> activeSpecialFolders = {}; 
+  // -----------------------------
   List<Audio> playingAudios = [];
   List<Audio> pausedAudios = [];
   List<String> activePlaylistIds = [];

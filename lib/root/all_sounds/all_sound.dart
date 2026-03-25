@@ -11,6 +11,7 @@ import 'package:rolify/presentation_logic_holders/event_bus/stop_all_event_bus.d
 import 'package:rolify/presentation_logic_holders/playing_sounds_singleton.dart';
 import 'package:rolify/presentation_logic_holders/singletons/app_state.dart';
 import 'package:rolify/presentation_logic_holders/singletons/theme_mode_controller.dart';
+import 'package:rolify/presentation_logic_holders/audio_service_commands.dart'; // import để gọi hàm play cơ bản
 
 import 'package:rolify/src/components/button.dart';
 import 'package:rolify/src/components/my_icons.dart';
@@ -216,6 +217,64 @@ class AllSoundState extends State<AllSound> with WidgetsBindingObserver {
                     },
                   ),
                 ),
+
+                // === DÃY NÚT ĐIỀU KHIỂN FOLDER ===
+                if (widget.folderName != null && items.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 12.0, bottom: 4.0),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: [
+                        _FolderActionButton(
+                          icon: Icons.all_inclusive_rounded,
+                          label: 'Tất cả',
+                          onTap: () {
+                            final audios = filteredItems.whereType<Audio>().toList();
+                            for (var a in audios) {
+                              AudioServiceCommands.play(a); // Mix phát song song
+                            }
+                          },
+                        ),
+                        _FolderActionButton(
+                          icon: Icons.low_priority_rounded,
+                          label: 'Tuần tự',
+                          onTap: () {
+                            final audios = filteredItems.whereType<Audio>().toList();
+                            AppState().audioHandler.customAction('play_special_folder', {
+                              'folderName': widget.folderName,
+                              'mode': 'sequential',
+                              'audios': audios.map((a) => a.toJson()).toList(),
+                            });
+                          },
+                        ),
+                        _FolderActionButton(
+                          icon: Icons.shuffle_rounded,
+                          label: 'Ngẫu nhiên',
+                          onTap: () {
+                            final audios = filteredItems.whereType<Audio>().toList();
+                            AppState().audioHandler.customAction('play_special_folder', {
+                              'folderName': widget.folderName,
+                              'mode': 'random',
+                              'audios': audios.map((a) => a.toJson()).toList(),
+                            });
+                          },
+                        ),
+                        _FolderActionButton(
+                          icon: Icons.stop_rounded,
+                          label: 'Dừng',
+                          onTap: () {
+                            final audios = filteredItems.whereType<Audio>().toList();
+                            AppState().audioHandler.customAction('stop_special_folder', {
+                              'folderName': widget.folderName,
+                              'audios': audios.map((a) => a.toJson()).toList(),
+                            });
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                // ==================================
+
                 Expanded(
                   child: ValueListenableBuilder<bool>(
                     valueListenable: ThemeModeController().isCollapsed,
@@ -635,10 +694,8 @@ class AllSoundState extends State<AllSound> with WidgetsBindingObserver {
     }
     return null;
   }
+}
 
-} // <-- KẾT THÚC CLASS AllSoundState Ở ĐÂY
-
-// --- PHẦN OPTION TILE BÊN DƯỚI ---
 class _OptionTile extends StatelessWidget {
   final Widget icon;
   final String title;
@@ -670,6 +727,46 @@ class _OptionTile extends StatelessWidget {
       title: MyText.body(title, fontWeight: FontWeight.w600),
       subtitle: MyText.caption(subtitle, textType: TextType.secondary),
       onTap: onTap,
+    );
+  }
+}
+
+// --- WIDGET NÚT HÀNH ĐỘNG CHO FOLDER ---
+class _FolderActionButton extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  const _FolderActionButton({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, color: colorScheme.primary, size: 28),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: colorScheme.onSurface.withOpacity(0.8),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

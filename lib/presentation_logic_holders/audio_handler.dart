@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math'; // <-- Bổ sung thư viện Math
 
 import 'package:audio_service/audio_service.dart';
 import 'package:audio_session/audio_session.dart';
@@ -97,8 +98,6 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
     }
   }
 
-
-
   void _initFocusListener() async {
     final session = await AudioSession.instance;
     session.interruptionEventStream.listen((event) {
@@ -107,8 +106,6 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
       // to satisfy the "only pause for calls" requirement.
     });
   }
-
-
 
   Future<void> setMockMediaItem(String path) async {
     final byteData = await rootBundle.load('assets/$path');
@@ -126,6 +123,49 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
 
     mediaItem.add(mockMediaItem);
   }
+
+  // --- HÀM XỬ LÝ CHUYỂN BÀI TỰ ĐỘNG CHO FOLDER ---
+  bool _handleSpecialFolderNext(Audio currentAudio) {
+    if (currentAudio.folderName == null) return false;
+    
+    final specialFolders = PlayingSounds().activeSpecialFolders;
+    if (!specialFolders.containsKey(currentAudio.folderName)) return false;
+
+    final folderData = specialFolders[currentAudio.folderName]!;
+    final mode = folderData['mode'] as String;
+    final audios = folderData['audios'] as List<Audio>;
+    
+    if (audios.isEmpty) return false;
+
+    int nextIndex = 0;
+    int currentIndex = audios.indexWhere((a) => a.path == currentAudio.path);
+
+    if (mode == 'sequential') {
+        nextIndex = currentIndex + 1;
+        if (nextIndex >= audios.length) nextIndex = 0; // Lặp lại từ đầu nhóm
+    } else if (mode == 'random') {
+        if (audios.length == 1) {
+            nextIndex = 0;
+        } else {
+            do {
+                nextIndex = Random().nextInt(audios.length);
+            } while (nextIndex == currentIndex); // Tránh phát lại bài vừa xong
+        }
+    }
+
+    final nextAudio = audios[nextIndex];
+    
+    // Ép stopAudio cũ để UI tắt đèn
+    stopAudio(currentAudio);
+    
+    // Phát bài tiếp theo sau 100ms
+    Future.delayed(const Duration(milliseconds: 100), () {
+      playAudio(nextAudio);
+    });
+    
+    return true; 
+  }
+  // -------------------------------------
 
   Future<AudioPlayer> getAudioPlayer(Audio audio) async {
     if (audioPlayers.containsKey(audio.path)) {
@@ -156,16 +196,22 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
     } else {
       await audioPlayer.setFilePath(audio.path);
     }
+    
+    // Cập nhật Loop Mode tắt lặp nếu đang ở chế độ Playlist Folder
+    bool isSpecial = audio.folderName != null && PlayingSounds().activeSpecialFolders.containsKey(audio.folderName);
     audioPlayer.setVolume(audio.volume * PlayingSounds().masterVolume);
-    audioPlayer.setLoopMode(audio.loopMode);
+    audioPlayer.setLoopMode(isSpecial ? LoopMode.off : audio.loopMode);
 
-    // Lắng nghe sự kiện kết thúc để giải phóng slot (BƯỚC 3)
     audioPlayer.playerStateStream.listen((state) {
       if (state.processingState == ProcessingState.completed) {
         if (playingAudio.contains(audioPlayer)) {
           playingAudio.remove(audioPlayer);
-          customEvent.add(createAudioCustomEvent(AudioCustomEvents.audioEnded, audio.path));
-          _broadcastState();
+          
+          // Kiểm tra xem có chuyển bài tự động không, nếu không thì end bình thường
+          if (!_handleSpecialFolderNext(audio)) {
+            customEvent.add(createAudioCustomEvent(AudioCustomEvents.audioEnded, audio.path));
+            _broadcastState();
+          }
         }
       }
     });
@@ -190,7 +236,6 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
       'masterVolume': PlayingSounds().masterVolume,
     });
     writeWidgetState();
-
   }
 
   Future<void> playAudio(Audio audio, {bool broadcast = true}) async {
@@ -225,15 +270,19 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
              return;
         }
 
+        // Cập nhật Loop Mode tắt lặp nếu đang ở chế độ Playlist Folder
+        bool isSpecial = audio.folderName != null && PlayingSounds().activeSpecialFolders.containsKey(audio.folderName);
         player.setVolume(audio.volume * PlayingSounds().masterVolume);
-        player.setLoopMode(audio.loopMode);
+        player.setLoopMode(isSpecial ? LoopMode.off : audio.loopMode);
         
         player.playerStateStream.listen((state) {
           if (state.processingState == ProcessingState.completed) {
             if (playingAudio.contains(player)) {
               playingAudio.remove(player);
-              customEvent.add(createAudioCustomEvent(AudioCustomEvents.audioEnded, audio.path));
-              _broadcastState();
+              if (!_handleSpecialFolderNext(audio)) {
+                customEvent.add(createAudioCustomEvent(AudioCustomEvents.audioEnded, audio.path));
+                _broadcastState();
+              }
             }
           }
         });
@@ -256,7 +305,6 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
       PlayingSounds().removeAudio(audio);
       _broadcastState();
     } finally {
-      // CHỐT CHẶN QUAN TRỌNG NHẤT: Bất chấp lỗi hay thành công, phải trả lại Slot
       _loadingPaths.remove(audio.path);
     }
 
@@ -371,7 +419,6 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
     }
     _broadcastState();
 
-
     playbackState.add(PlaybackState(
       controls: [
         MediaControl.play,
@@ -404,6 +451,9 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
     playingAudio = [];
     pausedAudio = [];
     _loadingPaths.clear();
+    
+    PlayingSounds().activeSpecialFolders.clear(); // <-- Dọn dẹp hàng đợi Playlist
+
     _broadcastState();
 
     playbackState.add(PlaybackState(
@@ -525,6 +575,54 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
       return null;
     }
 
+    // --- CÁC HÀM XỬ LÝ LỆNH TỪ UI NHÓM (FOLDER) ---
+    if (name == 'play_special_folder') {
+      final folderName = extras?['folderName'];
+      final mode = extras?['mode']; 
+      final audiosJson = extras?['audios'] as List<dynamic>;
+      
+      if (folderName != null && audiosJson.isNotEmpty) {
+        final audios = audiosJson.map((e) => Audio.fromJson(e)).toList();
+        
+        // Dừng tất cả các audio thuộc folder này đang phát để reset lại
+        for (var a in audios) {
+          await stopAudio(a);
+        }
+        
+        // Lưu vào hàng đợi ảo
+        PlayingSounds().activeSpecialFolders[folderName] = {
+          'mode': mode,
+          'audios': audios,
+        };
+        
+        // Bốc bài đầu tiên (hoặc random) để mồi phát
+        Audio firstAudio = audios.first;
+        if (mode == 'random') {
+          firstAudio = audios[Random().nextInt(audios.length)];
+        }
+        await playAudio(firstAudio);
+      }
+      writeWidgetState();
+      return null;
+    }
+
+    if (name == 'stop_special_folder') {
+      final folderName = extras?['folderName'];
+      final audiosJson = extras?['audios'] as List<dynamic>?;
+      if (folderName != null) {
+        PlayingSounds().activeSpecialFolders.remove(folderName);
+        if (audiosJson != null) {
+            final audios = audiosJson.map((e) => Audio.fromJson(e)).toList();
+            for (var a in audios) {
+              await stopAudio(a);
+            }
+        }
+      }
+      writeWidgetState();
+      return null;
+    }
+    // ----------------------------------------------
+
     if (name == 'broadcast_state') {
       writeWidgetState();
       _broadcastState();
@@ -576,7 +674,6 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
 
     return super.customAction(name, extras);
   }
-
 
   Map<String, dynamic> createAudioCustomEvent(AudioCustomEvents name,
       [String? audioPath]) {
