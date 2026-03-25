@@ -235,14 +235,20 @@ class AllSoundState extends State<AllSound> with WidgetsBindingObserver {
                           final item = filteredItems[index];
                           
                           // Trả về Widget tương ứng với loại Data
+                          Widget childWidget = const SizedBox.shrink();
+                          String itemKey = '';
+
+                          // 1. Dựng UI thẻ như bình thường
                           if (item is Audio) {
-                            return PlayerWidget(
+                            itemKey = item.path;
+                            childWidget = PlayerWidget(
                               key: Key('${item.path}_all_sounds'),
                               audio: item,
                               isCollapsedLayout: isCollapsed,
                             );
                           } else if (item is AudioFolder) {
-                            return FolderWidget(
+                            itemKey = item.name;
+                            childWidget = FolderWidget(
                               folder: item,
                               isCollapsedLayout: isCollapsed,
                               onEdit: () => _renameFolder(item.name), // Gọi hàm đổi tên trực tiếp trên thẻ
@@ -275,7 +281,54 @@ class AllSoundState extends State<AllSound> with WidgetsBindingObserver {
                               },
                             );
                           }
-                          return const SizedBox.shrink();
+
+                          // 2. NẾU Ở CHẾ ĐỘ THU GỌN: Bọc thêm Dismissible để vuốt xóa
+                          if (isCollapsed && childWidget is! SizedBox) {
+                            return Dismissible(
+                              key: Key('dismiss_$itemKey'),
+                              direction: DismissDirection.endToStart, // Chỉ cho vuốt từ Phải sang Trái
+                              background: Container(
+                                decoration: BoxDecoration(
+                                  color: Theme.of(context).colorScheme.error,
+                                  borderRadius: BorderRadius.circular(20), // Bo góc cho khớp với thẻ
+                                ),
+                                alignment: Alignment.centerRight,
+                                padding: const EdgeInsets.only(right: 20.0),
+                                child: const Icon(Icons.delete_outline, color: Colors.white),
+                              ),
+                              confirmDismiss: (direction) async {
+                                final isFolder = item is AudioFolder;
+                                final name = isFolder ? item.name : (item as Audio).name;
+                                
+                                // Hiện hộp thoại xác nhận trước khi xóa
+                                return await showDialog<bool>(
+                                  context: context,
+                                  builder: (context) => AlertDialog(
+                                    backgroundColor: Theme.of(context).colorScheme.surface,
+                                    title: const Text('Xác nhận xóa'),
+                                    content: Text('Bạn có chắc chắn muốn xóa ${isFolder ? 'nhóm' : 'âm thanh'} "$name" không?'),
+                                    actions: [
+                                      TextButton(
+                                        onPressed: () => Navigator.pop(context, false),
+                                        child: const Text('Hủy'),
+                                      ),
+                                      TextButton(
+                                        onPressed: () => Navigator.pop(context, true),
+                                        child: const Text('Xóa', style: TextStyle(color: Colors.red)),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              },
+                              onDismissed: (direction) {
+                                _deleteItem(item); // Gọi hàm xóa đã tạo ở trên
+                              },
+                              child: childWidget,
+                            );
+                          }
+
+                          // Nếu ở chế độ phóng to, trả về thẻ bình thường không cho vuốt
+                          return childWidget;
                         },
                       );
                     },
@@ -504,6 +557,35 @@ class AllSoundState extends State<AllSound> with WidgetsBindingObserver {
     focusNode.unfocus();
     filterController.clear();
     filterAudios(context);
+  }
+
+  // --- HÀM XỬ LÝ XÓA ÂM THANH / NHÓM ---
+  Future<void> _deleteItem(dynamic item) async {
+    final allAudios = await AudioData.getAllAudios();
+    
+    if (item is Audio) {
+      // Dừng phát nếu đang phát
+      AudioServiceCommands.stop(item);
+      allAudios.removeWhere((a) => a.path == item.path);
+    } else if (item is AudioFolder) {
+      // Dừng tất cả âm thanh trong nhóm
+      for (var audio in item.audios) {
+        AudioServiceCommands.stop(audio);
+      }
+      allAudios.removeWhere((a) => a.folderName == item.name);
+    }
+
+    // Lưu lại danh sách mới
+    await AudioData.saveAllAudios(context, allAudios);
+    
+    if (mounted) {
+      // Cập nhật UI ngay lập tức
+      setState(() {
+        items.remove(item);
+        filteredItems.remove(item);
+      });
+      BlocProvider.of<AudioListBloc>(context).add(AudioListUpdate(allAudios));
+    }
   }
 
   // --- HÀM _renameFolder PHẢI NẰM Ở ĐÂY (BÊN TRONG AllSoundState) ---
