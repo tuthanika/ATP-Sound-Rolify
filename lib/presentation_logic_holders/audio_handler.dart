@@ -133,23 +133,53 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
 
     final folderData = specialFolders[currentAudio.folderName]!;
     final mode = folderData['mode'] as String;
-    final audios = folderData['audios'] as List<Audio>;
+    List<Audio> audios = folderData['audios'] as List<Audio>;
     
     if (audios.isEmpty) return false;
 
-    int nextIndex = 0;
     int currentIndex = audios.indexWhere((a) => a.path == currentAudio.path);
+
+    // --- LOGIC MỚI TẠI ĐÂY ---
+    // Kiểm tra cấu hình Loop của chính Audio đó (dựa theo UI bạn đã set). 
+    // Nếu nó đang là tắt Loop -> nó chỉ được phát 1 lần -> xóa nó khỏi hàng đợi vĩnh viễn.
+    if (currentAudio.loopMode == LoopMode.off) {
+        if (currentIndex != -1) {
+            audios.removeAt(currentIndex);
+        }
+        
+        // Cập nhật lại danh sách thực tế của nhóm
+        specialFolders[currentAudio.folderName]!['audios'] = audios;
+
+        // Nếu tất cả các bài đều tắt Loop và đã phát hết sạch -> Dừng hoàn toàn nhóm
+        if (audios.isEmpty) {
+            specialFolders.remove(currentAudio.folderName);
+            return false; // Trả về false để kích hoạt event dừng bình thường
+        }
+
+        // Quan trọng: Lùi currentIndex lại 1 đơn vị vì bài hiện tại vừa bị xóa, 
+        // để khi +1 ở logic tuần tự dưới nó sẽ trượt vào đúng bài tiếp theo
+        currentIndex--; 
+    }
+    // -------------------------
+
+    int nextIndex = 0;
 
     if (mode == 'sequential') {
         nextIndex = currentIndex + 1;
-        if (nextIndex >= audios.length) nextIndex = 0; // Lặp lại từ đầu nhóm
+        if (nextIndex >= audios.length) nextIndex = 0; // Vòng lại các bài còn lại trong hàng đợi
     } else if (mode == 'random') {
         if (audios.length == 1) {
             nextIndex = 0;
         } else {
-            do {
-                nextIndex = Random().nextInt(audios.length);
-            } while (nextIndex == currentIndex); // Tránh phát lại bài vừa xong
+            // Nếu bài cũ vừa bị xóa (Loop.off) -> random tự do. 
+            // Nếu bài cũ còn giữ lại (Loop.on) -> random sao cho tránh trùng bài vừa phát
+            if (currentAudio.loopMode == LoopMode.off) {
+                 nextIndex = Random().nextInt(audios.length);
+            } else {
+                 do {
+                     nextIndex = Random().nextInt(audios.length);
+                 } while (nextIndex == currentIndex); 
+            }
         }
     }
 
@@ -158,7 +188,7 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
     // Ép stopAudio cũ để UI tắt đèn
     stopAudio(currentAudio);
     
-    // Phát bài tiếp theo sau 100ms
+    // Phát bài tiếp theo sau delay nhỏ để không kẹt Frame
     Future.delayed(const Duration(milliseconds: 100), () {
       playAudio(nextAudio);
     });
