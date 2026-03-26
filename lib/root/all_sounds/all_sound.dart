@@ -231,10 +231,11 @@ class AllSoundState extends State<AllSound> with WidgetsBindingObserver {
                         _FolderActionButton(
                           icon: Icons.all_inclusive_rounded,
                           label: 'Tất cả',
-                          onTap: () {
+                          onTap: () async {
                             final audios = filteredItems.whereType<Audio>().toList();
                             for (var a in audios) {
                               AudioServiceCommands.play(a); // Mix phát song song
+							  await Future.delayed(const Duration(milliseconds: 40));
                             }
                           },
                         ),

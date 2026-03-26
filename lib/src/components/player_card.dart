@@ -219,36 +219,11 @@ class PlayerWidgetState extends State<PlayerWidget> {
   Widget _buildExpanded() {
     return Column(
       children: [
-        // Khối này chứa logic chạm vào để bật/tắt (Giữ nguyên của bạn)
         Expanded(
           flex: 2,
           child: InkWell(
-            onTap: () async {
-              if (isPlaying) {
-                stop(); 
-              } else {
-                if (widget.audio.path.startsWith('http')) {
-                  setState(() => isDownloading = true); 
-                  
-                  // Chỉ tải file để đảm bảo cache/offline đã sẵn sàng
-                  final processResult = await AudioFileManager.processPath(
-                      widget.audio.path, 
-                      widget.audio.name, 
-                      widget.audio.isOfflineMode
-                  );
-                  
-                  if (mounted) setState(() => isDownloading = false);
-
-                  if (processResult != null && mounted) {
-                    // CHỈ LỆNH CHO HỆ THỐNG PHÁT, GIỮ NGUYÊN OBJECT GỐC CÓ CHỨA URL
-                    AudioServiceCommands.play(widget.audio); 
-                  } else {
-                     if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Lỗi tải file!')));
-                  }
-                } else {
-                  play(); 
-                }
-              }
+            onTap: () {
+              if (isPlaying) stop(); else play(); // Đã gom tất cả logic tải vào hàm play()
             },
             child: Container(
               alignment: Alignment.center,
@@ -375,6 +350,17 @@ class PlayerWidgetState extends State<PlayerWidget> {
   }
 
   Future<void> play() async {
+    if (widget.audio.path.startsWith('http')) {
+      setState(() => isDownloading = true); 
+      // Chờ tải file xong mới ra lệnh phát
+      await AudioFileManager.processPath(
+          widget.audio.path, 
+          widget.audio.name, 
+          widget.audio.isOfflineMode
+      );
+      if (mounted) setState(() => isDownloading = false);
+    }
+    
     PlayingSounds().isPlayingPlaylist.value = false;
     AudioServiceCommands.play(widget.audio);
   }
