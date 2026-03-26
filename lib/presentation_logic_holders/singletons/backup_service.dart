@@ -20,7 +20,6 @@ class BackupService {
       final String? audiosJson = prefs.getString('audios');
       final String? playlistsJson = prefs.getString('playlists');
 
-      // Quét tự động toàn bộ cài đặt (Sort, Collapse, Luồng...)
       Map<String, dynamic> settings = {};
       for (String key in prefs.getKeys()) {
         if (key != 'audios' && key != 'playlists' && !key.startsWith('widget_')) {
@@ -48,14 +47,13 @@ class BackupService {
 
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error during backup: $e')),
+        SnackBar(content: Text('Lỗi khi sao lưu: $e')),
       );
     }
   }
 
   static Future<void> restore(BuildContext context) async {
     try {
-      // Request permissions before restore
       if (Platform.isAndroid) {
         await [Permission.storage, Permission.audio].request();
       }
@@ -75,7 +73,6 @@ class BackupService {
           await prefs.setString('audios', jsonEncode(data['audios']));
           await prefs.setString('playlists', jsonEncode(data['playlists']));
 
-          // Khôi phục tự động toàn bộ cài đặt
           if (data.containsKey('settings')) {
             final Map<String, dynamic> settings = data['settings'];
             for (String key in settings.keys) {
@@ -94,30 +91,58 @@ class BackupService {
             }
           }
 
-          // Refresh the app state by reloading data into Blocs
           final audios = await AudioData.getAllAudios();
           await AudioData.saveAllAudios(context, audios);
           
           final playlists = await PlaylistData.getAllPlaylist();
           await PlaylistData.saveAllPlaylist(context, playlists);
 
-           // Re-add any missing built-in assets
-           await AudioData.addNewAssetsAudios(context);
+          await AudioData.addNewAssetsAudios(context);
 
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Data restored successfully! Please restart the app if changes don\'t appear.')),
+            const SnackBar(content: Text('Khôi phục thành công! Hãy khởi động lại app nếu chưa thấy cập nhật.')),
           );
         } else {
            ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Invalid backup file format.')),
+            const SnackBar(content: Text('Định dạng file Backup không hợp lệ.')),
           );
         }
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error during restore: $e')),
+        SnackBar(content: Text('Lỗi khi khôi phục: $e')),
       );
     }
+  }
+
+  // Helper: Quét an toàn, CHỈ QUÉT ĐÚNG THƯ MỤC NGƯỜI DÙNG CHỌN
+  static Future<List<File>> _safeGetAllFiles(String startPath) async {
+    List<File> result = [];
+    List<Directory> dirsToScan = [Directory(startPath)];
+
+    while (dirsToScan.isNotEmpty) {
+      Directory current = dirsToScan.removeLast();
+      try {
+        await for (var entity in current.list(followLinks: false)) {
+          String name = entity.path.split(RegExp(r'[/\\]')).last;
+          
+          if (name.startsWith('.') || name == 'Android') continue;
+
+          if (entity is File) {
+            final ext = name.toLowerCase();
+            if (ext.endsWith('.mp3') || ext.endsWith('.ogg') || ext.endsWith('.wav') || 
+                ext.endsWith('.m4a') || ext.endsWith('.flac') || ext.endsWith('.aac')) {
+              result.add(entity);
+            }
+          } else if (entity is Directory) {
+            dirsToScan.add(entity);
+          }
+        }
+      } catch (e) {
+        // Bỏ qua các thư mục không có quyền truy cập
+      }
+    }
+    return result;
   }
 
   static Future<void> relink(BuildContext context) async {
@@ -125,7 +150,6 @@ class BackupService {
       String? directoryPath = await FilePicker.platform.getDirectoryPath();
       if (directoryPath == null) return;
 
-      // Request storage permissions before relink
       if (Platform.isAndroid) {
         final Map<Permission, PermissionStatus> statuses = await [
           Permission.storage,
@@ -143,37 +167,48 @@ class BackupService {
         }
       }
 
-      final directory = Directory(directoryPath);
-      final List<FileSystemEntity> files = directory.listSync(recursive: true);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Đang tìm kiếm âm thanh trong khu vực bạn chọn...')),
+      );
+
+      // Chỉ quét lấy các file có thật trong phạm vi thư mục người dùng vừa chọn
+      final List<File> files = await _safeGetAllFiles(directoryPath);
       
       final allAudios = await AudioData.getAllAudios();
       final allPlaylists = await PlaylistData.getAllPlaylist();
       int relinkCount = 0;
 
-      // 1. Relink global audios
+      // ============================================
+      // BƯỚC 1: RELINK GLOBAL AUDIOS
+      // ============================================
       for (int i = 0; i < allAudios.length; i++) {
         final audio = allAudios[i];
         
-        // SKIP ASSETS - only relink external files
-        if (audio.audioSource == LocalAudioSource.assets) continue;
+        // BẢO VỆ 1: Bỏ qua Link Stream và file cài đặt sẵn (Assets)
+        if (audio.path.startsWith('http') || audio.audioSource == LocalAudioSource.assets) {
+          continue; 
+        }
 
+        // BẢO VỆ 2: BỎ QUA CÁC FILE ĐANG HOẠT ĐỘNG TỐT
+        // (Giải quyết việc Relink nhiều lần trên nhiều Root khác nhau mà không bị ghi đè nhầm)
+        if (File(audio.path).existsSync()) {
+          continue;
+        }
+
+        // CHỈ TÌM VÀ NỐI LẠI CÁC FILE ĐÃ CHẾT/MẤT ĐƯỜNG DẪN
         final fileName = _getFileName(audio.path);
-        
         try {
-          final matchingFile = files.firstWhere((entity) => 
-            entity is File && _getFileName(entity.path) == fileName
-          );
-          
-          if (matchingFile.path != audio.path) {
-            allAudios[i] = audio.copyFrom(path: matchingFile.path);
-            relinkCount++;
-          }
+          final matchingFile = files.firstWhere((entity) => _getFileName(entity.path) == fileName);
+          allAudios[i] = audio.copyFrom(path: matchingFile.path);
+          relinkCount++;
         } catch (e) {
-          // No match found
+          // File không nằm trong thư mục này -> Chờ lần Relink ở thư mục khác
         }
       }
 
-      // 2. Relink audios inside playlists
+      // ============================================
+      // BƯỚC 2: RELINK PLAYLIST AUDIOS
+      // ============================================
       for (int i = 0; i < allPlaylists.length; i++) {
         final playlist = allPlaylists[i];
         bool playlistUpdated = false;
@@ -181,23 +216,18 @@ class BackupService {
         for (int j = 0; j < playlist.audios.length; j++) {
           final audio = playlist.audios[j];
           
-          // SKIP ASSETS
-          if (audio.audioSource == LocalAudioSource.assets) continue;
+          if (audio.path.startsWith('http') || audio.audioSource == LocalAudioSource.assets) continue;
+          
+          if (File(audio.path).existsSync()) continue;
 
           final fileName = _getFileName(audio.path);
-          
           try {
-            final matchingFile = files.firstWhere((entity) => 
-              entity is File && _getFileName(entity.path) == fileName
-            );
-            
-            if (matchingFile.path != audio.path) {
-              playlist.audios[j] = audio.copyFrom(path: matchingFile.path);
-              playlistUpdated = true;
-              relinkCount++;
-            }
+            final matchingFile = files.firstWhere((entity) => _getFileName(entity.path) == fileName);
+            playlist.audios[j] = audio.copyFrom(path: matchingFile.path);
+            playlistUpdated = true;
+            relinkCount++;
           } catch (e) {
-            // No match
+             // Bỏ qua
           }
         }
         
@@ -210,12 +240,11 @@ class BackupService {
         await AudioData.saveAllAudios(context, allAudios);
         await PlaylistData.saveAllPlaylist(context, allPlaylists);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Đã liên kết lại $relinkCount âm thanh thành công!')),
+          SnackBar(content: Text('Tuyệt vời! Đã liên kết lại $relinkCount âm thanh thành công.')),
         );
       } else {
-
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Không tìm thấy âm thanh nào cần liên kết lại.')),
+          const SnackBar(content: Text('Không có âm thanh lỗi nào được tìm thấy trong thư mục này.')),
         );
       }
     } catch (e) {
@@ -229,12 +258,9 @@ class BackupService {
     try {
       String name = path;
       if (path.contains('content://')) {
-        // Handle SAF content URIs which often encode the path in the last segment
         name = Uri.decodeComponent(Uri.parse(path).pathSegments.last);
       }
-      // Split by path separators and take the last part
       String fileName = name.split(RegExp(r'[/\\]')).last;
-      // In SAF, the name might still have a prefix like "ECCD-1BF6:music/"
       return fileName.split(':').last;
     } catch (e) {
       return path.split(RegExp(r'[/\\]')).last;

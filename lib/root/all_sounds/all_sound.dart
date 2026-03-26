@@ -1,3 +1,5 @@
+import 'dart:io'; // Để xử lý xóa File vật lý
+
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -12,6 +14,7 @@ import 'package:rolify/presentation_logic_holders/playing_sounds_singleton.dart'
 import 'package:rolify/presentation_logic_holders/singletons/app_state.dart';
 import 'package:rolify/presentation_logic_holders/singletons/theme_mode_controller.dart';
 import 'package:rolify/presentation_logic_holders/audio_service_commands.dart'; // import để gọi hàm play cơ bản
+import 'package:rolify/presentation_logic_holders/audio_download_manager.dart'; // Để gọi hàm tải File
 
 import 'package:rolify/src/components/button.dart';
 import 'package:rolify/src/components/my_icons.dart';
@@ -444,16 +447,16 @@ class AllSoundState extends State<AllSound> with WidgetsBindingObserver {
                 subtitle: 'Select audio from your storage',
                 onTap: () {
                   Navigator.pop(context);
-                  _pickFilesNative();
+                  _pickFilesNative(); // Gọi hàm thêm từ máy
                 },
               ),
               _OptionTile(
                 icon: MyIcons.edit(),
-                title: 'Enter file path',
-                subtitle: 'Manually input the local path',
+                title: 'Enter file path / URL',
+                subtitle: 'Manually input path or web link',
                 onTap: () {
                   Navigator.pop(context);
-                  _showManualPathInput();
+                  _showManualPathInput(); // Gọi hàm nhập Link/URL
                 },
               ),
               const SizedBox(height: 16),
@@ -464,16 +467,19 @@ class AllSoundState extends State<AllSound> with WidgetsBindingObserver {
     );
   }
 
+  // HÀM 1: LẤY FILE TỪ BỘ NHỚ MÁY (LOGIC GỐC ĐƯỢC GIỮ NGUYÊN)
   Future<void> _pickFilesNative() async {
     try {
       final List<dynamic>? result = await platform.invokeMethod('pickAudioFiles');
       if (result != null) {
-        List<Map<String, String>> audioItems = [];
+        // Dùng Map<String, dynamic> để đồng bộ với hàm _addAudiosWithNames mới
+        List<Map<String, dynamic>> audioItems = [];
         for (var item in result) {
           if (item is Map) {
             audioItems.add({
               'name': item['name']?.toString() ?? '',
               'path': item['path']?.toString() ?? '',
+              'isOfflineMode': true, // File từ máy thì mặc định là Offline
             });
           }
         }
@@ -486,52 +492,184 @@ class AllSoundState extends State<AllSound> with WidgetsBindingObserver {
     }
   }
 
+  // HÀM 2: NHẬP URL BẰNG TAY (CÓ CHECKBOX LƯU OFFLINE)
   void _showManualPathInput() {
     final controller = TextEditingController();
+    bool saveOffline = true; // Cờ mặc định là tích chọn
+
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: Theme.of(context).colorScheme.surface,
-        title: MyText.body('Enter file path', fontWeight: FontWeight.bold),
-        content: TextField(
-          controller: controller,
-          decoration: const InputDecoration(
-            hintText: '/storage/emulated/0/Music/audio.mp3',
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: MyText.body('Cancel'),
-          ),
-          TextButton(
-            onPressed: () {
-              if (controller.text.isNotEmpty) {
-                _addAudiosByPaths([controller.text]);
-              }
-              Navigator.pop(context);
-            },
-            child: MyText.body('Add'),
-          ),
-        ],
+      builder: (context) => StatefulBuilder(
+        builder: (context, setStateDialog) {
+          return AlertDialog(
+            backgroundColor: Theme.of(context).colorScheme.surface,
+            title: MyText.body('Enter file path / URL', fontWeight: FontWeight.bold),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: controller,
+                  decoration: const InputDecoration(
+                    hintText: 'https://.../audio.mp3',
+                  ),
+                ),
+                const SizedBox(height: 12),
+                CheckboxListTile(
+                  title: const Text('Lưu Offline vào máy (Cache)', style: TextStyle(fontSize: 14)),
+                  value: saveOffline,
+                  contentPadding: EdgeInsets.zero,
+                  controlAffinity: ListTileControlAffinity.leading,
+                  onChanged: (val) {
+                    setStateDialog(() => saveOffline = val ?? true);
+                  },
+                )
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: MyText.body('Cancel'),
+              ),
+              TextButton(
+                onPressed: () {
+                  if (controller.text.isNotEmpty) {
+                    _addAudiosByPathsWithFlag([controller.text], saveOffline);
+                  }
+                  Navigator.pop(context);
+                },
+                child: MyText.body('Add'),
+              ),
+            ],
+          );
+        }
       ),
     );
   }
 
-  Future<void> _addAudiosByPaths(List<String> paths) async {
-    final List<Map<String, String>> pickItems = paths.map((path) => {
+  Future<void> _addAudiosByPathsWithFlag(List<String> paths, bool saveOffline) async {
+    final List<Map<String, dynamic>> items = paths.map((path) => {
       'name': removeFileExtension(path),
       'path': path,
+      'isOfflineMode': saveOffline,
     }).toList();
-    _addAudiosWithNames(pickItems);
+    _addAudiosWithNames(items);
   }
 
-  Future<void> _addAudiosWithNames(List<Map<String, String>> items) async {
+  // HÀM MỚI: ĐỔI PATH CỦA AUDIO ĐÃ CÓ
+  void _changeAudioPath(Audio oldAudio) {
+    final controller = TextEditingController();
+    bool saveOffline = oldAudio.isOfflineMode;
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setStateDialog) {
+          return AlertDialog(
+            backgroundColor: Theme.of(context).colorScheme.surface,
+            title: MyText.body('Đổi nguồn âm thanh', fontWeight: FontWeight.bold),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: controller,
+                  decoration: const InputDecoration(hintText: 'Nhập URL / Path mới...'),
+                ),
+                const SizedBox(height: 12),
+                CheckboxListTile(
+                  title: const Text('Lưu Offline', style: TextStyle(fontSize: 14)),
+                  value: saveOffline,
+                  contentPadding: EdgeInsets.zero,
+                  controlAffinity: ListTileControlAffinity.leading,
+                  onChanged: (val) {
+                    setStateDialog(() => saveOffline = val ?? true);
+                  },
+                ),
+                const SizedBox(height: 12),
+                ElevatedButton.icon(
+                  onPressed: () async {
+                    // Chọn file từ máy để lấy Path
+                    final List<dynamic>? result = await platform.invokeMethod('pickAudioFiles');
+                    if (result != null && result.isNotEmpty) {
+                      final item = result.first as Map;
+                      controller.text = item['path']?.toString() ?? '';
+                    }
+                  },
+                  icon: const Icon(Icons.folder_open),
+                  label: const Text('Chọn từ bộ nhớ máy'),
+                  style: ElevatedButton.styleFrom(minimumSize: const Size(double.infinity, 40)),
+                )
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: MyText.body('Hủy'),
+              ),
+              TextButton(
+                onPressed: () async {
+                  if (controller.text.isNotEmpty) {
+                    Navigator.pop(context); // Tắt hộp thoại trước
+                    
+                    // 1. Dừng nhạc đang phát
+                    AudioServiceCommands.stop(oldAudio);
+                    
+                    // 2. Xóa file Cache cũ nếu có
+                    if (oldAudio.path.contains('/cloud_audios/')) {
+                      try {
+                        final file = File(oldAudio.path);
+                        if (await file.exists()) await file.delete();
+                      } catch (_) {}
+                    }
+
+                    // 3. Lấy path mới (Kiểm tra xem path mới là URL thì cần tải không)
+                    String newPath = controller.text;
+                    if (newPath.startsWith('http')) {
+                       // Gọi Manager để tải hoặc cache file mới
+                       final downloadedPath = await AudioFileManager.processPath(
+                           newPath, oldAudio.name, saveOffline
+                       );
+                       if (downloadedPath != null) {
+                         newPath = downloadedPath;
+                       } else {
+                         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Lỗi tải file mới!')));
+                         return; // Thất bại thì không đổi
+                       }
+                    }
+
+                    // 4. Cập nhật Model và lưu Database
+                    final allAudios = await AudioData.getAllAudios();
+                    final index = allAudios.indexWhere((a) => a.path == oldAudio.path);
+                    if (index != -1) {
+                      final updatedAudio = allAudios[index].copyFrom(
+                        path: newPath, 
+                        isOfflineMode: saveOffline
+                      );
+                      allAudios[index] = updatedAudio;
+                      
+                      await AudioData.saveAllAudios(context, allAudios);
+                      BlocProvider.of<AudioListBloc>(context).add(AudioListUpdate(allAudios));
+                      
+                      // 5. Nếu đang phát dở thì phát lại bằng link mới
+                      AudioServiceCommands.play(updatedAudio);
+                    }
+                  }
+                },
+                child: MyText.body('Lưu'),
+              ),
+            ],
+          );
+        }
+      ),
+    );
+  }
+
+  // HÀM XỬ LÝ LƯU DATA CHUNG
+  Future<void> _addAudiosWithNames(List<Map<String, dynamic>> items) async {
     String? targetFolder = widget.folderName;
 
     // Nếu đang ở màn hình chính và thêm > 1 file -> Hỏi xem có gộp nhóm không
     if (widget.folderName == null && items.length > 1) {
-      bool? isGroup = await showDialog<bool>(
+      bool? wantGroup = await showDialog<bool>(
         context: context,
         builder: (context) => AlertDialog(
           backgroundColor: Theme.of(context).colorScheme.surface,
@@ -550,8 +688,7 @@ class AllSoundState extends State<AllSound> with WidgetsBindingObserver {
         ),
       );
 
-      // Nếu người dùng chọn Tạo Nhóm -> Hiện ô nhập tên
-      if (isGroup == true) {
+      if (wantGroup == true) {
         final folderNameController = TextEditingController();
         targetFolder = await showDialog<String>(
           context: context,
@@ -576,10 +713,7 @@ class AllSoundState extends State<AllSound> with WidgetsBindingObserver {
           ),
         );
         
-        // Nếu nhấn huỷ nhập tên thư mục -> huỷ thêm file luôn
-        if (targetFolder == null || targetFolder.trim().isEmpty) {
-          return; 
-        }
+        if (targetFolder == null || targetFolder.trim().isEmpty) return; 
       }
     }
 
@@ -587,14 +721,16 @@ class AllSoundState extends State<AllSound> with WidgetsBindingObserver {
     bool added = false;
     
     for (var item in items) {
-      final name = item['name']!;
-      final path = item['path']!;
-      
+      final name = item['name'] as String;
+      final path = item['path'] as String;
+      final isOffline = item['isOfflineMode'] as bool? ?? true; // Nhận cờ Offline
+
       final audio = Audio(
         name: name,
         path: path,
         audioSource: LocalAudioSource.file,
-        folderName: targetFolder, // Gán folderName
+        folderName: targetFolder, 
+        isOfflineMode: isOffline, // Gắn cờ vào Model Audio
       );
       
       if (!allAudios.any((e) => e.path == audio.path)) {
@@ -606,8 +742,6 @@ class AllSoundState extends State<AllSound> with WidgetsBindingObserver {
     if (added) {
       await AudioData.saveAllAudios(context, allAudios);
       resetTextFilter(context);
-      
-      // Notify components to update
       BlocProvider.of<AudioListBloc>(context).add(AudioListUpdate(allAudios));
     }
   }
@@ -623,22 +757,29 @@ class AllSoundState extends State<AllSound> with WidgetsBindingObserver {
     final allAudios = await AudioData.getAllAudios();
     
     if (item is Audio) {
-      // Dừng phát nếu đang phát
       AudioServiceCommands.stop(item);
+      
+      // BẢO VỆ DỮ LIỆU: Chỉ xóa file vật lý NẾU path gốc là URL
+      if (item.path.startsWith('http')) {
+        await AudioFileManager.deleteLocalFile(item.name); // <-- Bỏ item.isOfflineMode
+      }
+      
       allAudios.removeWhere((a) => a.path == item.path);
     } else if (item is AudioFolder) {
-      // Dừng tất cả âm thanh trong nhóm
       for (var audio in item.audios) {
         AudioServiceCommands.stop(audio);
+        
+        // BẢO VỆ DỮ LIỆU: Chỉ xóa file vật lý (Cache/Offline) NẾU path gốc là URL
+        if (audio.path.startsWith('http')) {
+          await AudioFileManager.deleteLocalFile(audio.name); // <-- Cũng chỉ truyền mỗi name
+        }
       }
       allAudios.removeWhere((a) => a.folderName == item.name);
     }
 
-    // Lưu lại danh sách mới
     await AudioData.saveAllAudios(context, allAudios);
     
     if (mounted) {
-      // Cập nhật UI ngay lập tức
       setState(() {
         items.remove(item);
         filteredItems.remove(item);

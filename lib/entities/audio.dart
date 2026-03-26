@@ -8,7 +8,8 @@ class Audio extends Equatable {
   final LocalAudioSource audioSource;
   final LoopMode loopMode;
   final double volume;
-  final String? folderName; // <-- THÊM MỚI
+  final String? folderName;
+  final bool isOfflineMode; // <-- THÊM CỜ OFFLINE
 
   const Audio({
     required this.name,
@@ -17,7 +18,8 @@ class Audio extends Equatable {
     this.audioSource = LocalAudioSource.assets,
     this.loopMode = LoopMode.one,
     this.volume = 0.5,
-    this.folderName, // <-- THÊM MỚI
+    this.folderName,
+    this.isOfflineMode = true, // <-- Mặc định là True
   });
 
   Audio.fromJson(Map json)
@@ -29,17 +31,18 @@ class Audio extends Equatable {
             : LocalAudioSource.file,
         loopMode = json['loop_mode'] == 'off' ? LoopMode.off : LoopMode.one,
         volume = json['volume']?.toDouble() ?? 0.5,
-        folderName = json['folder_name']; // <-- THÊM MỚI
+        folderName = json['folder_name'],
+        isOfflineMode = json['is_offline_mode'] ?? true; // Cập nhật từ DB
 
   toJson() => {
         'name': name,
         'path': path,
         'image': image,
-        'audio_source':
-            audioSource == LocalAudioSource.assets ? 'assets' : 'file',
+        'audio_source': audioSource == LocalAudioSource.assets ? 'assets' : 'file',
         'loop_mode': loopMode == LoopMode.off ? 'off' : 'one',
         'volume': volume,
-        'folder_name': folderName, // <-- THÊM MỚI
+        'folder_name': folderName,
+        'is_offline_mode': isOfflineMode, // Lưu vào DB
       };
 
   Audio copyFrom({
@@ -49,7 +52,8 @@ class Audio extends Equatable {
     LocalAudioSource? audioSource,
     LoopMode? loopMode,
     double? volume,
-    String? folderName, // <-- THÊM MỚI
+    String? folderName,
+    bool? isOfflineMode,
   }) =>
       Audio(
         name: name ?? this.name,
@@ -58,7 +62,8 @@ class Audio extends Equatable {
         audioSource: audioSource ?? this.audioSource,
         loopMode: loopMode ?? this.loopMode,
         volume: volume ?? this.volume,
-        folderName: folderName ?? this.folderName, // <-- THÊM MỚI
+        folderName: folderName ?? this.folderName,
+        isOfflineMode: isOfflineMode ?? this.isOfflineMode,
       );
 
   @override

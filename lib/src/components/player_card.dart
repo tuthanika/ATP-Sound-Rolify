@@ -13,6 +13,9 @@ import 'package:rolify/presentation_logic_holders/audio_handler.dart';
 import 'package:rolify/presentation_logic_holders/audio_service_commands.dart';
 import 'package:rolify/presentation_logic_holders/event_bus/stop_all_event_bus.dart';
 import 'package:rolify/presentation_logic_holders/singletons/app_state.dart';
+import 'package:rolify/presentation_logic_holders/audio_download_manager.dart';
+import 'package:rolify/presentation_logic_holders/audio_list_bloc/audio_list_bloc.dart';
+import 'package:rolify/presentation_logic_holders/audio_list_bloc/audio_list_event.dart';
 import 'package:rolify/src/components/audio_slider.dart';
 import 'package:rolify/src/components/button.dart';
 import 'package:rolify/src/components/radio.dart';
@@ -43,6 +46,7 @@ class PlayerWidgetState extends State<PlayerWidget> {
   double currentVolume = 0.0;
   late String audioImage;
   bool loopAudio = true, showVolumeSlider = false;
+  bool isDownloading = false; // <-- THÊM BIẾN NÀY
 
   final List<StreamSubscription> _subscriptions = [];
   Timer? _volumeDebounce;
@@ -219,13 +223,49 @@ class PlayerWidgetState extends State<PlayerWidget> {
         Expanded(
           flex: 2,
           child: InkWell(
-            onTap: () {
-              if (isPlaying) stop(); else play();
+            onTap: () async {
+              if (isPlaying) {
+                stop(); 
+              } else {
+                if (widget.audio.path.startsWith('http')) {
+                  setState(() => isDownloading = true); 
+                  
+                  // Chỉ tải file để đảm bảo cache/offline đã sẵn sàng
+                  final processResult = await AudioFileManager.processPath(
+                      widget.audio.path, 
+                      widget.audio.name, 
+                      widget.audio.isOfflineMode
+                  );
+                  
+                  if (mounted) setState(() => isDownloading = false);
+
+                  if (processResult != null && mounted) {
+                    // CHỈ LỆNH CHO HỆ THỐNG PHÁT, GIỮ NGUYÊN OBJECT GỐC CÓ CHỨA URL
+                    AudioServiceCommands.play(widget.audio); 
+                  } else {
+                     if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Lỗi tải file!')));
+                  }
+                } else {
+                  play(); 
+                }
+              }
             },
             child: Container(
               alignment: Alignment.center,
               padding: EdgeInsets.zero,
-              child: _buildNameBox(),
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  _buildNameBox(), // UI Gốc
+                  // Hiệu ứng Loading khi đang tải
+                  if (isDownloading)
+                    Container(
+                      decoration: BoxDecoration(color: Colors.black54, borderRadius: BorderRadius.circular(20)),
+                      padding: const EdgeInsets.all(4),
+                      child: const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)),
+                    )
+                ],
+              ),
             ),
           ),
         ),

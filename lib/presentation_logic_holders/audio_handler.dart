@@ -16,7 +16,7 @@ import 'package:rolify/entities/audio.dart';
 import 'package:rolify/presentation_logic_holders/playing_sounds_singleton.dart';
 import 'package:rolify/presentation_logic_holders/singletons/app_state.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-
+import 'package:rolify/presentation_logic_holders/audio_download_manager.dart';
 
 enum AudioCustomEvents { audioEnded, resumeAll, pauseAll }
 
@@ -217,14 +217,21 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
 
   Future<AudioPlayer> _initAudioPlayer(Audio audio) async {
     final audioPlayer = AudioPlayer(handleInterruptions: false);
+    
+    // TRẠM KIỂM SOÁT: Tìm đường dẫn Local thực sự (nếu có)
+    final playablePath = await AudioFileManager.getPlayablePath(
+        audio.path, audio.name, audio.isOfflineMode
+    );
 
     if (audio.audioSource == LocalAudioSource.assets) {
-      await audioPlayer.setAsset(audio.path);
-    } else if (audio.path.startsWith('content://') ||
-        audio.path.startsWith('file://')) {
-      await audioPlayer.setAudioSource(AudioSource.uri(Uri.parse(audio.path)));
+      // SỬA: Đổi 'player' thành 'audioPlayer' cho đồng nhất
+      await audioPlayer.setAsset(playablePath);
+    } else if (playablePath.startsWith('http')) {
+      await audioPlayer.setAudioSource(AudioSource.uri(Uri.parse(playablePath)));
+    } else if (playablePath.startsWith('content://') || playablePath.startsWith('file://')) {
+      await audioPlayer.setAudioSource(AudioSource.uri(Uri.parse(playablePath)));
     } else {
-      await audioPlayer.setFilePath(audio.path);
+      await audioPlayer.setFilePath(playablePath);
     }
     
     // Cập nhật Loop Mode tắt lặp nếu đang ở chế độ Playlist Folder
@@ -286,13 +293,22 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
         final player = AudioPlayer(handleInterruptions: false);
         audioPlayers[audio.path] = player; 
 
+        // --- BỔ SUNG: TRẠM KIỂM SOÁT ĐƯỜNG DẪN Ở ĐÂY ---
+        final playablePath = await AudioFileManager.getPlayablePath(
+            audio.path, audio.name, audio.isOfflineMode
+        );
+
+        // --- SỬA LẠI: Dùng playablePath thay cho audio.path ---
         if (audio.audioSource == LocalAudioSource.assets) {
-          await player.setAsset(audio.path);
-        } else if (audio.path.startsWith('content://') || audio.path.startsWith('file://')) {
-          await player.setAudioSource(AudioSource.uri(Uri.parse(audio.path)));
+          await player.setAsset(playablePath);
+        } else if (playablePath.startsWith('http')) {
+          await player.setAudioSource(AudioSource.uri(Uri.parse(playablePath)));
+        } else if (playablePath.startsWith('content://') || playablePath.startsWith('file://')) {
+          await player.setAudioSource(AudioSource.uri(Uri.parse(playablePath)));
         } else {
-          await player.setFilePath(audio.path);
+          await player.setFilePath(playablePath);
         }
+        // --------------------------------------------------------
         
         if (!audioPlayers.containsKey(audio.path)) {
              await player.stop();
