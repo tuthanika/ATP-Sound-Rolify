@@ -531,11 +531,14 @@ class AllSoundState extends State<AllSound> with WidgetsBindingObserver {
                 child: MyText.body('Cancel'),
               ),
               TextButton(
-                onPressed: () {
-                  if (controller.text.isNotEmpty) {
-                    _addAudiosByPathsWithFlag([controller.text], saveOffline);
+                onPressed: () async {
+                  final text = controller.text.trim();
+                  if (text.isNotEmpty) {
+                    Navigator.pop(context); // Đóng hộp thoại trước
+                    await _addAudiosByPathsWithFlag([text], saveOffline); // Thêm lệnh await vào đây
+                  } else {
+                    Navigator.pop(context);
                   }
-                  Navigator.pop(context);
                 },
                 child: MyText.body('Add'),
               ),
@@ -546,13 +549,38 @@ class AllSoundState extends State<AllSound> with WidgetsBindingObserver {
     );
   }
 
+  // Helper method added to fix build error
   Future<void> _addAudiosByPathsWithFlag(List<String> paths, bool saveOffline) async {
-    final List<Map<String, dynamic>> items = paths.map((path) => {
-      'name': removeFileExtension(path),
-      'path': path,
-      'isOfflineMode': saveOffline,
+    final List<Map<String, dynamic>> pickItems = paths.map((path) {
+      String rawName = "Âm thanh mới";
+      path = path.trim(); // Cắt khoảng trắng thừa chống lỗi
+      
+      try {
+        final uri = Uri.parse(path);
+        if (uri.pathSegments.isNotEmpty && uri.pathSegments.last.isNotEmpty) {
+          rawName = uri.pathSegments.last;
+        } else {
+          rawName = path.split('/').last;
+        }
+      } catch (e) {
+        rawName = path.split('/').last;
+      }
+
+      rawName = rawName.split('?').first; 
+      if (rawName.trim().isEmpty) rawName = "Âm thanh mới";
+
+      return {
+        'name': rawName,
+        'path': path,
+        'isOfflineMode': saveOffline,
+      };
     }).toList();
-    _addAudiosWithNames(items);
+    
+    await _addAudiosWithNames(pickItems); // QUAN TRỌNG: Thêm await ở đây
+  }
+
+Future<void> _addAudiosByPaths(List<String> paths) async {
+    await _addAudiosByPathsWithFlag(paths, true); // Mặc định là lưu offline
   }
 
   // HÀM MỚI: ĐỔI PATH CỦA AUDIO ĐÃ CÓ
@@ -662,14 +690,26 @@ class AllSoundState extends State<AllSound> with WidgetsBindingObserver {
       ),
     );
   }
+  
+  // --- HÀM TỰ ĐỘNG LÀM ĐẸP TÊN AUDIO ---
+  String _formatAudioName(String rawName) {
+    // 1. Xóa các đuôi mở rộng phổ biến (không phân biệt hoa thường)
+    String cleanName = rawName.replaceAll(RegExp(r'\.(mp3|wav|ogg|m4a|flac|aac|wma)$', caseSensitive: false), '');
+    
+    // 2. Thay thế dấu gạch dưới (_) và gạch ngang (-) thành dấu cách
+    //cleanName = cleanName.replaceAll('_', ' ').replaceAll('-', ' ');
+    
+    // 3. Xóa khoảng trắng thừa ở 2 đầu
+    return cleanName.trim();
+  }
 
   // HÀM XỬ LÝ LƯU DATA CHUNG
-  Future<void> _addAudiosWithNames(List<Map<String, dynamic>> items) async {
+Future<void> _addAudiosWithNames(List<Map<String, dynamic>> items) async {
     String? targetFolder = widget.folderName;
 
     // Nếu đang ở màn hình chính và thêm > 1 file -> Hỏi xem có gộp nhóm không
     if (widget.folderName == null && items.length > 1) {
-      bool? wantGroup = await showDialog<bool>(
+      bool? isGroup = await showDialog<bool>(
         context: context,
         builder: (context) => AlertDialog(
           backgroundColor: Theme.of(context).colorScheme.surface,
@@ -688,7 +728,7 @@ class AllSoundState extends State<AllSound> with WidgetsBindingObserver {
         ),
       );
 
-      if (wantGroup == true) {
+      if (isGroup == true) {
         final folderNameController = TextEditingController();
         targetFolder = await showDialog<String>(
           context: context,
@@ -721,16 +761,20 @@ class AllSoundState extends State<AllSound> with WidgetsBindingObserver {
     bool added = false;
     
     for (var item in items) {
-      final name = item['name'] as String;
-      final path = item['path'] as String;
-      final isOffline = item['isOfflineMode'] as bool? ?? true; // Nhận cờ Offline
+      final rawName = item['name'] as String;
+      final sourcePath = item['path'] as String;
+      final isOffline = item['isOfflineMode'] as bool? ?? true;
 
+      // --- SỬ DỤNG HÀM LÀM ĐẸP TÊN TẠI ĐÂY ---
+      final formattedName = _formatAudioName(rawName);
+
+      // CHỈ LƯU URL VÀO DATABASE, KHÔNG TẢI GÌ CẢ (Add siêu tốc)
       final audio = Audio(
-        name: name,
-        path: path,
+        name: formattedName, 
+        path: sourcePath, // Bảo toàn URL
         audioSource: LocalAudioSource.file,
         folderName: targetFolder, 
-        isOfflineMode: isOffline, // Gắn cờ vào Model Audio
+        isOfflineMode: isOffline, 
       );
       
       if (!allAudios.any((e) => e.path == audio.path)) {
@@ -742,7 +786,11 @@ class AllSoundState extends State<AllSound> with WidgetsBindingObserver {
     if (added) {
       await AudioData.saveAllAudios(context, allAudios);
       resetTextFilter(context);
-      BlocProvider.of<AudioListBloc>(context).add(AudioListUpdate(allAudios));
+      if (mounted) {
+        // Ép Bloc và UI nhận diện thay đổi tức thì
+        BlocProvider.of<AudioListBloc>(context).add(AudioListUpdate(List.from(allAudios)));
+        initAudios(); 
+      }
     }
   }
 
