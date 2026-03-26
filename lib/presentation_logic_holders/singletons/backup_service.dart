@@ -115,7 +115,19 @@ class BackupService {
     }
   }
 
-  // Helper: Quét an toàn, CHỈ QUÉT ĐÚNG THƯ MỤC NGƯỜI DÙNG CHỌN
+  // --- HÀM HELPER ĐỂ TÌM GỐC ---
+  static String _getStorageRoot(String path) {
+    if (path.startsWith('/storage/emulated/0')) {
+      return '/storage/emulated/0';
+    }
+    final parts = path.split(RegExp(r'[/\\]'));
+    if (parts.length >= 3 && parts[1] == 'storage') {
+      return '/storage/${parts[2]}'; 
+    }
+    return path; 
+  }
+
+  // --- HÀM QUÉT THƯ MỤC AN TOÀN ---
   static Future<List<File>> _safeGetAllFiles(String startPath) async {
     List<File> result = [];
     List<Directory> dirsToScan = [Directory(startPath)];
@@ -171,44 +183,35 @@ class BackupService {
         const SnackBar(content: Text('Đang tìm kiếm âm thanh trong khu vực bạn chọn...')),
       );
 
-      // Chỉ quét lấy các file có thật trong phạm vi thư mục người dùng vừa chọn
-      final List<File> files = await _safeGetAllFiles(directoryPath);
+      // SỬA: Tìm Gốc (Root) và quét toàn bộ hệ thống từ đó đi xuống
+      final rootPath = _getStorageRoot(directoryPath);
+      final List<File> files = await _safeGetAllFiles(rootPath);
       
       final allAudios = await AudioData.getAllAudios();
       final allPlaylists = await PlaylistData.getAllPlaylist();
       int relinkCount = 0;
 
-      // ============================================
-      // BƯỚC 1: RELINK GLOBAL AUDIOS
-      // ============================================
       for (int i = 0; i < allAudios.length; i++) {
         final audio = allAudios[i];
         
-        // BẢO VỆ 1: Bỏ qua Link Stream và file cài đặt sẵn (Assets)
         if (audio.path.startsWith('http') || audio.audioSource == LocalAudioSource.assets) {
           continue; 
         }
 
-        // BẢO VỆ 2: BỎ QUA CÁC FILE ĐANG HOẠT ĐỘNG TỐT
-        // (Giải quyết việc Relink nhiều lần trên nhiều Root khác nhau mà không bị ghi đè nhầm)
         if (File(audio.path).existsSync()) {
           continue;
         }
 
-        // CHỈ TÌM VÀ NỐI LẠI CÁC FILE ĐÃ CHẾT/MẤT ĐƯỜNG DẪN
         final fileName = _getFileName(audio.path);
         try {
           final matchingFile = files.firstWhere((entity) => _getFileName(entity.path) == fileName);
           allAudios[i] = audio.copyFrom(path: matchingFile.path);
           relinkCount++;
         } catch (e) {
-          // File không nằm trong thư mục này -> Chờ lần Relink ở thư mục khác
+          // Bỏ qua
         }
       }
 
-      // ============================================
-      // BƯỚC 2: RELINK PLAYLIST AUDIOS
-      // ============================================
       for (int i = 0; i < allPlaylists.length; i++) {
         final playlist = allPlaylists[i];
         bool playlistUpdated = false;
@@ -244,7 +247,7 @@ class BackupService {
         );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Không có âm thanh lỗi nào được tìm thấy trong thư mục này.')),
+          const SnackBar(content: Text('Không có âm thanh lỗi nào được tìm thấy trong phân vùng này.')),
         );
       }
     } catch (e) {
