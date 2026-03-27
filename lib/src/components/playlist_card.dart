@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:rolify/entities/audio.dart';
 import 'package:rolify/entities/playlist.dart';
-import 'package:rolify/presentation_logic_holders/audio_handler.dart'; // BẢN VÁ: Import class MyAudioHandler
 import 'package:rolify/presentation_logic_holders/audio_service_commands.dart';
 import 'package:rolify/presentation_logic_holders/playing_sounds_singleton.dart';
 import 'package:rolify/presentation_logic_holders/singletons/app_state.dart';
@@ -26,33 +25,21 @@ class PlaylistCardState extends State<PlaylistCard> {
   int _localSessionId = 0;
   bool isExpanded = false;
 
+  // BẢN VÁ: Đồng bộ trạng thái chuẩn 100% theo logic gốc
+  // Xử lý chính xác: Pause (giữ màu thẻ) và Stop (tắt màu thẻ)
   bool get _isPlaying {
+    if (!PlayingSounds().isPlayingPlaylist.value) return false;
     if (widget.playlist.audios.isEmpty) return false;
     
-    // 1. Kiểm tra lõi Engine ExoPlayer:
-    bool hasActiveEngine = false;
-    
-    // BẢN VÁ: Ép kiểu (cast) về MyAudioHandler để trình biên dịch nhận diện được biến audioPlayers
-    final myHandler = AppState().audioHandler as MyAudioHandler;
-    
+    // Nếu có ít nhất 1 bài hát của Playlist này đang nằm trong danh sách chạy (Play hoặc Pause)
+    // thì thẻ Playlist vẫn duy trì trạng thái Active. 
+    // Khi gọi lệnh Stop, âm thanh bị xóa khỏi playingAudios -> tự động trả về false (Reset)
     for (var audio in widget.playlist.audios) {
-       final player = myHandler.audioPlayers[audio.path];
-       if (player != null && player.playing) {
-          hasActiveEngine = true;
-          break;
-       }
+      if (PlayingSounds().playingAudios.any((p) => p.path == audio.path)) {
+        return true; 
+      }
     }
-    
-    if (!hasActiveEngine) return false;
-
-    // 2. Lớp bảo vệ: Đảm bảo không có âm thanh lạ nào lọt vào.
-    for (var playingAudio in PlayingSounds().playingAudios) {
-       if (!widget.playlist.audios.any((a) => a.path == playingAudio.path)) {
-          return false;
-       }
-    }
-    
-    return true;
+    return false;
   }
 
   @override
@@ -61,14 +48,23 @@ class PlaylistCardState extends State<PlaylistCard> {
     _loadExpandedState();
     PlaylistGlobals.expandNotifier.addListener(_onGlobalExpandChanged);
 
+    // Lắng nghe tín hiệu trực tiếp từ lõi Audio (Kể cả khi bấm từ Widget ngoài màn hình)
     AppState().audioHandler.playbackState.listen((event) {
       if (mounted) setState(() {});
     });
+    
+    // Lắng nghe sự thay đổi cờ Playlist
+    PlayingSounds().isPlayingPlaylist.addListener(_onPlaylistStateChanged);
+  }
+
+  void _onPlaylistStateChanged() {
+    if (mounted) setState(() {});
   }
 
   @override
   void dispose() {
     PlaylistGlobals.expandNotifier.removeListener(_onGlobalExpandChanged);
+    PlayingSounds().isPlayingPlaylist.removeListener(_onPlaylistStateChanged);
     super.dispose();
   }
 
@@ -102,6 +98,7 @@ class PlaylistCardState extends State<PlaylistCard> {
     );
   }
 
+  // BẢN VÁ: Trả về chính xác cấu trúc gốc (SizedBox height) để trị dứt điểm lỗi rỗng List
   void onTapList() {
     bool isDarkMode = Theme.of(context).brightness == Brightness.dark;
     Color bgColor = isDarkMode ? const Color(0xff222222) : Colors.white;
@@ -112,56 +109,73 @@ class PlaylistCardState extends State<PlaylistCard> {
       builder: (context) => Dialog(
         backgroundColor: bgColor,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(24),
+          child: Stack(
             children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  IconButton(
-                    icon: Icon(Icons.close, color: textColor),
-                    onPressed: () => Navigator.pop(context),
-                  ),
-                  Expanded(
-                    child: Text(
-                      widget.playlist.name,
-                      textAlign: TextAlign.center,
-                      style: TextStyle(color: textColor, fontSize: 18, fontWeight: FontWeight.bold),
+              Container(color: widget.playlist.color ?? Colors.grey[800]),
+              Container(
+                color: bgColor.withOpacity(0.8),
+                child: Padding(
+                  padding: const EdgeInsets.all(4.0),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: textColor.withOpacity(0.3), width: 1.5),
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.all(16.0),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              IconButton(
+                                icon: MyIcons.back(),
+                                onPressed: () => Navigator.pop(context),
+                                color: textColor,
+                              ),
+                              Expanded(
+                                child: Text(
+                                  widget.playlist.name,
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(color: textColor, fontSize: 18, fontWeight: FontWeight.bold),
+                                ),
+                              ),
+                              Opacity(opacity: 0, child: IconButton(icon: MyIcons.back(), onPressed: () {})),
+                            ],
+                          ),
+                        ),
+                        // GIỮ NGUYÊN CHIỀU CAO GỐC: Tránh lỗi Flutter ép height = 0
+                        SizedBox(
+                          height: MediaQuery.of(context).size.height / 2,
+                          child: widget.playlist.audios.isEmpty
+                              ? Center(child: Text("Playlist trống", style: TextStyle(color: textColor.withOpacity(0.5))))
+                              : ListView.builder(
+                                  itemCount: widget.playlist.audios.length,
+                                  itemBuilder: (context, index) {
+                                    return Padding(
+                                      padding: const EdgeInsets.only(bottom: 8.0),
+                                      child: PlayerWidget(audio: widget.playlist.audios[index]),
+                                    );
+                                  },
+                                ),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.all(16.0),
+                          child: MyButton(
+                            icon: MyIcons.add(),
+                            onTap: () {
+                              Navigator.pop(context);
+                              onEdit();
+                            },
+                          ),
+                        )
+                      ],
                     ),
                   ),
-                  const SizedBox(width: 48), 
-                ],
-              ),
-              const SizedBox(height: 12),
-              
-              if (widget.playlist.audios.isEmpty)
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 24.0),
-                  child: Text("Playlist trống", style: TextStyle(color: textColor.withOpacity(0.5))),
-                )
-              else
-                Container(
-                  constraints: BoxConstraints(
-                    maxHeight: MediaQuery.of(context).size.height * 0.5, 
-                  ),
-                  child: ListView(
-                    shrinkWrap: true, 
-                    children: widget.playlist.audios.map((audio) => Padding(
-                      padding: const EdgeInsets.only(bottom: 8.0),
-                      child: PlayerWidget(audio: audio),
-                    )).toList(),
-                  ),
                 ),
-                
-              const SizedBox(height: 16),
-              MyButton(
-                icon: MyIcons.add(),
-                onTap: () {
-                  Navigator.pop(context);
-                  onEdit();
-                },
               )
             ],
           ),
@@ -357,7 +371,7 @@ class PlaylistCardState extends State<PlaylistCard> {
 
   void stopAllSoundInPlaylist() async {
     _localSessionId++;
-    PlayingSounds().isPlayingPlaylist.value = false;
+    PlayingSounds().isPlayingPlaylist.value = false; // Bắt buộc nhả cờ khi user Stop thủ công
     for (final audio in widget.playlist.audios) {
       AudioServiceCommands.stop(audio);
       await Future.delayed(const Duration(milliseconds: 100));
