@@ -29,35 +29,30 @@ class PlaylistCardState extends State<PlaylistCard> {
   bool _isActive = false;
   IconData _lastIcon = Icons.play_arrow; 
 
+  // BẢN VÁ 1: Trị lỗi "Lệch Play/Pause" (Mất màu thẻ khi Widget ấn Pause)
+  // Giải pháp: Quét cả danh sách nhạc đang Tạm dừng. 
   bool get _isPlaying {
     if (!PlayingSounds().isPlayingPlaylist.value) return false;
     if (widget.playlist.audios.isEmpty) return false;
     
-    for (var audio in widget.playlist.audios) {
-      if (PlayingSounds().playingAudios.any((p) => p.path == audio.path)) {
-        return true; 
-      }
-    }
-    return false;
+    return widget.playlist.audios.every((playlistAudio) {
+      bool isPlaying = PlayingSounds().playingAudios.any((p) => p.path == playlistAudio.path);
+      bool isPaused = PlayingSounds().pausedAudios.any((p) => p.path == playlistAudio.path);
+      return isPlaying || isPaused;
+    });
   }
 
+  // BẢN VÁ 2: Trị lỗi "Stop không clear màu" 
+  // Giải pháp: Dùng biến state nội bộ thay vì đụng vào lõi ExoPlayer (gây crash ngầm chặn lệnh clear màu)
   IconData get _currentActionIcon {
     if (!_isActive) return Icons.play_arrow;
 
-    bool isEnginePlaying = false;
-    try {
-      final myHandler = AppState().audioHandler as MyAudioHandler;
-      for (var audio in widget.playlist.audios) {
-        final player = myHandler.audioPlayers[audio.path];
-        if (player != null && player.playing) {
-          isEnginePlaying = true;
-          break;
-        }
-      }
-    } catch (_) {}
+    bool isActuallyPlaying = widget.playlist.audios.any((playlistAudio) =>
+        PlayingSounds().playingAudios.any((p) => p.path == playlistAudio.path)
+    );
 
-    if (!isEnginePlaying) return Icons.pause;
-    return Icons.stop;
+    if (isActuallyPlaying) return Icons.stop;
+    return Icons.pause;
   }
 
   @override
@@ -69,7 +64,6 @@ class PlaylistCardState extends State<PlaylistCard> {
         ? true 
         : PlaylistGlobals.expandNotifier.value;
 
-    // BẢN VÁ TỐI THƯỢNG: Lắng nghe siêu nhẹ từ Notifier thay vì cắm thẳng vào ExoPlayer
     PlayingSounds().stateChangeNotifier.addListener(_onSystemStateChanged);
     PlayingSounds().isPlayingPlaylist.addListener(_onSystemStateChanged);
   }
@@ -82,7 +76,6 @@ class PlaylistCardState extends State<PlaylistCard> {
     super.dispose();
   }
 
-  // Hàm xử lý khi App có sự kiện Play/Pause/Stop
   void _onSystemStateChanged() {
     if (!mounted) return;
     
