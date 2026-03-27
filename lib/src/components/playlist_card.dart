@@ -1,3 +1,4 @@
+import 'dart:async'; // Dùng để cấu hình kiểu StreamSubscription
 import 'package:flutter/material.dart';
 import 'package:rolify/data/audios.dart'; 
 import 'package:rolify/entities/audio.dart';
@@ -25,12 +26,14 @@ class PlaylistCard extends StatefulWidget {
 class PlaylistCardState extends State<PlaylistCard> {
   int _localSessionId = 0;
   
-  // BẢN VÁ: Luôn luôn mặc định khởi tạo là Thu Gọn (false)
-  // Xóa bỏ hoàn toàn SharedPreferences gây xung đột logic!
+  // BẢN VÁ: Khóa cứng mặc định = false. Xóa sạch mọi Code liên quan đến SharedPreferences!
   bool isExpanded = false; 
   
   bool _isActive = false;
   IconData _lastIcon = Icons.play_arrow; 
+
+  // BẢN VÁ CHỐNG TRÀN RAM: Khai báo biến Lắng nghe hệ thống
+  StreamSubscription? _playbackSub;
 
   IconData get _currentActionIcon {
     if (!_isActive) return Icons.play_arrow;
@@ -56,7 +59,8 @@ class PlaylistCardState extends State<PlaylistCard> {
     super.initState();
     PlaylistGlobals.expandNotifier.addListener(_onGlobalExpandChanged);
 
-    AppState().audioHandler.playbackState.listen((event) {
+    // Gắn luồng vào biến _playbackSub
+    _playbackSub = AppState().audioHandler.playbackState.listen((event) {
       if (mounted && _isActive) {
         bool hasPlayingAudio = false;
         for (var audio in widget.playlist.audios) {
@@ -81,6 +85,11 @@ class PlaylistCardState extends State<PlaylistCard> {
   @override
   void dispose() {
     PlaylistGlobals.expandNotifier.removeListener(_onGlobalExpandChanged);
+    
+    // BẢN VÁ TỐI THƯỢNG: Hủy luồng lắng nghe khi cuộn quá thẻ Playlist.
+    // Nếu thiếu lệnh này, vuốt thẻ 10 lần sinh ra 100 bóng ma gọi hàm setState phá hủy RAM!
+    _playbackSub?.cancel(); 
+    
     super.dispose();
   }
 
@@ -90,7 +99,6 @@ class PlaylistCardState extends State<PlaylistCard> {
     }
   }
 
-  // BẢN VÁ: Đổi trạng thái siêu tốc, không cần lưu vào CSDL
   void _toggleExpanded(bool val) {
     setState(() => isExpanded = val);
   }

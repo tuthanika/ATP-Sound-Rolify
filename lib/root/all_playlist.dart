@@ -33,7 +33,6 @@ class AllPlaylistState extends State<AllPlaylist> {
     super.initState();
     _loadSortPreference();
     initPlaylists();
-    // BẢN VÁ: Luôn reset trạng thái mở rộng toàn cục về Thu Gọn khi vào Tab này
     PlaylistGlobals.expandNotifier.value = false; 
   }
 
@@ -57,7 +56,6 @@ class AllPlaylistState extends State<AllPlaylist> {
     _updateSortType(next);
   }
 
-  // BẢN VÁ: Xóa lệnh lưu SharedPreferences, chỉ đổi trạng thái UI tức thời
   void _toggleExpandAll() {
     PlaylistGlobals.expandNotifier.value = !PlaylistGlobals.expandNotifier.value;
   }
@@ -114,6 +112,10 @@ class AllPlaylistState extends State<AllPlaylist> {
 
   @override
   Widget build(BuildContext context) {
+    // BẢN VÁ: Gọi Getter đúng 1 lần duy nhất rồi nạp vào biến tĩnh.
+    // XÓA BỎ HOÀN TOÀN tình trạng CPU phải xử lý hàm Sort 400 lần/giây khi cuộn!
+    final currentFiltered = filteredPlaylists;
+
     return BlocListener<PlaylistListBloc, PlaylistListState>(
       listener: (BuildContext context, PlaylistListState state) {
         if (state is PlaylistListEdited) initPlaylists();
@@ -122,14 +124,12 @@ class AllPlaylistState extends State<AllPlaylist> {
         children: [
           _buildSearchBar(), 
           Expanded(
-            // BẢN VÁ TỐI THƯỢNG: Dùng ListView.builder thay vì ListView cứng
-            // Trị dứt điểm bệnh đơ máy khi cuộn (scroll) qua hàng chục thẻ Playlist!
             child: ListView.builder(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              itemCount: filteredPlaylists.length + 1,
+              itemCount: currentFiltered.length + 1,
               itemBuilder: (context, index) {
-                if (index < filteredPlaylists.length) {
-                  final playlist = filteredPlaylists[index];
+                if (index < currentFiltered.length) {
+                  final playlist = currentFiltered[index];
                   return Padding(
                     padding: const EdgeInsets.only(bottom: 12.0),
                     child: PlaylistCard(
