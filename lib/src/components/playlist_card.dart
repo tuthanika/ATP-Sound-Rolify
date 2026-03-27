@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:rolify/entities/audio.dart';
 import 'package:rolify/entities/playlist.dart';
+import 'package:rolify/presentation_logic_holders/audio_handler.dart'; // BẢN VÁ: Import class MyAudioHandler
 import 'package:rolify/presentation_logic_holders/audio_service_commands.dart';
 import 'package:rolify/presentation_logic_holders/playing_sounds_singleton.dart';
 import 'package:rolify/presentation_logic_holders/singletons/app_state.dart';
@@ -25,15 +26,17 @@ class PlaylistCardState extends State<PlaylistCard> {
   int _localSessionId = 0;
   bool isExpanded = false;
 
-  // BẢN VÁ: Logic Đọc Trạng Thái trực tiếp từ Phần cứng (Tuyệt đối chính xác)
   bool get _isPlaying {
     if (widget.playlist.audios.isEmpty) return false;
     
-    // 1. Kiểm tra lõi Engine ExoPlayer: Phải có ít nhất 1 bài đang THỰC SỰ phát (không bị Pause hay Stop)
+    // 1. Kiểm tra lõi Engine ExoPlayer:
     bool hasActiveEngine = false;
+    
+    // BẢN VÁ: Ép kiểu (cast) về MyAudioHandler để trình biên dịch nhận diện được biến audioPlayers
+    final myHandler = AppState().audioHandler as MyAudioHandler;
+    
     for (var audio in widget.playlist.audios) {
-       final player = AppState().audioHandler.audioPlayers[audio.path];
-       // player.playing = true chỉ khi nhạc đang chạy. Nếu Pause/Stop nó lập tức = false
+       final player = myHandler.audioPlayers[audio.path];
        if (player != null && player.playing) {
           hasActiveEngine = true;
           break;
@@ -43,7 +46,6 @@ class PlaylistCardState extends State<PlaylistCard> {
     if (!hasActiveEngine) return false;
 
     // 2. Lớp bảo vệ: Đảm bảo không có âm thanh lạ nào lọt vào.
-    // Nếu có âm thanh không thuộc playlist này đang phát -> Đây không phải là playlist đang active
     for (var playingAudio in PlayingSounds().playingAudios) {
        if (!widget.playlist.audios.any((a) => a.path == playingAudio.path)) {
           return false;
@@ -59,8 +61,6 @@ class PlaylistCardState extends State<PlaylistCard> {
     _loadExpandedState();
     PlaylistGlobals.expandNotifier.addListener(_onGlobalExpandChanged);
 
-    // BẮT SÓNG NATIVE: Bất cứ khi nào Widget hay App có sự thay đổi (Play/Pause/Stop)
-    // Hệ thống sẽ render lại UI lập tức dựa trên Getter _isPlaying phía trên.
     AppState().audioHandler.playbackState.listen((event) {
       if (mounted) setState(() {});
     });
@@ -142,13 +142,12 @@ class PlaylistCardState extends State<PlaylistCard> {
                   child: Text("Playlist trống", style: TextStyle(color: textColor.withOpacity(0.5))),
                 )
               else
-                // BẢN VÁ: Dùng Container và ListView shrinkWrap để trị dứt điểm lỗi rỗng và thừa viền
                 Container(
                   constraints: BoxConstraints(
                     maxHeight: MediaQuery.of(context).size.height * 0.5, 
                   ),
                   child: ListView(
-                    shrinkWrap: true, // Cực kỳ quan trọng để ôm sát nội dung
+                    shrinkWrap: true, 
                     children: widget.playlist.audios.map((audio) => Padding(
                       padding: const EdgeInsets.only(bottom: 8.0),
                       child: PlayerWidget(audio: audio),
@@ -358,7 +357,7 @@ class PlaylistCardState extends State<PlaylistCard> {
 
   void stopAllSoundInPlaylist() async {
     _localSessionId++;
-    PlayingSounds().isPlayingPlaylist.value = false; // BẢN VÁ: Ra lệnh tắt cờ Playlist
+    PlayingSounds().isPlayingPlaylist.value = false;
     for (final audio in widget.playlist.audios) {
       AudioServiceCommands.stop(audio);
       await Future.delayed(const Duration(milliseconds: 100));
