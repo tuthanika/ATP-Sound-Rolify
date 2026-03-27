@@ -20,13 +20,15 @@ class EditPlaylist extends StatefulWidget {
 class EditPlaylistState extends State<EditPlaylist> {
   final playlistNameController = TextEditingController();
   List<Audio> audios = [];
-  List<Audio> filteredAudios = []; // Sổ tay lọc list tốc độ cao
+  List<Audio> filteredAudios = []; 
   Color? color;
   
-  late Set<String> _playlistAudioPaths; // Sổ tay đánh dấu bài hát O(1)
+  late Set<String> _playlistAudioPaths; 
+  Set<String> _expandedFolders = {}; // Sổ tay nhớ thư mục đang mở
   
   String _searchQuery = '';
-  int _sortType = 0; // 0: Mới nhất, 1: A-Z, 2: Z-A
+  int _sortType = 0; 
+  bool _showAllFlat = false; // Cờ chuyển đổi hiển thị: Gom thư mục vs Trải phẳng
 
   @override
   void initState() {
@@ -46,7 +48,6 @@ class EditPlaylistState extends State<EditPlaylist> {
     });
   }
 
-  // Thuật toán Lọc siêu mượt, không chạy lại khi cuộn
   void _applyFilters() {
     var list = audios.where((a) => 
         a.name.toLowerCase().contains(_searchQuery.toLowerCase())).toList();
@@ -64,6 +65,15 @@ class EditPlaylistState extends State<EditPlaylist> {
     });
   }
 
+  String _getSortText() {
+    switch (_sortType) {
+      case 0: return "Mới nhất";
+      case 1: return "A - Z";
+      case 2: return "Z - A";
+      default: return "";
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     bool isDark = Theme.of(context).brightness == Brightness.dark;
@@ -73,7 +83,7 @@ class EditPlaylistState extends State<EditPlaylist> {
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.all(16.0), // THU NHỎ LỀ TỔNG: 24 -> 16
+          padding: const EdgeInsets.all(16.0), 
           child: Container(
             decoration: BoxDecoration(
               color: Theme.of(context).colorScheme.surfaceContainerHighest,
@@ -83,7 +93,7 @@ class EditPlaylistState extends State<EditPlaylist> {
               mainAxisSize: MainAxisSize.min,
               children: <Widget>[
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 8), // Ép sát khoảng cách
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 8), 
                   child: Column(
                     children: <Widget>[
                       Row(
@@ -91,7 +101,6 @@ class EditPlaylistState extends State<EditPlaylist> {
                           Expanded(
                             child: Text(
                               'Edit playlist', 
-                              // BÓP NHỎ CHỮ ĐỂ TIẾT KIỆM KHÔNG GIAN
                               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: textColor)
                             )
                           ),
@@ -106,7 +115,7 @@ class EditPlaylistState extends State<EditPlaylist> {
                         children: <Widget>[
                           Expanded(
                             child: SizedBox(
-                              height: 48, // Ép lùn TextField
+                              height: 48, 
                               child: MyTextField(
                                 controller: playlistNameController,
                                 hintText: 'Create a new playlist...',
@@ -141,7 +150,7 @@ class EditPlaylistState extends State<EditPlaylist> {
                   groupValue: color,
                 ),
                 
-                // THANH SEARCH & SORT GỌN GÀNG (Cao chỉ 40px)
+                // THANH CÔNG CỤ TỐI ƯU KHÔNG GIAN
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
                   child: Row(
@@ -152,7 +161,7 @@ class EditPlaylistState extends State<EditPlaylist> {
                           child: TextField(
                             style: TextStyle(color: textColor, fontSize: 14),
                             decoration: InputDecoration(
-                              hintText: 'Tìm sound...',
+                              hintText: 'Tìm kiếm sound...',
                               hintStyle: const TextStyle(color: Colors.grey, fontSize: 14),
                               prefixIcon: const Icon(Icons.search, color: Colors.grey, size: 20),
                               filled: true,
@@ -165,60 +174,58 @@ class EditPlaylistState extends State<EditPlaylist> {
                             ),
                             onChanged: (val) {
                               _searchQuery = val;
+                              // Khi search, tự động bung phẳng danh sách để dễ tìm
+                              if (val.isNotEmpty && !_showAllFlat) _showAllFlat = true;
                               _applyFilters(); 
                             },
                           ),
                         ),
                       ),
                       const SizedBox(width: 8),
-                      Container(
-                        height: 40,
-                        decoration: BoxDecoration(
-                          color: isDark ? Colors.black26 : Colors.black12,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        padding: const EdgeInsets.symmetric(horizontal: 8),
-                        child: DropdownButtonHideUnderline(
-                          child: DropdownButton<int>(
-                            value: _sortType,
-                            dropdownColor: isDark ? Colors.grey[900] : Colors.white,
+                      // Nút Sort tối giản chỉ còn Icon
+                      Tooltip(
+                        message: 'Sắp xếp: ${_getSortText()}',
+                        child: Container(
+                          height: 40, width: 40,
+                          decoration: BoxDecoration(
+                            color: isDark ? Colors.black26 : Colors.black12,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: IconButton(
                             icon: Icon(Icons.sort, color: Theme.of(context).iconTheme.color, size: 20),
-                            style: TextStyle(color: textColor, fontSize: 14),
-                            items: const [
-                              DropdownMenuItem(value: 0, child: Text("Mới nhất")),
-                              DropdownMenuItem(value: 1, child: Text("A - Z")),
-                              DropdownMenuItem(value: 2, child: Text("Z - A")),
-                            ],
-                            onChanged: (val) {
-                              if (val != null) {
-                                _sortType = val;
-                                _applyFilters();
-                              }
+                            onPressed: () {
+                              _sortType = (_sortType + 1) % 3;
+                              _applyFilters();
                             },
                           ),
                         ),
-                      )
+                      ),
+                      const SizedBox(width: 8),
+                      // Nút chuyển chế độ Gom Folder / Trải phẳng All
+                      Tooltip(
+                        message: _showAllFlat ? 'Đang hiển thị All Sound' : 'Đang phân nhóm Folder',
+                        child: Container(
+                          height: 40, width: 40,
+                          decoration: BoxDecoration(
+                            color: isDark ? Colors.black26 : Colors.black12,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: IconButton(
+                            icon: Icon(_showAllFlat ? Icons.list : Icons.folder_copy, color: Theme.of(context).iconTheme.color, size: 20),
+                            onPressed: () => setState(() => _showAllFlat = !_showAllFlat),
+                          ),
+                        ),
+                      ),
                     ],
                   ),
                 ),
 
+                // DANH SÁCH LINH HOẠT TỐC ĐỘ CAO
                 Expanded(
-                  child: ListView.separated(
+                  child: ListView(
                     physics: const BouncingScrollPhysics(),
                     padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-                    itemCount: filteredAudios.length,
-                    itemBuilder: (context, index) {
-                      final audio = filteredAudios[index];
-                      final isAdded = _playlistAudioPaths.contains(audio.path);
-                      return _AudioRow(
-                        audio: audio,
-                        isAdded: isAdded, // Truyền trực tiếp kết quả O(1) siêu nhanh
-                        onAdd: () => addSoundToPlaylist(audio),
-                        onRemove: () => removeSoundFromPlaylist(audio),
-                      );
-                    },
-                    separatorBuilder: (BuildContext context, int index) =>
-                        const SizedBox(height: 12.0), // Giảm khoảng cách giữa các hàng
+                    children: _buildListItems(),
                   ),
                 )
               ],
@@ -227,6 +234,127 @@ class EditPlaylistState extends State<EditPlaylist> {
         ),
       ),
     );
+  }
+
+  // BẢN VÁ: THUẬT TOÁN TẠO GIAO DIỆN FOLDER / SOUND MIXED
+  List<Widget> _buildListItems() {
+    List<Widget> items = [];
+
+    // Chế độ 1: Trải phẳng toàn bộ
+    if (_showAllFlat) {
+      for (var audio in filteredAudios) {
+        final isAdded = _playlistAudioPaths.contains(audio.path);
+        items.add(
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 6.0),
+            child: _AudioRow(
+              audio: audio,
+              isAdded: isAdded,
+              onAdd: () => addSoundToPlaylist(audio),
+              onRemove: () => removeSoundFromPlaylist(audio),
+            ),
+          )
+        );
+      }
+      return items;
+    }
+
+    // Chế độ 2: Gom cụm theo Thư mục
+    Map<String, List<Audio>> folders = {};
+    List<Audio> standalones = [];
+    
+    for (var a in filteredAudios) {
+      if (a.folderName != null && a.folderName!.isNotEmpty) {
+        folders.putIfAbsent(a.folderName!, () => []).add(a);
+      } else {
+        standalones.add(a);
+      }
+    }
+
+    List<String> sortedFolderNames = folders.keys.toList()..sort();
+
+    // 1. Vẽ các Thư mục trước
+    for (var fName in sortedFolderNames) {
+      List<Audio> folderAudios = folders[fName]!;
+      bool isExpanded = _expandedFolders.contains(fName);
+      
+      // Nếu MỌI bài trong folder đều có trong playlist -> Mới hiện nút Remove All
+      bool allAdded = folderAudios.every((a) => _playlistAudioPaths.contains(a.path));
+
+      items.add(
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 4.0),
+          child: _FolderRow(
+            folderName: fName,
+            audioCount: folderAudios.length,
+            isExpanded: isExpanded,
+            allAdded: allAdded,
+            onTap: () {
+              setState(() {
+                if (isExpanded) _expandedFolders.remove(fName);
+                else _expandedFolders.add(fName);
+              });
+            },
+            onAddRemoveAll: () {
+              setState(() {
+                if (allAdded) {
+                  // Xóa sạch
+                  for (var a in folderAudios) {
+                    widget.playlist.audios.removeWhere((p) => p.path == a.path);
+                    _playlistAudioPaths.remove(a.path);
+                  }
+                } else {
+                  // Thêm tất cả những bài chưa có
+                  for (var a in folderAudios) {
+                    if (!_playlistAudioPaths.contains(a.path)) {
+                      widget.playlist.audios.add(a);
+                      _playlistAudioPaths.add(a.path);
+                    }
+                  }
+                }
+              });
+              PlaylistData.savePlaylist(context, widget.playlist);
+            }
+          ),
+        )
+      );
+
+      // Nếu thư mục được mở rộng, xổ ra các bài bên trong (có lùi lề trái)
+      if (isExpanded) {
+        for (var a in folderAudios) {
+          bool isAdded = _playlistAudioPaths.contains(a.path);
+          items.add(
+             Padding(
+               padding: const EdgeInsets.only(left: 32.0, top: 4, bottom: 4),
+               child: _AudioRow(
+                 audio: a,
+                 isAdded: isAdded,
+                 onAdd: () => addSoundToPlaylist(a),
+                 onRemove: () => removeSoundFromPlaylist(a),
+               )
+             )
+          );
+        }
+      }
+    }
+
+    // 2. Vẽ các bài Standalone lẻ tẻ ở dưới cùng
+    for (var a in standalones) {
+       bool isAdded = _playlistAudioPaths.contains(a.path);
+       items.add(
+          Padding(
+             padding: const EdgeInsets.symmetric(vertical: 6.0),
+             child: _AudioRow(
+               audio: a,
+               isAdded: isAdded,
+               onAdd: () => addSoundToPlaylist(a),
+               onRemove: () => removeSoundFromPlaylist(a),
+             )
+          )
+       );
+    }
+
+    return items;
   }
 
   savePlaylist() async {
@@ -260,6 +388,72 @@ class EditPlaylistState extends State<EditPlaylist> {
     } else {
       PlaylistData.savePlaylist(context, widget.playlist);
     }
+  }
+}
+
+// UI HIỂN THỊ CỤM THƯ MỤC
+class _FolderRow extends StatelessWidget {
+  final String folderName;
+  final int audioCount;
+  final bool isExpanded;
+  final bool allAdded;
+  final VoidCallback onTap;
+  final VoidCallback onAddRemoveAll;
+
+  const _FolderRow({
+    required this.folderName,
+    required this.audioCount,
+    required this.isExpanded,
+    required this.allAdded,
+    required this.onTap,
+    required this.onAddRemoveAll,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    Color textColor = Theme.of(context).textTheme.bodyLarge?.color ?? Colors.white;
+    
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 8.0),
+        decoration: BoxDecoration(
+          color: Theme.of(context).brightness == Brightness.dark ? Colors.white10 : Colors.black.withOpacity(0.05),
+          borderRadius: BorderRadius.circular(12)
+        ),
+        child: Row(
+          children: <Widget>[
+            Icon(
+              isExpanded ? Icons.folder_open : Icons.folder,
+              color: Theme.of(context).colorScheme.primary,
+              size: 26,
+            ),
+            const SizedBox(width: 12.0),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    folderName,
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: textColor),
+                  ),
+                  Text(
+                    '$audioCount sounds',
+                    style: TextStyle(fontSize: 12, color: textColor.withOpacity(0.6)),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 16.0),
+            MyButton(
+              icon: allAdded ? MyIcons.playlistDelete() : MyIcons.playlistAdd(),
+              onTap: onAddRemoveAll,
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 
