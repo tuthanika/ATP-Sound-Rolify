@@ -7,6 +7,7 @@ import 'package:rolify/presentation_logic_holders/playlist_list_bloc/playlist_li
 import 'package:rolify/src/components/button.dart';
 import 'package:rolify/src/components/my_icons.dart';
 import 'package:rolify/src/components/playlist_card.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'edit_playlist.dart';
 
@@ -20,12 +21,30 @@ class AllPlaylist extends StatefulWidget {
 class AllPlaylistState extends State<AllPlaylist> {
   List<Playlist> playlists = [];
   String _searchQuery = '';
-  int _sortType = 0; // 0: A-Z, 1: Z-A, 2: Ít bài, 3: Nhiều bài
+  int _sortType = 4; // Mặc định là 4: Mới nhất
 
   @override
   void initState() {
     super.initState();
+    _loadSortPreference();
     initPlaylists();
+  }
+
+  // Khôi phục trạng thái Sort đã lưu
+  Future<void> _loadSortPreference() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (mounted) {
+      setState(() {
+        _sortType = prefs.getInt('playlist_sort_type') ?? 4;
+      });
+    }
+  }
+
+  // Lưu trạng thái Sort khi thay đổi
+  Future<void> _updateSortType(int val) async {
+    setState(() => _sortType = val);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt('playlist_sort_type', val);
   }
 
   void initPlaylists() {
@@ -38,7 +57,7 @@ class AllPlaylistState extends State<AllPlaylist> {
     });
   }
 
-  // BẢN VÁ: Hàm lọc và sắp xếp Playlist siêu tốc
+  // Logic Sắp xếp bao gồm "Mới nhất"
   List<Playlist> get filteredPlaylists {
     var list = playlists.where((p) => 
         p.name.toLowerCase().contains(_searchQuery.toLowerCase())).toList();
@@ -51,6 +70,9 @@ class AllPlaylistState extends State<AllPlaylist> {
       list.sort((a, b) => a.audios.length.compareTo(b.audios.length));
     } else if (_sortType == 3) {
       list.sort((a, b) => b.audios.length.compareTo(a.audios.length));
+    } else if (_sortType == 4) {
+      // Mới nhất: Dữ liệu get từ Local thường theo thứ tự thêm vào, ta chỉ cần đảo ngược (reversed)
+      list = list.reversed.toList();
     }
     return list;
   }
@@ -63,7 +85,7 @@ class AllPlaylistState extends State<AllPlaylist> {
       },
       child: Column(
         children: [
-          _buildSearchBar(), // Thanh Search và Sort thu gọn
+          _buildSearchBar(), 
           Expanded(
             child: ListView(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -75,7 +97,6 @@ class AllPlaylistState extends State<AllPlaylist> {
     );
   }
 
-  // BẢN VÁ: UI Thanh Tìm kiếm và Sắp xếp chuẩn Style Rolify
   Widget _buildSearchBar() {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
@@ -115,13 +136,14 @@ class AllPlaylistState extends State<AllPlaylist> {
                 icon: const Icon(Icons.sort, color: Colors.white),
                 style: const TextStyle(color: Colors.white),
                 items: const [
+                  DropdownMenuItem(value: 4, child: Text("Mới nhất")),
                   DropdownMenuItem(value: 0, child: Text("A - Z")),
                   DropdownMenuItem(value: 1, child: Text("Z - A")),
                   DropdownMenuItem(value: 2, child: Text("Ít bài nhất")),
                   DropdownMenuItem(value: 3, child: Text("Nhiều bài nhất")),
                 ],
                 onChanged: (val) {
-                  if (val != null) setState(() => _sortType = val);
+                  if (val != null) _updateSortType(val);
                 },
               ),
             ),
