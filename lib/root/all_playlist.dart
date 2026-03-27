@@ -25,6 +25,7 @@ class AllPlaylist extends StatefulWidget {
 
 class AllPlaylistState extends State<AllPlaylist> {
   List<Playlist> playlists = [];
+  List<Playlist> filteredPlaylists = []; // BẢN VÁ: Biến lưu danh sách đã lọc, chống tính toán lại
   String _searchQuery = '';
   int _sortType = 0; 
 
@@ -46,7 +47,8 @@ class AllPlaylistState extends State<AllPlaylist> {
   }
 
   Future<void> _updateSortType(int val) async {
-    setState(() => _sortType = val);
+    _sortType = val;
+    _applyFilters(); // Chỉ sắp xếp lại khi có lệnh thay đổi
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt('playlist_sort_type', val);
   }
@@ -63,14 +65,14 @@ class AllPlaylistState extends State<AllPlaylist> {
   void initPlaylists() {
     PlaylistData.getAllPlaylist().then((value) {
       if (mounted) {
-        setState(() {
-          playlists = value;
-        });
+        playlists = value;
+        _applyFilters(); // Áp dụng lọc ngay khi load xong data
       }
     });
   }
 
-  List<Playlist> get filteredPlaylists {
+  // BẢN VÁ HIỆU NĂNG: Hàm xử lý độc lập, vĩnh viễn không được gọi trong Build()
+  void _applyFilters() {
     var list = playlists.where((p) => 
         p.name.toLowerCase().contains(_searchQuery.toLowerCase())).toList();
         
@@ -85,7 +87,10 @@ class AllPlaylistState extends State<AllPlaylist> {
     } else if (_sortType == 4) {
       list.sort((a, b) => b.audios.length.compareTo(a.audios.length));
     }
-    return list;
+    
+    setState(() {
+      filteredPlaylists = list;
+    });
   }
 
   IconData _getSortIcon() {
@@ -112,10 +117,6 @@ class AllPlaylistState extends State<AllPlaylist> {
 
   @override
   Widget build(BuildContext context) {
-    // BẢN VÁ: Gọi Getter đúng 1 lần duy nhất rồi nạp vào biến tĩnh.
-    // XÓA BỎ HOÀN TOÀN tình trạng CPU phải xử lý hàm Sort 400 lần/giây khi cuộn!
-    final currentFiltered = filteredPlaylists;
-
     return BlocListener<PlaylistListBloc, PlaylistListState>(
       listener: (BuildContext context, PlaylistListState state) {
         if (state is PlaylistListEdited) initPlaylists();
@@ -126,10 +127,10 @@ class AllPlaylistState extends State<AllPlaylist> {
           Expanded(
             child: ListView.builder(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              itemCount: currentFiltered.length + 1,
+              itemCount: filteredPlaylists.length + 1,
               itemBuilder: (context, index) {
-                if (index < currentFiltered.length) {
-                  final playlist = currentFiltered[index];
+                if (index < filteredPlaylists.length) {
+                  final playlist = filteredPlaylists[index];
                   return Padding(
                     padding: const EdgeInsets.only(bottom: 12.0),
                     child: PlaylistCard(
@@ -184,7 +185,8 @@ class AllPlaylistState extends State<AllPlaylist> {
                 ),
               ),
               onChanged: (val) {
-                setState(() => _searchQuery = val);
+                _searchQuery = val;
+                _applyFilters(); // Tìm kiếm mượt mà không delay
               },
             ),
           ),
