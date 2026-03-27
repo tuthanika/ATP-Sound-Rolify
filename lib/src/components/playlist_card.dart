@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:rolify/data/audios.dart'; // Nạp để lấy data tươi nhất
 import 'package:rolify/entities/audio.dart';
 import 'package:rolify/entities/playlist.dart';
-import 'package:rolify/presentation_logic_holders/audio_handler.dart'; // Nạp để kiểm tra Icon Pause
+import 'package:rolify/presentation_logic_holders/audio_handler.dart'; 
 import 'package:rolify/presentation_logic_holders/audio_service_commands.dart';
 import 'package:rolify/presentation_logic_holders/playing_sounds_singleton.dart';
 import 'package:rolify/presentation_logic_holders/singletons/app_state.dart';
@@ -24,44 +25,32 @@ class PlaylistCard extends StatefulWidget {
 
 class PlaylistCardState extends State<PlaylistCard> {
   int _localSessionId = 0;
-  bool isExpanded = false;
+  bool isExpanded = false; // Mặc định luôn thu gọn
+  
+  // BẢN VÁ LOGIC GỐC: Trạng thái local khóa cứng, chống phát lẻ làm bật nhầm
+  bool _isActive = false;
 
-  // LOGIC TRẠNG THÁI (ĐÃ ĐÚNG - KHÔNG ĐỤNG CHẠM)
-  // Quản lý việc tô màu thẻ và xác định Playlist có đang active hay không
-  bool get _isPlaying {
-    if (!PlayingSounds().isPlayingPlaylist.value) return false;
-    if (widget.playlist.audios.isEmpty) return false;
-    
-    for (var audio in widget.playlist.audios) {
-      if (PlayingSounds().playingAudios.any((p) => p.path == audio.path)) {
-        return true; 
-      }
-    }
-    return false;
-  }
-
-  // BẢN VÁ THẨM MỸ: Chỉ dùng để đổi Icon (Không can thiệp logic hệ thống)
+  // BẢN VÁ THẨM MỸ: Quyết định vẽ Icon Play/Pause/Stop
   IconData get _currentActionIcon {
-    if (!_isPlaying) return Icons.play_arrow;
+    if (!_isActive) return Icons.play_arrow;
 
-    // Nếu thẻ đang Active (có màu), kiểm tra xem lõi loa có đang thực sự phát không
-    bool hasActiveEngine = false;
+    // Nếu thẻ đang Active (có màu), soi lõi Engine xem có đang chạy thực sự không
+    bool isEnginePlaying = false;
     try {
       final myHandler = AppState().audioHandler as MyAudioHandler;
       for (var audio in widget.playlist.audios) {
         final player = myHandler.audioPlayers[audio.path];
-        // Nếu bị Pause ở Widget, player.playing sẽ lập tức trả về false
         if (player != null && player.playing) {
-          hasActiveEngine = true;
+          isEnginePlaying = true;
           break;
         }
       }
     } catch (_) {}
 
-    // Nếu thẻ Active nhưng loa tắt -> Bị Tạm dừng (Hiện icon Pause cho thẩm mỹ)
-    if (!hasActiveEngine) return Icons.pause;
+    // Active + Lõi dừng (Widget ấn Pause) -> Hiện Pause
+    if (!isEnginePlaying) return Icons.pause;
     
-    // Nếu thẻ Active và loa đang kêu -> Đang phát (Hiện icon Stop)
+    // Active + Lõi chạy -> Hiện Stop (để ấn tắt)
     return Icons.stop;
   }
 
@@ -71,22 +60,32 @@ class PlaylistCardState extends State<PlaylistCard> {
     _loadExpandedState();
     PlaylistGlobals.expandNotifier.addListener(_onGlobalExpandChanged);
 
-    // Lắng nghe tín hiệu trực tiếp từ lõi Audio (Kể cả khi bấm Pause/Stop từ Widget)
+    // Lắng nghe tín hiệu từ lõi Audio (Đồng bộ với Widget)
     AppState().audioHandler.playbackState.listen((event) {
-      if (mounted) setState(() {});
+      if (mounted && _isActive) {
+        // ĐÚNG LOGIC CỦA BẠN: Nếu Widget ấn STOP -> Tất cả bài bị xóa khỏi playingAudios
+        // Ta soi xem còn bài nào của playlist này đang phát không. Nếu = 0 -> Tự động nhả thẻ!
+        bool hasPlayingAudio = false;
+        for (var audio in widget.playlist.audios) {
+          if (PlayingSounds().playingAudios.any((p) => p.path == audio.path)) {
+            hasPlayingAudio = true;
+            break;
+          }
+        }
+        
+        if (!hasPlayingAudio) {
+          setState(() { _isActive = false; });
+        } else {
+          // Re-render để đổi icon Pause/Stop nếu Widget ấn Pause
+          setState(() {});
+        }
+      }
     });
-    
-    PlayingSounds().isPlayingPlaylist.addListener(_onPlaylistStateChanged);
-  }
-
-  void _onPlaylistStateChanged() {
-    if (mounted) setState(() {});
   }
 
   @override
   void dispose() {
     PlaylistGlobals.expandNotifier.removeListener(_onGlobalExpandChanged);
-    PlayingSounds().isPlayingPlaylist.removeListener(_onPlaylistStateChanged);
     super.dispose();
   }
 
@@ -128,6 +127,8 @@ class PlaylistCardState extends State<PlaylistCard> {
     showDialog(
       context: context,
       builder: (context) => Dialog(
+        // Fix form iPhone 4: Mở rộng viền 2 bên cho Dialog thoáng hơn
+        insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
         backgroundColor: bgColor,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
         child: ClipRRect(
@@ -168,22 +169,37 @@ class PlaylistCardState extends State<PlaylistCard> {
                             ],
                           ),
                         ),
-                        // BẢN VÁ DANH SÁCH TÀNG HÌNH: Giữ chiều cao cố định cho khung và ép height cho PlayerWidget
+                        
                         SizedBox(
-                          height: MediaQuery.of(context).size.height / 2,
+                          height: MediaQuery.of(context).size.height * 0.55, 
                           child: widget.playlist.audios.isEmpty
                               ? Center(child: Text("Playlist trống", style: TextStyle(color: textColor.withOpacity(0.5))))
-                              : ListView.builder(
-                                  itemCount: widget.playlist.audios.length,
-                                  itemBuilder: (context, index) {
-                                    return Container(
-                                      // CỰC KỲ QUAN TRỌNG: PlayerWidget dùng Expanded bên trong nên bắt buộc 
-                                      // phải có chiều cao giới hạn khi nằm trong ListView, nếu không sẽ tàng hình.
-                                      height: 140, 
-                                      padding: const EdgeInsets.only(bottom: 8.0),
-                                      child: PlayerWidget(audio: widget.playlist.audios[index]),
+                              // BẢN VÁ BUG VOLUME/LOOP RESET: Lấy data tươi nhất từ Database
+                              : FutureBuilder<List<Audio>>(
+                                  future: AudioData.getAllAudios(),
+                                  builder: (context, snapshot) {
+                                    if (!snapshot.hasData) {
+                                      return const Center(child: CircularProgressIndicator());
+                                    }
+                                    return ListView.builder(
+                                      itemCount: widget.playlist.audios.length,
+                                      itemBuilder: (context, index) {
+                                        Audio originalAudio = widget.playlist.audios[index];
+                                        Audio freshAudio = originalAudio;
+                                        
+                                        // Áp dụng Volume & Loop mới nhất từ DB vào thẻ
+                                        try {
+                                          freshAudio = snapshot.data!.firstWhere((a) => a.path == originalAudio.path);
+                                        } catch (_) {}
+
+                                        return Container(
+                                          height: 130, // Chiều cao tối ưu thẻ Sound, không bị dài ngoẵng
+                                          padding: const EdgeInsets.only(bottom: 8.0, left: 8, right: 8),
+                                          child: PlayerWidget(audio: freshAudio),
+                                        );
+                                      },
                                     );
-                                  },
+                                  }
                                 ),
                         ),
                         Padding(
@@ -209,12 +225,13 @@ class PlaylistCardState extends State<PlaylistCard> {
   }
 
   void togglePlay() {
-    if (_isPlaying) {
+    if (_isActive) {
       stopAllSoundInPlaylist();
+      setState(() => _isActive = false);
     } else {
       playAllSoundInPlaylist();
+      setState(() => _isActive = true);
     }
-    setState(() {});
   }
 
   @override
@@ -228,7 +245,7 @@ class PlaylistCardState extends State<PlaylistCard> {
     Color defaultBg = isDarkMode ? const Color(0xff222222) : Colors.white;
     Color baseColor = widget.playlist.color ?? defaultBg;
     
-    Color bgColor = _isPlaying 
+    Color bgColor = _isActive 
         ? (widget.playlist.color ?? Theme.of(context).colorScheme.primary).withOpacity(isDarkMode ? 0.6 : 0.2)
         : baseColor.withOpacity(isDarkMode ? 0.85 : 1.0);
 
@@ -247,7 +264,6 @@ class PlaylistCardState extends State<PlaylistCard> {
         ),
         child: Row(
           children: [
-            // Áp dụng Icon Thẩm mỹ tại đây
             Icon(_currentActionIcon, color: textColor, size: 28),
             const SizedBox(width: 12),
             Expanded(
@@ -283,7 +299,7 @@ class PlaylistCardState extends State<PlaylistCard> {
     Color defaultBg = isDarkMode ? const Color(0xff222222) : Colors.grey.shade100;
     Color baseColor = widget.playlist.color ?? defaultBg;
     
-    Color bgColor = _isPlaying 
+    Color bgColor = _isActive 
         ? (widget.playlist.color ?? Theme.of(context).colorScheme.primary).withOpacity(isDarkMode ? 0.6 : 0.2)
         : baseColor;
 
@@ -348,7 +364,6 @@ class PlaylistCardState extends State<PlaylistCard> {
                         children: [
                           IconButton(
                             onPressed: togglePlay, 
-                            // Áp dụng Icon Thẩm mỹ tại đây
                             icon: Icon(_currentActionIcon, size: 28, color: textColor),
                             padding: EdgeInsets.zero,
                             constraints: const BoxConstraints(),
