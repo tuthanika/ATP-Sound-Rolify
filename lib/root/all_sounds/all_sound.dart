@@ -1,4 +1,4 @@
-import 'dart:io'; // Để xử lý xóa File vật lý
+import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/services.dart';
@@ -13,19 +13,19 @@ import 'package:rolify/presentation_logic_holders/event_bus/stop_all_event_bus.d
 import 'package:rolify/presentation_logic_holders/playing_sounds_singleton.dart';
 import 'package:rolify/presentation_logic_holders/singletons/app_state.dart';
 import 'package:rolify/presentation_logic_holders/singletons/theme_mode_controller.dart';
-import 'package:rolify/presentation_logic_holders/audio_service_commands.dart'; // import để gọi hàm play cơ bản
-import 'package:rolify/presentation_logic_holders/audio_download_manager.dart'; // Để gọi hàm tải File
+import 'package:rolify/presentation_logic_holders/audio_service_commands.dart'; 
+import 'package:rolify/presentation_logic_holders/audio_download_manager.dart'; 
 
 import 'package:rolify/src/components/button.dart';
 import 'package:rolify/src/components/my_icons.dart';
-import 'package:rolify/src/components/player_card.dart'; // import FolderWidget và PlayerWidget
+import 'package:rolify/src/components/player_card.dart'; 
 
 import 'search_bar.dart';
 import 'global_controls.dart';
 import 'package:rolify/src/theme/texts.dart';
 
 class AllSound extends StatefulWidget {
-  final String? folderName; // <-- Cho phép nhận folderName
+  final String? folderName;
 
   const AllSound({Key? key, this.folderName}) : super(key: key);
 
@@ -36,7 +36,6 @@ class AllSound extends StatefulWidget {
 class AllSoundState extends State<AllSound> with WidgetsBindingObserver {
   static const platform = MethodChannel('rolify/file_picker');
   
-  // Đổi List<Audio> thành List<dynamic> để chứa cả Audio và AudioFolder
   List<dynamic> items = [], filteredItems = []; 
   
   TextEditingController filterController = TextEditingController();
@@ -92,7 +91,6 @@ class AllSoundState extends State<AllSound> with WidgetsBindingObserver {
 
     List<dynamic> initialItems = [];
     if (widget.folderName == null) {
-      // Màn hình chính: Nhóm các folder lại
       Map<String, List<Audio>> folders = {};
       List<Audio> standalones = [];
       for (var a in allAudios) {
@@ -105,7 +103,6 @@ class AllSoundState extends State<AllSound> with WidgetsBindingObserver {
       initialItems.addAll(standalones);
       folders.forEach((key, val) => initialItems.add(AudioFolder(key, val)));
     } else {
-      // Màn hình trong Folder: Chỉ lấy file thuộc folder
       initialItems = allAudios.where((a) => a.folderName == widget.folderName).toList();
     }
 
@@ -119,15 +116,22 @@ class AllSoundState extends State<AllSound> with WidgetsBindingObserver {
     }
   }
 
+  // BẢN VÁ: Cập nhật thuật toán cho đủ 3 kiểu Sort (Mới nhất, A-Z, Z-A)
   void _sortItems(List<dynamic> list) {
     final mode = ThemeModeController().sortMode.value;
-    if (mode == 0) {
+    if (mode == 1) { // 1: A-Z
       list.sort((a, b) {
         String nameA = a is AudioFolder ? a.name : (a as Audio).name;
         String nameB = b is AudioFolder ? b.name : (b as Audio).name;
         return nameA.toLowerCase().compareTo(nameB.toLowerCase());
       });
-    } else {
+    } else if (mode == 2) { // 2: Z-A
+      list.sort((a, b) {
+        String nameA = a is AudioFolder ? a.name : (a as Audio).name;
+        String nameB = b is AudioFolder ? b.name : (b as Audio).name;
+        return nameB.toLowerCase().compareTo(nameA.toLowerCase());
+      });
+    } else { // 0: Mới nhất
       final reversed = list.reversed.toList();
       list.clear();
       list.addAll(reversed);
@@ -204,7 +208,8 @@ class AllSoundState extends State<AllSound> with WidgetsBindingObserver {
                             resetTextFilter: resetTextFilter,
                             sortMode: sortMode,
                             onSortToggle: () {
-                              final nextMode = (sortMode + 1) % 2;
+                              // BẢN VÁ: Cho phép xoay vòng qua 3 trạng thái
+                              final nextMode = (sortMode + 1) % 3;
                               ThemeModeController().setSortMode(nextMode);
                               initAudios();
                             },
@@ -221,7 +226,6 @@ class AllSoundState extends State<AllSound> with WidgetsBindingObserver {
                   ),
                 ),
 
-                // === DÃY NÚT ĐIỀU KHIỂN FOLDER ===
                 if (widget.folderName != null && items.isNotEmpty)
                   Padding(
                     padding: const EdgeInsets.only(top: 12.0, bottom: 4.0),
@@ -234,7 +238,7 @@ class AllSoundState extends State<AllSound> with WidgetsBindingObserver {
                           onTap: () async {
                             final audios = filteredItems.whereType<Audio>().toList();
                             for (var a in audios) {
-                              AudioServiceCommands.play(a); // Mix phát song song
+                              AudioServiceCommands.play(a); 
 							  await Future.delayed(const Duration(milliseconds: 40));
                             }
                           },
@@ -277,7 +281,6 @@ class AllSoundState extends State<AllSound> with WidgetsBindingObserver {
                       ],
                     ),
                   ),
-                // ==================================
 
                 Expanded(
                   child: ValueListenableBuilder<bool>(
@@ -297,11 +300,9 @@ class AllSoundState extends State<AllSound> with WidgetsBindingObserver {
                         itemBuilder: (context, index) {
                           final item = filteredItems[index];
                           
-                          // Trả về Widget tương ứng với loại Data
                           Widget childWidget = const SizedBox.shrink();
                           String itemKey = '';
 
-                          // 1. Dựng UI thẻ như bình thường
                           if (item is Audio) {
                             itemKey = item.path;
                             childWidget = PlayerWidget(
@@ -314,7 +315,7 @@ class AllSoundState extends State<AllSound> with WidgetsBindingObserver {
                             childWidget = FolderWidget(
                               folder: item,
                               isCollapsedLayout: isCollapsed,
-                              onEdit: () => _renameFolder(item.name), // Gọi hàm đổi tên trực tiếp trên thẻ
+                              onEdit: () => _renameFolder(item.name),
                               onTapList: () {
                                 Navigator.push(
                                   context,
@@ -326,10 +327,9 @@ class AllSoundState extends State<AllSound> with WidgetsBindingObserver {
                                         elevation: 0,
                                         actions: [
                                           IconButton(
-                                            icon: const Icon(Icons.edit), // Nút đổi tên trên Appbar (trong Folder)
+                                            icon: const Icon(Icons.edit), 
                                             onPressed: () async {
                                               final newName = await _renameFolder(item.name);
-                                              // Nếu đổi tên thành công, tự thoát ra ngoài để cập nhật lại danh sách gốc
                                               if (newName != null && context.mounted) {
                                                 Navigator.pop(context); 
                                               }
@@ -345,15 +345,14 @@ class AllSoundState extends State<AllSound> with WidgetsBindingObserver {
                             );
                           }
 
-                          // 2. NẾU Ở CHẾ ĐỘ THU GỌN: Bọc thêm Dismissible để vuốt xóa
                           if (isCollapsed && childWidget is! SizedBox) {
                             return Dismissible(
                               key: Key('dismiss_$itemKey'),
-                              direction: DismissDirection.endToStart, // Chỉ cho vuốt từ Phải sang Trái
+                              direction: DismissDirection.endToStart,
                               background: Container(
                                 decoration: BoxDecoration(
                                   color: Theme.of(context).colorScheme.error,
-                                  borderRadius: BorderRadius.circular(20), // Bo góc cho khớp với thẻ
+                                  borderRadius: BorderRadius.circular(20), 
                                 ),
                                 alignment: Alignment.centerRight,
                                 padding: const EdgeInsets.only(right: 20.0),
@@ -363,7 +362,6 @@ class AllSoundState extends State<AllSound> with WidgetsBindingObserver {
                                 final isFolder = item is AudioFolder;
                                 final name = isFolder ? item.name : (item as Audio).name;
                                 
-                                // Hiện hộp thoại xác nhận trước khi xóa
                                 return await showDialog<bool>(
                                   context: context,
                                   builder: (context) => AlertDialog(
@@ -384,13 +382,11 @@ class AllSoundState extends State<AllSound> with WidgetsBindingObserver {
                                 );
                               },
                               onDismissed: (direction) {
-                                _deleteItem(item); // Gọi hàm xóa đã tạo ở trên
+                                _deleteItem(item); 
                               },
                               child: childWidget,
                             );
                           }
-
-                          // Nếu ở chế độ phóng to, trả về thẻ bình thường không cho vuốt
                           return childWidget;
                         },
                       );
@@ -448,7 +444,7 @@ class AllSoundState extends State<AllSound> with WidgetsBindingObserver {
                 subtitle: 'Select audio from your storage',
                 onTap: () {
                   Navigator.pop(context);
-                  _pickFilesNative(); // Gọi hàm thêm từ máy
+                  _pickFilesNative(); 
                 },
               ),
               _OptionTile(
@@ -457,7 +453,7 @@ class AllSoundState extends State<AllSound> with WidgetsBindingObserver {
                 subtitle: 'Manually input path or web link',
                 onTap: () {
                   Navigator.pop(context);
-                  _showManualPathInput(); // Gọi hàm nhập Link/URL
+                  _showManualPathInput(); 
                 },
               ),
               const SizedBox(height: 16),
@@ -468,19 +464,17 @@ class AllSoundState extends State<AllSound> with WidgetsBindingObserver {
     );
   }
 
-  // HÀM 1: LẤY FILE TỪ BỘ NHỚ MÁY (LOGIC GỐC ĐƯỢC GIỮ NGUYÊN)
   Future<void> _pickFilesNative() async {
     try {
       final List<dynamic>? result = await platform.invokeMethod('pickAudioFiles');
       if (result != null) {
-        // Dùng Map<String, dynamic> để đồng bộ với hàm _addAudiosWithNames mới
         List<Map<String, dynamic>> audioItems = [];
         for (var item in result) {
           if (item is Map) {
             audioItems.add({
               'name': item['name']?.toString() ?? '',
               'path': item['path']?.toString() ?? '',
-              'isOfflineMode': true, // File từ máy thì mặc định là Offline
+              'isOfflineMode': true, 
             });
           }
         }
@@ -493,10 +487,9 @@ class AllSoundState extends State<AllSound> with WidgetsBindingObserver {
     }
   }
 
-  // HÀM 2: NHẬP URL BẰNG TAY (CÓ CHECKBOX LƯU OFFLINE)
   void _showManualPathInput() {
     final controller = TextEditingController();
-    bool saveOffline = true; // Cờ mặc định là tích chọn
+    bool saveOffline = true; 
 
     showDialog(
       context: context,
@@ -535,8 +528,8 @@ class AllSoundState extends State<AllSound> with WidgetsBindingObserver {
                 onPressed: () async {
                   final text = controller.text.trim();
                   if (text.isNotEmpty) {
-                    Navigator.pop(context); // Đóng hộp thoại trước
-                    await _addAudiosByPathsWithFlag([text], saveOffline); // Thêm lệnh await vào đây
+                    Navigator.pop(context); 
+                    await _addAudiosByPathsWithFlag([text], saveOffline); 
                   } else {
                     Navigator.pop(context);
                   }
@@ -550,11 +543,10 @@ class AllSoundState extends State<AllSound> with WidgetsBindingObserver {
     );
   }
 
-  // Helper method added to fix build error
   Future<void> _addAudiosByPathsWithFlag(List<String> paths, bool saveOffline) async {
     final List<Map<String, dynamic>> pickItems = paths.map((path) {
       String rawName = "Âm thanh mới";
-      path = path.trim(); // Cắt khoảng trắng thừa chống lỗi
+      path = path.trim(); 
       
       try {
         final uri = Uri.parse(path);
@@ -577,14 +569,13 @@ class AllSoundState extends State<AllSound> with WidgetsBindingObserver {
       };
     }).toList();
     
-    await _addAudiosWithNames(pickItems); // QUAN TRỌNG: Thêm await ở đây
+    await _addAudiosWithNames(pickItems); 
   }
 
-Future<void> _addAudiosByPaths(List<String> paths) async {
-    await _addAudiosByPathsWithFlag(paths, true); // Mặc định là lưu offline
+  Future<void> _addAudiosByPaths(List<String> paths) async {
+    await _addAudiosByPathsWithFlag(paths, true); 
   }
 
-  // HÀM MỚI: ĐỔI PATH CỦA AUDIO ĐÃ CÓ
   void _changeAudioPath(Audio oldAudio) {
     final controller = TextEditingController();
     bool saveOffline = oldAudio.isOfflineMode;
@@ -616,7 +607,6 @@ Future<void> _addAudiosByPaths(List<String> paths) async {
                 const SizedBox(height: 12),
                 ElevatedButton.icon(
                   onPressed: () async {
-                    // Chọn file từ máy để lấy Path
                     final List<dynamic>? result = await platform.invokeMethod('pickAudioFiles');
                     if (result != null && result.isNotEmpty) {
                       final item = result.first as Map;
@@ -637,12 +627,10 @@ Future<void> _addAudiosByPaths(List<String> paths) async {
               TextButton(
                 onPressed: () async {
                   if (controller.text.isNotEmpty) {
-                    Navigator.pop(context); // Tắt hộp thoại trước
+                    Navigator.pop(context); 
                     
-                    // 1. Dừng nhạc đang phát
                     AudioServiceCommands.stop(oldAudio);
                     
-                    // 2. Xóa file Cache cũ nếu có
                     if (oldAudio.path.contains('/cloud_audios/')) {
                       try {
                         final file = File(oldAudio.path);
@@ -650,22 +638,19 @@ Future<void> _addAudiosByPaths(List<String> paths) async {
                       } catch (_) {}
                     }
 
-                    // 3. Lấy path mới (Kiểm tra xem path mới là URL thì cần tải không)
                     String newPath = controller.text;
                     if (newPath.startsWith('http')) {
-                       // Gọi Manager để tải hoặc cache file mới
                        final downloadedPath = await AudioFileManager.processPath(
                            newPath, oldAudio.name, saveOffline
                        );
                        if (downloadedPath != null) {
                          newPath = downloadedPath;
                        } else {
-                         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Lỗi tải file mới!')));
-                         return; // Thất bại thì không đổi
+                         if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Lỗi tải file mới!')));
+                         return; 
                        }
                     }
 
-                    // 4. Cập nhật Model và lưu Database
                     final allAudios = await AudioData.getAllAudios();
                     final index = allAudios.indexWhere((a) => a.path == oldAudio.path);
                     if (index != -1) {
@@ -675,10 +660,11 @@ Future<void> _addAudiosByPaths(List<String> paths) async {
                       );
                       allAudios[index] = updatedAudio;
                       
-                      await AudioData.saveAllAudios(context, allAudios);
-                      BlocProvider.of<AudioListBloc>(context).add(AudioListUpdate(allAudios));
+                      if (context.mounted) {
+                          await AudioData.saveAllAudios(context, allAudios);
+                          BlocProvider.of<AudioListBloc>(context).add(AudioListUpdate(allAudios));
+                      }
                       
-                      // 5. Nếu đang phát dở thì phát lại bằng link mới
                       AudioServiceCommands.play(updatedAudio);
                     }
                   }
@@ -692,23 +678,14 @@ Future<void> _addAudiosByPaths(List<String> paths) async {
     );
   }
   
-  // --- HÀM TỰ ĐỘNG LÀM ĐẸP TÊN AUDIO ---
   String _formatAudioName(String rawName) {
-    // 1. Xóa các đuôi mở rộng phổ biến (không phân biệt hoa thường)
     String cleanName = rawName.replaceAll(RegExp(r'\.(mp3|wav|ogg|m4a|flac|aac|wma)$', caseSensitive: false), '');
-    
-    // 2. Thay thế dấu gạch dưới (_) và gạch ngang (-) thành dấu cách
-    //cleanName = cleanName.replaceAll('_', ' ').replaceAll('-', ' ');
-    
-    // 3. Xóa khoảng trắng thừa ở 2 đầu
     return cleanName.trim();
   }
 
-  // HÀM XỬ LÝ LƯU DATA CHUNG
-Future<void> _addAudiosWithNames(List<Map<String, dynamic>> items) async {
+  Future<void> _addAudiosWithNames(List<Map<String, dynamic>> items) async {
     String? targetFolder = widget.folderName;
 
-    // Nếu đang ở màn hình chính và thêm > 1 file -> Hỏi xem có gộp nhóm không
     if (widget.folderName == null && items.length > 1) {
       bool? isGroup = await showDialog<bool>(
         context: context,
@@ -766,13 +743,11 @@ Future<void> _addAudiosWithNames(List<Map<String, dynamic>> items) async {
       final sourcePath = item['path'] as String;
       final isOffline = item['isOfflineMode'] as bool? ?? true;
 
-      // --- SỬ DỤNG HÀM LÀM ĐẸP TÊN TẠI ĐÂY ---
       final formattedName = _formatAudioName(rawName);
 
-      // CHỈ LƯU URL VÀO DATABASE, KHÔNG TẢI GÌ CẢ (Add siêu tốc)
       final audio = Audio(
         name: formattedName, 
-        path: sourcePath, // Bảo toàn URL
+        path: sourcePath, 
         audioSource: LocalAudioSource.file,
         folderName: targetFolder, 
         isOfflineMode: isOffline, 
@@ -784,14 +759,11 @@ Future<void> _addAudiosWithNames(List<Map<String, dynamic>> items) async {
       }
     }
     
-    if (added) {
+    if (added && mounted) {
       await AudioData.saveAllAudios(context, allAudios);
       resetTextFilter(context);
-      if (mounted) {
-        // Ép Bloc và UI nhận diện thay đổi tức thì
-        BlocProvider.of<AudioListBloc>(context).add(AudioListUpdate(List.from(allAudios)));
-        initAudios(); 
-      }
+      BlocProvider.of<AudioListBloc>(context).add(AudioListUpdate(List.from(allAudios)));
+      initAudios(); 
     }
   }
 
@@ -801,16 +773,14 @@ Future<void> _addAudiosWithNames(List<Map<String, dynamic>> items) async {
     filterAudios(context);
   }
 
-  // --- HÀM XỬ LÝ XÓA ÂM THANH / NHÓM ---
   Future<void> _deleteItem(dynamic item) async {
     final allAudios = await AudioData.getAllAudios();
     
     if (item is Audio) {
       AudioServiceCommands.stop(item);
       
-      // BẢO VỆ DỮ LIỆU: Chỉ xóa file vật lý NẾU path gốc là URL
       if (item.path.startsWith('http')) {
-        await AudioFileManager.deleteLocalFile(item.name); // <-- Bỏ item.isOfflineMode
+        await AudioFileManager.deleteLocalFile(item.name); 
       }
       
       allAudios.removeWhere((a) => a.path == item.path);
@@ -818,17 +788,15 @@ Future<void> _addAudiosWithNames(List<Map<String, dynamic>> items) async {
       for (var audio in item.audios) {
         AudioServiceCommands.stop(audio);
         
-        // BẢO VỆ DỮ LIỆU: Chỉ xóa file vật lý (Cache/Offline) NẾU path gốc là URL
         if (audio.path.startsWith('http')) {
-          await AudioFileManager.deleteLocalFile(audio.name); // <-- Cũng chỉ truyền mỗi name
+          await AudioFileManager.deleteLocalFile(audio.name); 
         }
       }
       allAudios.removeWhere((a) => a.folderName == item.name);
     }
 
-    await AudioData.saveAllAudios(context, allAudios);
-    
     if (mounted) {
+      await AudioData.saveAllAudios(context, allAudios);
       setState(() {
         items.remove(item);
         filteredItems.remove(item);
@@ -837,7 +805,6 @@ Future<void> _addAudiosWithNames(List<Map<String, dynamic>> items) async {
     }
   }
 
-  // --- HÀM _renameFolder PHẢI NẰM Ở ĐÂY (BÊN TRONG AllSoundState) ---
   Future<String?> _renameFolder(String oldName) async {
     final controller = TextEditingController(text: oldName);
     final newName = await showDialog<String>(
@@ -874,11 +841,9 @@ Future<void> _addAudiosWithNames(List<Map<String, dynamic>> items) async {
         }
       }
       
-      if (changed) {
+      if (changed && mounted) {
         await AudioData.saveAllAudios(context, allAudios);
-        if (mounted) {
-          BlocProvider.of<AudioListBloc>(context).add(AudioListUpdate(allAudios));
-        }
+        BlocProvider.of<AudioListBloc>(context).add(AudioListUpdate(allAudios));
         return newName.trim();
       }
     }
@@ -921,7 +886,6 @@ class _OptionTile extends StatelessWidget {
   }
 }
 
-// --- WIDGET NÚT HÀNH ĐỘNG CHO FOLDER ---
 class _FolderActionButton extends StatelessWidget {
   final IconData icon;
   final String label;

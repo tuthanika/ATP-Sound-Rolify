@@ -298,6 +298,7 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
       'playingPaths': playingPaths,
       'pausedPaths': pausedPaths,
       'masterVolume': PlayingSounds().masterVolume,
+      'activePlaylistIds': List<String>.from(PlayingSounds().activePlaylistIds),
     });
     writeWidgetState();
   }
