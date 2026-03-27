@@ -112,7 +112,18 @@ class PlaylistCardState extends State<PlaylistCard> {
 
   // BẢN VÁ UI DANH SÁCH: Cấu trúc Dialog y hệt code gốc của bạn (tránh 2 khung chồng)
   // Kèm theo GridView 2 cột với khoảng cách siêu nhỏ (1/2) như bạn mong muốn!
-  void onTapList() {
+  void onTapList() async {
+    List<Audio> freshDbAudios = await AudioData.getAllAudios();
+    List<Audio> updatedAudios = widget.playlist.audios.map((oldAudio) {
+      try {
+        return freshDbAudios.firstWhere((a) => a.path == oldAudio.path);
+      } catch (_) {
+        return oldAudio;
+      }
+    }).toList();
+
+    if (!mounted) return;
+
     bool isDarkMode = Theme.of(context).brightness == Brightness.dark;
     Color bgColor = isDarkMode ? const Color(0xff222222) : Colors.white;
     Color textColor = isDarkMode ? Colors.white : Colors.black87;
@@ -120,6 +131,7 @@ class PlaylistCardState extends State<PlaylistCard> {
     showDialog(
       context: context,
       builder: (context) => Dialog(
+        // TRẢ LẠI CHÍNH XÁC BỘ KHUNG BO GÓC GỐC MÀ BẠN ƯNG Ý
         backgroundColor: bgColor,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
         child: ClipRRect(
@@ -137,10 +149,10 @@ class PlaylistCardState extends State<PlaylistCard> {
                       border: Border.all(color: textColor.withOpacity(0.3), width: 1.5),
                     ),
                     child: Column(
-                      mainAxisSize: MainAxisSize.min,
+                      mainAxisSize: MainAxisSize.min, // Ép khít chống thừa viền dọc
                       children: [
                         Padding(
-                          padding: const EdgeInsets.all(16.0),
+                          padding: const EdgeInsets.all(12.0), // Ép nhỏ lề
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
@@ -160,28 +172,34 @@ class PlaylistCardState extends State<PlaylistCard> {
                             ],
                           ),
                         ),
-                        // GIỮ NGUYÊN CHIỀU CAO GỐC (Tránh lỗi 2 khung): SizedBox 1/2 màn hình
-                        SizedBox(
-                          height: MediaQuery.of(context).size.height / 2,
-                          child: widget.playlist.audios.isEmpty
-                              ? Center(child: Text("Playlist trống", style: TextStyle(color: textColor.withOpacity(0.5))))
-                              // BẢN VÁ: Dùng Grid 2 cột, khoảng cách giảm 1 nửa, bóp chiều cao 140
+                        
+                        ConstrainedBox(
+                          constraints: BoxConstraints(
+                            maxHeight: MediaQuery.of(context).size.height * 0.6,
+                          ),
+                          child: updatedAudios.isEmpty
+                              ? Padding(
+                                  padding: const EdgeInsets.all(24.0),
+                                  child: Text("Playlist trống", style: TextStyle(color: textColor.withOpacity(0.5))),
+                                )
                               : GridView.builder(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 8.0),
+                                  shrinkWrap: true, 
+                                  padding: const EdgeInsets.symmetric(horizontal: 12.0),
                                   gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                                     crossAxisCount: 2, 
-                                    crossAxisSpacing: 4, // Đã giảm 1/2 khoảng cách ngang
-                                    mainAxisSpacing: 4,  // Đã giảm 1/2 khoảng cách dọc
-                                    mainAxisExtent: 140, // Ép form thẻ 
+                                    crossAxisSpacing: 4, // 2 thẻ nằm sát nhau
+                                    mainAxisSpacing: 4, 
+                                    mainAxisExtent: 140, // Cao 140px giữ form chữ nhật đẹp
                                   ),
-                                  itemCount: widget.playlist.audios.length,
+                                  itemCount: updatedAudios.length,
                                   itemBuilder: (context, index) {
-                                    return PlayerWidget(audio: widget.playlist.audios[index]); // Không truyền isPlaylist
+                                    return PlayerWidget(audio: updatedAudios[index]);
                                   },
                                 ),
                         ),
+                        
                         Padding(
-                          padding: const EdgeInsets.all(16.0),
+                          padding: const EdgeInsets.all(12.0), // Ép nhỏ lề
                           child: MyButton(
                             icon: MyIcons.add(),
                             onTap: () {
