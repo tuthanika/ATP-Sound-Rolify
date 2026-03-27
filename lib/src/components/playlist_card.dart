@@ -132,14 +132,17 @@ class PlaylistCardState extends State<PlaylistCard> {
     showDialog(
       context: context,
       builder: (context) => Dialog(
-        // TRẢ LẠI CHÍNH XÁC BỘ KHUNG BO GÓC GỐC MÀ BẠN ƯNG Ý
-        backgroundColor: bgColor,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        backgroundColor: Colors.transparent, // Phải trong suốt để Stack tự do bo góc
+        elevation: 0,
+        insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(24),
           child: Stack(
             children: [
-              Container(color: widget.playlist.color ?? Colors.grey[800]),
+              // BẢN VÁ TỐI THƯỢNG: Dùng Positioned.fill để ép lớp nền 1 ôm khít đúng bằng lớp danh sách bên trên!
+              Positioned.fill(
+                child: Container(color: widget.playlist.color ?? Colors.grey[800]),
+              ),
               Container(
                 color: bgColor.withOpacity(0.8),
                 child: Padding(
@@ -150,10 +153,10 @@ class PlaylistCardState extends State<PlaylistCard> {
                       border: Border.all(color: textColor.withOpacity(0.3), width: 1.5),
                     ),
                     child: Column(
-                      mainAxisSize: MainAxisSize.min, // Ép khít chống thừa viền dọc
+                      mainAxisSize: MainAxisSize.min, // Lệnh vàng ép khung thu nhỏ theo List
                       children: [
                         Padding(
-                          padding: const EdgeInsets.all(12.0), // Ép nhỏ lề
+                          padding: const EdgeInsets.all(12.0),
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
@@ -184,13 +187,13 @@ class PlaylistCardState extends State<PlaylistCard> {
                                   child: Text("Playlist trống", style: TextStyle(color: textColor.withOpacity(0.5))),
                                 )
                               : GridView.builder(
-                                  shrinkWrap: true, 
+                                  shrinkWrap: true, // Xóa khoảng trống thừa trong Grid
                                   padding: const EdgeInsets.symmetric(horizontal: 12.0),
                                   gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                                     crossAxisCount: 2, 
-                                    crossAxisSpacing: 4, // 2 thẻ nằm sát nhau
+                                    crossAxisSpacing: 4, 
                                     mainAxisSpacing: 4, 
-                                    mainAxisExtent: 140, // Cao 140px giữ form chữ nhật đẹp
+                                    mainAxisExtent: 140, 
                                   ),
                                   itemCount: updatedAudios.length,
                                   itemBuilder: (context, index) {
@@ -200,7 +203,7 @@ class PlaylistCardState extends State<PlaylistCard> {
                         ),
                         
                         Padding(
-                          padding: const EdgeInsets.all(12.0), // Ép nhỏ lề
+                          padding: const EdgeInsets.all(12.0),
                           child: MyButton(
                             icon: MyIcons.add(),
                             onTap: () {
