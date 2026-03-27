@@ -23,21 +23,19 @@ class PlaylistCard extends StatefulWidget {
 }
 
 class PlaylistCardState extends State<PlaylistCard> {
+  // BIẾN KHÓA TỐI THƯỢNG: Chỉ ghi nhớ duy nhất Tên Playlist vừa được bấm Play
+  static String? activePlaylistName; 
+
   int _localSessionId = 0;
   bool isExpanded = false; 
 
   bool _isActive = false;
   IconData _lastIcon = Icons.play_arrow; 
 
-  // BẢN VÁ DUY NHẤT: Trả lại logic gốc. 
-  // Bắt buộc TẤT CẢ các sound trong playlist phải đang play thì thẻ mới sáng!
+  // LOGIC TRẢ LẠI SỰ CHUẨN XÁC: Chỉ phát sáng nếu ĐÚNG playlist này được bấm!
   bool get _isPlaying {
     if (!PlayingSounds().isPlayingPlaylist.value) return false;
-    if (widget.playlist.audios.isEmpty) return false;
-    
-    return widget.playlist.audios.every((playlistAudio) =>
-        PlayingSounds().playingAudios.any((playing) => playing.path == playlistAudio.path)
-    );
+    return activePlaylistName == widget.playlist.name;
   }
 
   IconData get _currentActionIcon {
@@ -68,6 +66,7 @@ class PlaylistCardState extends State<PlaylistCard> {
         ? true 
         : PlaylistGlobals.expandNotifier.value;
 
+    // THAY THẾ playbackState.listen (Gây Đơ App) bằng stateChangeNotifier siêu nhẹ!
     PlayingSounds().stateChangeNotifier.addListener(_onSystemStateChanged);
     PlayingSounds().isPlayingPlaylist.addListener(_onSystemStateChanged);
   }
@@ -83,6 +82,20 @@ class PlaylistCardState extends State<PlaylistCard> {
   void _onSystemStateChanged() {
     if (!mounted) return;
     
+    // Auto-nhả khóa nếu playlist này đang active nhưng tất cả sound của nó đã bị tắt
+    if (activePlaylistName == widget.playlist.name) {
+       bool hasPlayingAudio = false;
+       for (var audio in widget.playlist.audios) {
+         if (PlayingSounds().playingAudios.any((p) => p.path == audio.path)) {
+           hasPlayingAudio = true;
+           break;
+         }
+       }
+       if (!hasPlayingAudio) {
+         activePlaylistName = null;
+       }
+    }
+
     bool activeNow = _isPlaying;
     IconData iconNow = _currentActionIcon;
 
@@ -400,6 +413,9 @@ class PlaylistCardState extends State<PlaylistCard> {
   }
 
   void playAllSoundInPlaylist() async {
+    // KHÓA MỤC TIÊU: Ghi nhận chính xác Playlist nào vừa ra lệnh Play
+    activePlaylistName = widget.playlist.name; 
+    
     PlayingSounds().isPlayingPlaylist.value = true;
     _localSessionId++;
     final currentSession = _localSessionId;
@@ -418,6 +434,11 @@ class PlaylistCardState extends State<PlaylistCard> {
   }
 
   void stopAllSoundInPlaylist() async {
+    // GIẢI PHÓNG MỤC TIÊU KHI BẤM STOP
+    if (activePlaylistName == widget.playlist.name) {
+       activePlaylistName = null; 
+    }
+    
     _localSessionId++;
     PlayingSounds().isPlayingPlaylist.value = false;
     for (final audio in widget.playlist.audios) {
