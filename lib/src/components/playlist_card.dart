@@ -26,269 +26,276 @@ class PlaylistCard extends StatefulWidget {
 }
 
 class PlaylistCardState extends State<PlaylistCard> {
-  final duration = const Duration(milliseconds: 500);
-  bool expanded = false, showAudioList = false;
+  final duration = const Duration(milliseconds: 200);
   int _localSessionId = 0;
-  List<Audio> filteredAudios = [];
-  final TextEditingController filterController = TextEditingController();
-  final FocusNode focusNode = FocusNode();
-  int sortMode = 0;
-  bool isCollapsedItems = true;
+  
+  // BẢN VÁ: Trạng thái thu gọn/mở rộng và trạng thái Đang Phát
+  bool isExpanded = false;
+  bool _isPlaying = false;
 
-  @override
-  void didUpdateWidget(covariant PlaylistCard oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.playlist.audios != widget.playlist.audios) {
-      _filterPlaylistSounds();
-    }
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    filteredAudios = widget.playlist.audios;
-  }
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    // Collapse if the tab is hidden (TickerMode is false)
-    if (!TickerMode.of(context) && expanded) {
-      _collapse();
-    }
-  }
-
-  void _collapse() {
-    if (!expanded) return;
-    setState(() {
-      expanded = false;
-    });
-
-    Future.delayed(duration).then((_) {
-      if (mounted && !expanded) {
-        setState(() {
-          showAudioList = false;
-        });
-      }
-    });
-  }
-
-  bool get isPlaying {
-    if (widget.playlist.audios.isEmpty) return false;
-    return widget.playlist.audios.every((playlistAudio) =>
-        PlayingSounds().playingAudios.any((playing) => playing.path == playlistAudio.path)
+  void onEdit() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => EditPlaylist(playlist: widget.playlist),
+      ),
     );
   }
 
-  bool _isPlaylistPlaying() => isPlaying;
-
-  void _filterPlaylistSounds() {
-    List<Audio> result = List<Audio>.from(widget.playlist.audios);
-    if (filterController.text.isNotEmpty) {
-      result = result.where((e) => e.name.toLowerCase().contains(filterController.text.toLowerCase())).toList();
-    }
-    if (sortMode == 0) {
-      result.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
-    } else {
-      // Newest First (last added to playlist)
-      result = result.reversed.toList();
-    }
-    setState(() {
-      filteredAudios = result;
-    });
-  }
-
-  double get maxHeight =>
-      MediaQuery.of(context).size.height -
-      MediaQuery.of(context).padding.top -
-      160;
-
-  @override
-  Widget build(BuildContext context) {
-    return ConstrainedBox(
-      constraints: const BoxConstraints(maxWidth: 500),
-      child: AnimatedContainer(
-        duration: duration,
-        curve: Curves.ease,
-        height: expanded ? maxHeight : 170,
-        child: Container(
-          decoration: BoxDecoration(
-            color: widget.playlist.color?.withOpacity(0.2) ?? Theme.of(context).colorScheme.surfaceContainerHighest,
-            borderRadius: const BorderRadius.all(Radius.circular(16.0)),
-          ),
-          padding: const EdgeInsets.only(
-              top: 16.0, left: 16.0, right: 16.0, bottom: 8.0),
-          child: Stack(
-            children: <Widget>[
-              Column(
-                children: <Widget>[
-                  Row(
-                    children: <Widget>[
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: <Widget>[
-                            MyText.body(
-                              widget.playlist.name,
-                              fontWeight: FontWeight.w500,
-                            ),
-                            ScrollText(
-                              audios: widget.playlist.audios,
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: 8.0),
-                      MyButton(
-                        icon: MyIcons.edit(),
-                        onTap: () => Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                                builder: (context) =>
-                                    EditPlaylist(playlist: widget.playlist))),
-                      ),
-                    ],
-                  ),
-                  if (showAudioList) ...[
-                    Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 8.0),
-                      child: MySearchBar(
-                        filterController: filterController,
-                        focusNode: focusNode,
-                        filterAudios: (_) => _filterPlaylistSounds(),
-                        resetTextFilter: (_) {
-                          filterController.clear();
-                          focusNode.unfocus();
-                          _filterPlaylistSounds();
-                        },
-                        sortMode: sortMode,
-                        onSortToggle: () {
-                          setState(() {
-                            sortMode = sortMode == 0 ? 1 : 0;
-                            _filterPlaylistSounds();
-                          });
-                        },
-                        isCollapsed: isCollapsedItems,
-                        onLayoutToggle: () {
-                          setState(() {
-                            isCollapsedItems = !isCollapsedItems;
-                          });
-                        },
-                        onAddTap: () {},
-                        showAddButton: false,
-                      ),
-                    ),
-                    Expanded(
-                      child: GridView.builder(
-                        padding: const EdgeInsets.only(bottom: 100),
-                        physics: const BouncingScrollPhysics(),
-                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 2,
-                          crossAxisSpacing: 8,
-                          mainAxisSpacing: 8,
-                          childAspectRatio: isCollapsedItems ? 3.0 : 1.15,
-                        ),
-                        itemCount: filteredAudios.length,
-                        itemBuilder: (context, index) {
-                          final e = filteredAudios[index];
-                          return PlayerWidget(
-                            key: Key('${e.path}_playlist_${isCollapsedItems}'),
-                            audio: e,
-                            isCollapsedLayout: isCollapsedItems,
-                            autoShrinkText: true,
-                          );
-                        },
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-              Align(
-                alignment: Alignment.bottomCenter,
-                child: SizedBox(
-                  height: 96 * heightFactor,
-                  child: AnimatedContainer(
-                    duration: duration,
-                    curve: Curves.ease,
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                      borderRadius: const BorderRadius.all(Radius.circular(12.0)),
-                      boxShadow: expanded ? [
-                        BoxShadow(
-                          color: Theme.of(context).shadowColor.withOpacity(0.2),
-                          blurRadius: 8,
-                          spreadRadius: 1,
-                        )
-                      ] : [],
-                    ),
+  void onTapList() {
+    // [Giữ nguyên logic showDialog cũ của bạn]
+    bool showAudioList = true;
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) {
+          return Dialog(
+            backgroundColor: const Color(0xff222222),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(24),
+              child: Stack(
+                children: [
+                  Container(color: widget.playlist.color),
+                  Container(
+                    color: const Color(0xff222222).withOpacity(0.8),
                     child: Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Row(
-                        children: <Widget>[
-                          Expanded(child: Container()),
-                          ValueListenableBuilder(
-                            valueListenable: PlayingSounds().stateChangeNotifier,
-                            builder: (context, _, __) {
-                              final currentlyPlaying = _isPlaylistPlaying();
-                              return MyRadio(
-                                big: true,
-                                icon: currentlyPlaying
-                                    ? MyIcons.pauseBig()
-                                    : MyIcons.playBig(),
-                                value: currentlyPlaying,
-                                onChanged: (value) {
-                                  if (value) {
-                                    playAllSoundInPlaylist();
+                      padding: const EdgeInsets.all(4.0),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: Colors.white38, width: 1.5),
+                        ),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Padding(
+                              padding: const EdgeInsets.all(16.0),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  IconButton(
+                                      icon: MyIcons.back(),
+                                      onPressed: () {
+                                        if (showAudioList) {
+                                          Navigator.pop(context);
+                                        } else {
+                                          setState(() => showAudioList = true);
+                                        }
+                                      }),
+                                  Expanded(
+                                    child: MyText.title(widget.playlist.name, textAlign: TextAlign.center),
+                                  ),
+                                  Opacity(opacity: 0, child: IconButton(icon: MyIcons.back(), onPressed: () {})),
+                                ],
+                              ),
+                            ),
+                            if (showAudioList)
+                              SizedBox(
+                                height: MediaQuery.of(context).size.height / 2,
+                                child: ListView(
+                                  children: widget.playlist.audios.map((audio) => Padding(
+                                    padding: const EdgeInsets.only(bottom: 8.0),
+                                    child: PlayerWidget(audio: audio, isPlaylist: true),
+                                  )).toList(),
+                                ),
+                              )
+                            else
+                              SizedBox(
+                                height: MediaQuery.of(context).size.height / 2,
+                                child: const SearchBarWidget(),
+                              ),
+                            Padding(
+                              padding: const EdgeInsets.all(16.0),
+                              child: MyButton(
+                                icon: MyIcons.add(),
+                                text: 'Add sound',
+                                onTap: () {
+                                  if (showAudioList) {
+                                    setState(() => showAudioList = false);
                                   } else {
-                                    stopAllSoundInPlaylist();
-                                  }
-                                },
-                              );
-                            },
-                          ),
-                          Expanded(
-                              child: Padding(
-                            padding: const EdgeInsets.only(left: 8.0),
-                            child: Align(
-                              alignment: Alignment.centerLeft,
-                              child: MyRadio(
-                                icon: MyIcons.playlistList(
-                                    color: expanded
-                                        ? Theme.of(context)
-                                            .colorScheme.primary
-                                        : null),
-                                value: expanded,
-                                onChanged: (bool value) {
-                                  if (value) {
-                                    setState(() {
-                                      expanded = true;
-                                      showAudioList = true;
-                                    });
-                                  } else {
-                                    setState(() {
-                                      expanded = false;
-                                    });
-
-                                    Future.delayed(duration).then((_) {
-                                      if (mounted && !expanded) {
-                                        setState(() {
-                                          showAudioList = false;
-                                        });
-                                      }
-                                    });
+                                    PlayingSounds().playlistEdit = widget.playlist;
+                                    setState(() => showAudioList = true);
                                   }
                                 },
                               ),
-                            ),
-                          ))
+                            )
+                          ],
+                        ),
+                      ),
+                    ),
+                  )
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    ).then((value) {
+      PlayingSounds().playlistEdit = null;
+    });
+  }
+
+  // BẢN VÁ: Hàm Toggle Play / Stop
+  void togglePlay() {
+    if (_isPlaying) {
+      stopAllSoundInPlaylist();
+    } else {
+      playAllSoundInPlaylist();
+    }
+    setState(() { _isPlaying = !_isPlaying; });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!isExpanded) return _buildCollapsed();
+    return _buildExpanded();
+  }
+
+  // 1. GIAO DIỆN THU GỌN: Chạm phát ngay, y như thẻ Sound
+  Widget _buildCollapsed() {
+    Color baseColor = widget.playlist.color ?? Colors.grey[800]!;
+    Color textColor = baseColor.computeLuminance() > 0.5 ? Colors.black : Colors.white;
+
+    return InkWell(
+      onTap: togglePlay, // Chạm vào tên thì phát/dừng
+      onLongPress: onEdit,
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        height: 64,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        decoration: BoxDecoration(
+          color: baseColor.withOpacity(0.85),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Row(
+          children: [
+            Icon(_isPlaying ? Icons.stop : Icons.play_arrow, color: textColor, size: 28),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    widget.playlist.name,
+                    style: TextStyle(color: textColor, fontSize: 16, fontWeight: FontWeight.bold),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  Text(
+                    '${widget.playlist.audios.length} sounds',
+                    style: TextStyle(color: textColor.withOpacity(0.7), fontSize: 12),
+                  ),
+                ],
+              ),
+            ),
+            IconButton(
+              icon: Icon(Icons.expand_more, color: textColor),
+              onPressed: () => setState(() => isExpanded = true), // Nút mở rộng
+            )
+          ],
+        ),
+      ),
+    );
+  }
+
+  // 2. GIAO DIỆN MỞ RỘNG: Hiển thị full chiều ngang, có các nút list, edit
+  Widget _buildExpanded() {
+    Color baseColor = widget.playlist.color ?? const Color(0xff222222);
+    Color textColor = widget.playlist.color != null
+        ? widget.playlist.color!.computeLuminance() > 0.5 ? Colors.black : Colors.white
+        : Colors.white;
+
+    Widget nameBox = Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8.0),
+      child: widget.playlist.name.length > 15
+          ? SizedBox(
+              height: 30,
+              child: AutoScrollText(
+                text: widget.playlist.name,
+                style: TextStyle(color: textColor, fontSize: 24, fontWeight: FontWeight.bold),
+              ),
+            )
+          : Text(
+              widget.playlist.name,
+              textAlign: TextAlign.center,
+              style: TextStyle(color: textColor, fontSize: 24, fontWeight: FontWeight.bold),
+            ),
+    );
+
+    return SizedBox(
+      width: MediaQuery.of(context).size.width,
+      height: 180, // Chiều cao mở rộng vừa vặn
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(24),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            Container(color: baseColor),
+            Padding(
+              padding: const EdgeInsets.all(4.0),
+              child: Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: textColor.withOpacity(0.5), width: 1.5),
+                ),
+                child: Column(
+                  children: [
+                    Align(
+                      alignment: Alignment.topRight,
+                      child: IconButton(
+                        icon: Icon(Icons.expand_less, color: textColor),
+                        onPressed: () => setState(() => isExpanded = false), // Nút thu gọn
+                      ),
+                    ),
+                    Expanded(
+                      child: InkWell(
+                        onTap: onTapList, // Mở danh sách bài khi chạm giữa thẻ
+                        onLongPress: onEdit,
+                        child: Container(
+                          alignment: Alignment.center,
+                          child: nameBox,
+                        ),
+                      ),
+                    ),
+                    Center(
+                      child: Text(
+                        '${widget.playlist.audios.length} sounds',
+                        style: TextStyle(color: textColor.withOpacity(0.7), fontWeight: FontWeight.bold)
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        children: [
+                          IconButton(
+                            onPressed: togglePlay, // Nút phát thủ công ở chế độ mở rộng
+                            icon: Icon(_isPlaying ? Icons.stop : Icons.play_arrow, size: 28, color: textColor),
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                          ),
+                          IconButton(
+                            onPressed: onEdit,
+                            icon: Icon(Icons.edit, size: 22, color: textColor.withOpacity(0.8)),
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                          ),
+                          IconButton(
+                            onPressed: onTapList,
+                            icon: Icon(Icons.list, size: 22, color: textColor.withOpacity(0.8)),
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                          ),
                         ],
                       ),
                     ),
-                  ),
+                  ],
                 ),
-              )
-            ],
-          ),
+              ),
+            )
+          ],
         ),
       ),
     );
