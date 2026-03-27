@@ -3,8 +3,9 @@ import 'package:rolify/entities/audio.dart';
 import 'package:rolify/entities/playlist.dart';
 import 'package:rolify/presentation_logic_holders/audio_service_commands.dart';
 import 'package:rolify/presentation_logic_holders/playing_sounds_singleton.dart';
+import 'package:rolify/presentation_logic_holders/singletons/app_state.dart';
 import 'package:rolify/root/edit_playlist.dart';
-import 'package:rolify/root/all_playlist.dart'; // Nạp PlaylistGlobals
+import 'package:rolify/root/all_playlist.dart'; 
 import 'package:rolify/src/components/button.dart';
 import 'package:rolify/src/components/player_card.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -22,20 +23,48 @@ class PlaylistCard extends StatefulWidget {
 
 class PlaylistCardState extends State<PlaylistCard> {
   int _localSessionId = 0;
-  
   bool isExpanded = false;
-  bool _isPlaying = false;
+
+  // BẢN VÁ LOGIC CHUẨN: Thay thế hoàn toàn logic "bất kỳ bài nào" đã bị loại bỏ
+  bool get _isPlaying {
+    // 1. Xác nhận App đang bật chế độ Playlist
+    if (!PlayingSounds().isPlayingPlaylist.value) return false;
+    
+    if (widget.playlist.audios.isEmpty || PlayingSounds().playingAudios.isEmpty) return false;
+
+    // 2. Chắc chắn rằng toàn bộ các bài đang phát đều thuộc về Playlist này.
+    // Nếu có bài lạ đang phát -> Đây không phải là Playlist đang active.
+    for (var playingAudio in PlayingSounds().playingAudios) {
+      bool isBelongToThisPlaylist = widget.playlist.audios.any((a) => a.path == playingAudio.path);
+      if (!isBelongToThisPlaylist) return false; 
+    }
+    return true;
+  }
 
   @override
   void initState() {
     super.initState();
     _loadExpandedState();
     PlaylistGlobals.expandNotifier.addListener(_onGlobalExpandChanged);
+
+    // ĐỒNG BỘ CHUẨN GỐC (Giống hệt player_card.dart):
+    // Tự động render lại UI khi có bất kỳ thay đổi nào từ lõi Audio (Kể cả bấm từ Widget)
+    AppState().audioHandler.playbackState.listen((event) {
+      if (mounted) setState(() {});
+    });
+    
+    // Lắng nghe cờ Playlist bật/tắt để cập nhật màu thẻ ngay lập tức
+    PlayingSounds().isPlayingPlaylist.addListener(_onPlaylistStateChanged);
+  }
+
+  void _onPlaylistStateChanged() {
+    if (mounted) setState(() {});
   }
 
   @override
   void dispose() {
     PlaylistGlobals.expandNotifier.removeListener(_onGlobalExpandChanged);
+    PlayingSounds().isPlayingPlaylist.removeListener(_onPlaylistStateChanged);
     super.dispose();
   }
 
@@ -69,7 +98,6 @@ class PlaylistCardState extends State<PlaylistCard> {
     );
   }
 
-  // BẢN VÁ: Rút gọn Dialog List, xóa bỏ viền thừa, tự động co giãn bằng Flexible
   void onTapList() {
     bool isDarkMode = Theme.of(context).brightness == Brightness.dark;
     Color bgColor = isDarkMode ? const Color(0xff222222) : Colors.white;
@@ -83,7 +111,7 @@ class PlaylistCardState extends State<PlaylistCard> {
         child: Padding(
           padding: const EdgeInsets.all(16.0),
           child: Column(
-            mainAxisSize: MainAxisSize.min, // Fix: Ôm sát độ dài thực tế của List
+            mainAxisSize: MainAxisSize.min,
             children: [
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -99,7 +127,7 @@ class PlaylistCardState extends State<PlaylistCard> {
                       style: TextStyle(color: textColor, fontSize: 18, fontWeight: FontWeight.bold),
                     ),
                   ),
-                  const SizedBox(width: 48), // Cân bằng không gian với nút close
+                  const SizedBox(width: 48), 
                 ],
               ),
               const SizedBox(height: 12),
@@ -110,16 +138,19 @@ class PlaylistCardState extends State<PlaylistCard> {
                   child: Text("Playlist trống", style: TextStyle(color: textColor.withOpacity(0.5))),
                 )
               else
-                Flexible(
-                  child: ListView.builder(
-                    shrinkWrap: true, // Fix: Tránh thừa viền trống dưới List
-                    itemCount: widget.playlist.audios.length,
-                    itemBuilder: (context, index) {
-                      return Padding(
+                // BẢN VÁ UI LIST: Dùng SingleChildScrollView ôm khít chống rỗng
+                ConstrainedBox(
+                  constraints: BoxConstraints(
+                    maxHeight: MediaQuery.of(context).size.height * 0.5, 
+                  ),
+                  child: SingleChildScrollView(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: widget.playlist.audios.map((audio) => Padding(
                         padding: const EdgeInsets.only(bottom: 8.0),
-                        child: PlayerWidget(audio: widget.playlist.audios[index]),
-                      );
-                    },
+                        child: PlayerWidget(audio: audio),
+                      )).toList(),
+                    ),
                   ),
                 ),
                 
@@ -144,7 +175,6 @@ class PlaylistCardState extends State<PlaylistCard> {
     } else {
       playAllSoundInPlaylist();
     }
-    setState(() { _isPlaying = !_isPlaying; });
   }
 
   @override
@@ -158,7 +188,6 @@ class PlaylistCardState extends State<PlaylistCard> {
     Color defaultBg = isDarkMode ? const Color(0xff222222) : Colors.white;
     Color baseColor = widget.playlist.color ?? defaultBg;
     
-    // BẢN VÁ: Tô màu nền khi Phát ở chế độ Thu gọn
     Color bgColor = _isPlaying 
         ? (widget.playlist.color ?? Theme.of(context).colorScheme.primary).withOpacity(isDarkMode ? 0.6 : 0.2)
         : baseColor.withOpacity(isDarkMode ? 0.85 : 1.0);
@@ -213,7 +242,6 @@ class PlaylistCardState extends State<PlaylistCard> {
     Color defaultBg = isDarkMode ? const Color(0xff222222) : Colors.grey.shade100;
     Color baseColor = widget.playlist.color ?? defaultBg;
     
-    // BẢN VÁ: Tô màu nền và Tự tương thích Sáng/Tối khi Mở Rộng
     Color bgColor = _isPlaying 
         ? (widget.playlist.color ?? Theme.of(context).colorScheme.primary).withOpacity(isDarkMode ? 0.6 : 0.2)
         : baseColor;
