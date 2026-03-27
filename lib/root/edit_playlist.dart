@@ -22,10 +22,15 @@ class EditPlaylistState extends State<EditPlaylist> {
   final playlistNameController = TextEditingController();
   List<Audio>? audios;
   Color? color;
+  
+  // BẢN VÁ TỐI THƯỢNG: Dùng Set để tra cứu O(1), trị dứt điểm đơ máy khi cuộn!
+  late Set<String> _playlistAudioPaths;
 
   @override
   void initState() {
     super.initState();
+    // Nạp sẵn danh sách đường dẫn bài hát vào "sổ tay"
+    _playlistAudioPaths = widget.playlist.audios.map((a) => a.path).toSet();
     initAudios();
     playlistNameController.text = widget.playlist.name;
     color = widget.playlist.color;
@@ -108,16 +113,18 @@ class EditPlaylistState extends State<EditPlaylist> {
                       physics: const BouncingScrollPhysics(),
                       padding: const EdgeInsets.all(16.0),
                       itemCount: audios!.length,
-                      itemBuilder: (context, index) => _AudioRow(
-                        playlist: widget.playlist,
-                        audio: audios![index],
-                        onAdd: () => addSoundToPlaylist(audios![index]),
-                        onRemove: () => removeSoundFromPlaylist(audios![index]),
-                      ),
+                      itemBuilder: (context, index) {
+                        final audio = audios![index];
+                        final isAdded = _playlistAudioPaths.contains(audio.path);
+                        return _AudioRow(
+                          audio: audio,
+                          isAdded: isAdded, // Truyền trực tiếp kết quả O(1)
+                          onAdd: () => addSoundToPlaylist(audio),
+                          onRemove: () => removeSoundFromPlaylist(audio),
+                        );
+                      },
                       separatorBuilder: (BuildContext context, int index) =>
-                          const SizedBox(
-                        height: 16.0,
-                      ),
+                          const SizedBox(height: 16.0),
                     ),
                   )
               ],
@@ -146,21 +153,18 @@ class EditPlaylistState extends State<EditPlaylist> {
 
   addSoundToPlaylist(Audio audio) {
     widget.playlist.audios.add(audio);
-
-    PlaylistData.savePlaylist(context, widget.playlist).then((_) {
-      initAudios();
-    });
+    setState(() { _playlistAudioPaths.add(audio.path); }); // Update sổ tay
+    PlaylistData.savePlaylist(context, widget.playlist);
   }
 
   removeSoundFromPlaylist(Audio audio) {
-    widget.playlist.audios.remove(audio);
+    widget.playlist.audios.removeWhere((a) => a.path == audio.path);
+    setState(() { _playlistAudioPaths.remove(audio.path); }); // Update sổ tay
 
     if (widget.playlist.audios.isEmpty) {
       removePlaylist();
     } else {
-      PlaylistData.savePlaylist(context, widget.playlist).then((_) {
-        initAudios();
-      });
+      PlaylistData.savePlaylist(context, widget.playlist);
     }
   }
 }
@@ -168,14 +172,14 @@ class EditPlaylistState extends State<EditPlaylist> {
 class _AudioRow extends StatelessWidget {
   const _AudioRow({
     Key? key,
-    required this.playlist,
     required this.audio,
+    required this.isAdded,
     required this.onAdd,
     required this.onRemove,
   }) : super(key: key);
 
-  final Playlist playlist;
   final Audio audio;
+  final bool isAdded; // Thay thế cho widget.playlist rườm rà
   final Function() onAdd, onRemove;
 
   @override
@@ -188,14 +192,10 @@ class _AudioRow extends StatelessWidget {
             fontWeight: FontWeight.w500,
           ),
         ),
-        const SizedBox(
-          width: 16.0,
-        ),
+        const SizedBox(width: 16.0),
         MyButton(
-          icon: playlist.audios.contains(audio)
-              ? MyIcons.playlistDelete()
-              : MyIcons.playlistAdd(),
-          onTap: playlist.audios.contains(audio) ? onRemove : onAdd,
+          icon: isAdded ? MyIcons.playlistDelete() : MyIcons.playlistAdd(),
+          onTap: isAdded ? onRemove : onAdd,
         ),
       ],
     );
