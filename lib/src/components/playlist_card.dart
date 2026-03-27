@@ -10,7 +10,6 @@ import 'package:rolify/root/edit_playlist.dart';
 import 'package:rolify/root/all_playlist.dart'; 
 import 'package:rolify/src/components/button.dart';
 import 'package:rolify/src/components/player_card.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import 'my_icons.dart';
 
@@ -25,10 +24,13 @@ class PlaylistCard extends StatefulWidget {
 
 class PlaylistCardState extends State<PlaylistCard> {
   int _localSessionId = 0;
+  
+  // BẢN VÁ: Luôn luôn mặc định khởi tạo là Thu Gọn (false)
+  // Xóa bỏ hoàn toàn SharedPreferences gây xung đột logic!
   bool isExpanded = false; 
   
   bool _isActive = false;
-  IconData _lastIcon = Icons.play_arrow; // Cờ kiểm soát chống đơ máy
+  IconData _lastIcon = Icons.play_arrow; 
 
   IconData get _currentActionIcon {
     if (!_isActive) return Icons.play_arrow;
@@ -52,10 +54,8 @@ class PlaylistCardState extends State<PlaylistCard> {
   @override
   void initState() {
     super.initState();
-    _loadExpandedState();
     PlaylistGlobals.expandNotifier.addListener(_onGlobalExpandChanged);
 
-    // BẢN VÁ CHỐNG ĐƠ APP: Tránh việc spam lệnh Render UI làm đứng máy
     AppState().audioHandler.playbackState.listen((event) {
       if (mounted && _isActive) {
         bool hasPlayingAudio = false;
@@ -69,7 +69,6 @@ class PlaylistCardState extends State<PlaylistCard> {
         if (!hasPlayingAudio) {
           setState(() { _isActive = false; });
         } else {
-          // CHỈ render lại nếu Icon thực sự cần thay đổi (từ Stop <-> Pause)
           IconData newIcon = _currentActionIcon;
           if (newIcon != _lastIcon) {
             setState(() { _lastIcon = newIcon; });
@@ -91,19 +90,9 @@ class PlaylistCardState extends State<PlaylistCard> {
     }
   }
 
-  Future<void> _loadExpandedState() async {
-    final prefs = await SharedPreferences.getInstance();
-    if (mounted) {
-      setState(() {
-        isExpanded = prefs.getBool('playlist_exp_${widget.playlist.name}') ?? false;
-      });
-    }
-  }
-
-  Future<void> _toggleExpanded(bool val) async {
+  // BẢN VÁ: Đổi trạng thái siêu tốc, không cần lưu vào CSDL
+  void _toggleExpanded(bool val) {
     setState(() => isExpanded = val);
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('playlist_exp_${widget.playlist.name}', val);
   }
 
   void onEdit() {
@@ -115,10 +104,7 @@ class PlaylistCardState extends State<PlaylistCard> {
     );
   }
 
-  // BẢN VÁ UI LIST & CHỐNG TREO MÁY: Lấy Data trước khi vẽ Dialog
   void onTapList() async {
-    // 1. Tải data tươi nhất (Fix lỗi sai thanh Volume) TRƯỚC KHI hiện Dialog
-    // Tránh dùng FutureBuilder vẽ liên tục làm tràn RAM đơ máy
     List<Audio> freshDbAudios = await AudioData.getAllAudios();
     List<Audio> updatedAudios = widget.playlist.audios.map((oldAudio) {
       try {
@@ -137,18 +123,17 @@ class PlaylistCardState extends State<PlaylistCard> {
     showDialog(
       context: context,
       builder: (context) => Dialog(
-        // Trả lại form Dialog thoáng chuẩn của hệ thống
-        backgroundColor: Colors.transparent, // BẢN VÁ: Gỡ nền ngoài cùng để lớp bên trong tự ôm khít
+        backgroundColor: Colors.transparent,
         elevation: 0,
         insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
         child: Container(
           decoration: BoxDecoration(
-            color: bgColor.withOpacity(0.95), // Tô màu đúng 1 khung duy nhất
+            color: bgColor.withOpacity(0.95),
             borderRadius: BorderRadius.circular(24),
             border: Border.all(color: textColor.withOpacity(0.2), width: 1.5),
           ),
           child: Column(
-            mainAxisSize: MainAxisSize.min, // BẢN VÁ: Siết chặt khung, 100% không bao giờ bị thừa viền!
+            mainAxisSize: MainAxisSize.min, 
             children: [
               Padding(
                 padding: const EdgeInsets.all(16.0),
@@ -181,15 +166,14 @@ class PlaylistCardState extends State<PlaylistCard> {
                         padding: const EdgeInsets.all(24.0),
                         child: Text("Playlist trống", style: TextStyle(color: textColor.withOpacity(0.5))),
                       )
-                    // BẢN VÁ GRID: Giảm khoảng cách còn một nửa, nới rộng không gian cho thẻ Sound
                     : GridView.builder(
                         shrinkWrap: true, 
-                        padding: const EdgeInsets.symmetric(horizontal: 12.0), // Thu hẹp lề ngoài
+                        padding: const EdgeInsets.symmetric(horizontal: 12.0),
                         gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                           crossAxisCount: 2, 
-                          crossAxisSpacing: 4, // Giảm 1/2 khoảng cách ngang (cũ là 8)
-                          mainAxisSpacing: 4, // Giảm 1/2 khoảng cách dọc (cũ là 8)
-                          mainAxisExtent: 125, // Hạ độ cao 1 chút để thẻ lấy lại form chữ nhật đẹp như Main UI
+                          crossAxisSpacing: 4, 
+                          mainAxisSpacing: 4, 
+                          mainAxisExtent: 125, 
                         ),
                         itemCount: updatedAudios.length,
                         itemBuilder: (context, index) {
@@ -233,7 +217,7 @@ class PlaylistCardState extends State<PlaylistCard> {
 
   @override
   Widget build(BuildContext context) {
-    _lastIcon = _currentActionIcon; // Ghi nhận Icon mỗi lần vẽ
+    _lastIcon = _currentActionIcon; 
     if (!isExpanded) return _buildCollapsed();
     return _buildExpanded();
   }
