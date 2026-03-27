@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:rolify/entities/audio.dart';
 import 'package:rolify/entities/playlist.dart';
+import 'package:rolify/presentation_logic_holders/audio_handler.dart'; // Nạp để kiểm tra Icon Pause
 import 'package:rolify/presentation_logic_holders/audio_service_commands.dart';
 import 'package:rolify/presentation_logic_holders/playing_sounds_singleton.dart';
 import 'package:rolify/presentation_logic_holders/singletons/app_state.dart';
@@ -24,9 +25,45 @@ class PlaylistCard extends StatefulWidget {
 class PlaylistCardState extends State<PlaylistCard> {
   int _localSessionId = 0;
   bool isExpanded = false;
-  
-  // BẢN VÁ TỐI THƯỢNG: Trả về đúng logic nguyên bản của bạn!
-  bool _isPlaying = false;
+
+  // LOGIC TRẠNG THÁI (ĐÃ ĐÚNG - KHÔNG ĐỤNG CHẠM)
+  // Quản lý việc tô màu thẻ và xác định Playlist có đang active hay không
+  bool get _isPlaying {
+    if (!PlayingSounds().isPlayingPlaylist.value) return false;
+    if (widget.playlist.audios.isEmpty) return false;
+    
+    for (var audio in widget.playlist.audios) {
+      if (PlayingSounds().playingAudios.any((p) => p.path == audio.path)) {
+        return true; 
+      }
+    }
+    return false;
+  }
+
+  // BẢN VÁ THẨM MỸ: Chỉ dùng để đổi Icon (Không can thiệp logic hệ thống)
+  IconData get _currentActionIcon {
+    if (!_isPlaying) return Icons.play_arrow;
+
+    // Nếu thẻ đang Active (có màu), kiểm tra xem lõi loa có đang thực sự phát không
+    bool hasActiveEngine = false;
+    try {
+      final myHandler = AppState().audioHandler as MyAudioHandler;
+      for (var audio in widget.playlist.audios) {
+        final player = myHandler.audioPlayers[audio.path];
+        // Nếu bị Pause ở Widget, player.playing sẽ lập tức trả về false
+        if (player != null && player.playing) {
+          hasActiveEngine = true;
+          break;
+        }
+      }
+    } catch (_) {}
+
+    // Nếu thẻ Active nhưng loa tắt -> Bị Tạm dừng (Hiện icon Pause cho thẩm mỹ)
+    if (!hasActiveEngine) return Icons.pause;
+    
+    // Nếu thẻ Active và loa đang kêu -> Đang phát (Hiện icon Stop)
+    return Icons.stop;
+  }
 
   @override
   void initState() {
@@ -34,20 +71,22 @@ class PlaylistCardState extends State<PlaylistCard> {
     _loadExpandedState();
     PlaylistGlobals.expandNotifier.addListener(_onGlobalExpandChanged);
 
-    // ĐỒNG BỘ DUY NHẤT CẦN THIẾT: 
-    // Nếu Widget ngoài màn hình bấm Stop (làm clear toàn bộ audio) -> Thẻ Playlist tự động nhả màu.
+    // Lắng nghe tín hiệu trực tiếp từ lõi Audio (Kể cả khi bấm Pause/Stop từ Widget)
     AppState().audioHandler.playbackState.listen((event) {
-      if (mounted) {
-        if (PlayingSounds().playingAudios.isEmpty && _isPlaying) {
-          setState(() { _isPlaying = false; });
-        }
-      }
+      if (mounted) setState(() {});
     });
+    
+    PlayingSounds().isPlayingPlaylist.addListener(_onPlaylistStateChanged);
+  }
+
+  void _onPlaylistStateChanged() {
+    if (mounted) setState(() {});
   }
 
   @override
   void dispose() {
     PlaylistGlobals.expandNotifier.removeListener(_onGlobalExpandChanged);
+    PlayingSounds().isPlayingPlaylist.removeListener(_onPlaylistStateChanged);
     super.dispose();
   }
 
@@ -91,61 +130,76 @@ class PlaylistCardState extends State<PlaylistCard> {
       builder: (context) => Dialog(
         backgroundColor: bgColor,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(24),
+          child: Stack(
             children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  IconButton(
-                    icon: Icon(Icons.close, color: textColor),
-                    onPressed: () => Navigator.pop(context),
-                  ),
-                  Expanded(
-                    child: Text(
-                      widget.playlist.name,
-                      textAlign: TextAlign.center,
-                      style: TextStyle(color: textColor, fontSize: 18, fontWeight: FontWeight.bold),
+              Container(color: widget.playlist.color ?? Colors.grey[800]),
+              Container(
+                color: bgColor.withOpacity(0.8),
+                child: Padding(
+                  padding: const EdgeInsets.all(4.0),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: textColor.withOpacity(0.3), width: 1.5),
                     ),
-                  ),
-                  const SizedBox(width: 48), 
-                ],
-              ),
-              const SizedBox(height: 12),
-              
-              if (widget.playlist.audios.isEmpty)
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 24.0),
-                  child: Text("Playlist trống", style: TextStyle(color: textColor.withOpacity(0.5))),
-                )
-              else
-                // BẢN VÁ UI DANH SÁCH: Cấu trúc bạn đã khen đúng + Ép giãn ngang
-                ConstrainedBox(
-                  constraints: BoxConstraints(
-                    maxHeight: MediaQuery.of(context).size.height * 0.5, 
-                  ),
-                  child: SingleChildScrollView(
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
-                      // Lệnh VÀNG: Ép thẻ PlayerWidget bung hết chiều ngang, sửa dứt điểm lỗi tàng hình
-                      crossAxisAlignment: CrossAxisAlignment.stretch, 
-                      children: widget.playlist.audios.map((audio) => Padding(
-                        padding: const EdgeInsets.only(bottom: 8.0),
-                        child: PlayerWidget(audio: audio),
-                      )).toList(),
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.all(16.0),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              IconButton(
+                                icon: MyIcons.back(),
+                                onPressed: () => Navigator.pop(context),
+                                color: textColor,
+                              ),
+                              Expanded(
+                                child: Text(
+                                  widget.playlist.name,
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(color: textColor, fontSize: 18, fontWeight: FontWeight.bold),
+                                ),
+                              ),
+                              Opacity(opacity: 0, child: IconButton(icon: MyIcons.back(), onPressed: () {})),
+                            ],
+                          ),
+                        ),
+                        // BẢN VÁ DANH SÁCH TÀNG HÌNH: Giữ chiều cao cố định cho khung và ép height cho PlayerWidget
+                        SizedBox(
+                          height: MediaQuery.of(context).size.height / 2,
+                          child: widget.playlist.audios.isEmpty
+                              ? Center(child: Text("Playlist trống", style: TextStyle(color: textColor.withOpacity(0.5))))
+                              : ListView.builder(
+                                  itemCount: widget.playlist.audios.length,
+                                  itemBuilder: (context, index) {
+                                    return Container(
+                                      // CỰC KỲ QUAN TRỌNG: PlayerWidget dùng Expanded bên trong nên bắt buộc 
+                                      // phải có chiều cao giới hạn khi nằm trong ListView, nếu không sẽ tàng hình.
+                                      height: 140, 
+                                      padding: const EdgeInsets.only(bottom: 8.0),
+                                      child: PlayerWidget(audio: widget.playlist.audios[index]),
+                                    );
+                                  },
+                                ),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.all(16.0),
+                          child: MyButton(
+                            icon: MyIcons.add(),
+                            onTap: () {
+                              Navigator.pop(context);
+                              onEdit();
+                            },
+                          ),
+                        )
+                      ],
                     ),
                   ),
                 ),
-                
-              const SizedBox(height: 16),
-              MyButton(
-                icon: MyIcons.add(),
-                onTap: () {
-                  Navigator.pop(context);
-                  onEdit();
-                },
               )
             ],
           ),
@@ -154,15 +208,13 @@ class PlaylistCardState extends State<PlaylistCard> {
     );
   }
 
-  // ĐÚNG LOGIC GỐC CỦA BẠN: Play là Play, Stop là Stop. 
-  // Chạm lần 2 là Reset cờ, nhả màu ngay lập tức!
   void togglePlay() {
     if (_isPlaying) {
       stopAllSoundInPlaylist();
     } else {
       playAllSoundInPlaylist();
     }
-    setState(() { _isPlaying = !_isPlaying; });
+    setState(() {});
   }
 
   @override
@@ -195,7 +247,8 @@ class PlaylistCardState extends State<PlaylistCard> {
         ),
         child: Row(
           children: [
-            Icon(_isPlaying ? Icons.stop : Icons.play_arrow, color: textColor, size: 28),
+            // Áp dụng Icon Thẩm mỹ tại đây
+            Icon(_currentActionIcon, color: textColor, size: 28),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
@@ -295,7 +348,8 @@ class PlaylistCardState extends State<PlaylistCard> {
                         children: [
                           IconButton(
                             onPressed: togglePlay, 
-                            icon: Icon(_isPlaying ? Icons.stop : Icons.play_arrow, size: 28, color: textColor),
+                            // Áp dụng Icon Thẩm mỹ tại đây
+                            icon: Icon(_currentActionIcon, size: 28, color: textColor),
                             padding: EdgeInsets.zero,
                             constraints: const BoxConstraints(),
                           ),
