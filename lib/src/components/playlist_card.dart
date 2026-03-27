@@ -29,20 +29,18 @@ class PlaylistCardState extends State<PlaylistCard> {
   bool _isActive = false;
   IconData _lastIcon = Icons.play_arrow; 
 
+  // BẢN VÁ DUY NHẤT: Khôi phục logic từ code cũ của bạn
+  // Bắt buộc TẤT CẢ (.every) các sound trong playlist phải đang phát thì thẻ mới bật sáng
   bool get _isPlaying {
-    if (!PlayingSounds().isPlayingPlaylist.value) return false;
     if (widget.playlist.audios.isEmpty) return false;
-    
-    for (var audio in widget.playlist.audios) {
-      if (PlayingSounds().playingAudios.any((p) => p.path == audio.path)) {
-        return true; 
-      }
-    }
-    return false;
+    return widget.playlist.audios.every((playlistAudio) =>
+        PlayingSounds().playingAudios.any((playing) => playing.path == playlistAudio.path)
+    );
   }
 
+  // Đổi từ _isActive sang _isPlaying để Icon cập nhật ngay lập tức mà không bị delay 1 nhịp
   IconData get _currentActionIcon {
-    if (!_isActive) return Icons.play_arrow;
+    if (!_isPlaying) return Icons.play_arrow; 
 
     bool isEnginePlaying = false;
     try {
@@ -69,7 +67,6 @@ class PlaylistCardState extends State<PlaylistCard> {
         ? true 
         : PlaylistGlobals.expandNotifier.value;
 
-    // BẢN VÁ TỐI THƯỢNG: Lắng nghe siêu nhẹ từ Notifier thay vì cắm thẳng vào ExoPlayer
     PlayingSounds().stateChangeNotifier.addListener(_onSystemStateChanged);
     PlayingSounds().isPlayingPlaylist.addListener(_onSystemStateChanged);
   }
@@ -82,7 +79,6 @@ class PlaylistCardState extends State<PlaylistCard> {
     super.dispose();
   }
 
-  // Hàm xử lý khi App có sự kiện Play/Pause/Stop
   void _onSystemStateChanged() {
     if (!mounted) return;
     
