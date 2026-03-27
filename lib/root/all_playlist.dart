@@ -14,7 +14,6 @@ import 'edit_playlist.dart';
 
 class PlaylistGlobals {
   static final ValueNotifier<bool> expandNotifier = ValueNotifier<bool>(false);
-  // BẢN VÁ: Sổ tay lưu trạng thái mở rộng, chống amnesia khi cuộn
   static final Set<String> expandedPlaylists = {}; 
 }
 
@@ -27,6 +26,11 @@ class AllPlaylist extends StatefulWidget {
 
 class AllPlaylistState extends State<AllPlaylist> {
   List<Playlist> playlists = [];
+  
+  // BẢN VÁ TỐI THƯỢNG: Danh sách đã được lọc và sắp xếp. 
+  // Biến này triệt tiêu hoàn toàn sự cố tính toán lại khi cuộn màn hình!
+  List<Playlist> _filteredPlaylists = []; 
+  
   String _searchQuery = '';
   int _sortType = 0; 
 
@@ -50,14 +54,17 @@ class AllPlaylistState extends State<AllPlaylist> {
 
   void _cycleSort() async {
     int next = (_sortType + 1) % 5;
-    setState(() => _sortType = next);
+    setState(() {
+       _sortType = next;
+       _applyFilters(); // Cập nhật lại list tĩnh khi bấm Sort
+    });
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt('playlist_sort_type', next);
   }
 
   void _toggleExpandAll() {
     PlaylistGlobals.expandNotifier.value = !PlaylistGlobals.expandNotifier.value;
-    PlaylistGlobals.expandedPlaylists.clear(); // Reset sổ cá nhân để nghe theo lệnh chung
+    PlaylistGlobals.expandedPlaylists.clear(); 
   }
 
   void initPlaylists() {
@@ -65,12 +72,14 @@ class AllPlaylistState extends State<AllPlaylist> {
       if (mounted) {
         setState(() {
           playlists = value;
+          _applyFilters();
         });
       }
     });
   }
 
-  List<Playlist> get filteredPlaylists {
+  // Hàm xử lý data chạy độc lập, tách rời khỏi build()
+  void _applyFilters() {
     var list = playlists.where((p) => 
         p.name.toLowerCase().contains(_searchQuery.toLowerCase())).toList();
         
@@ -85,7 +94,8 @@ class AllPlaylistState extends State<AllPlaylist> {
     } else if (_sortType == 4) {
       list.sort((a, b) => b.audios.length.compareTo(a.audios.length));
     }
-    return list;
+    
+    _filteredPlaylists = list;
   }
 
   IconData _getSortIcon() {
@@ -112,8 +122,6 @@ class AllPlaylistState extends State<AllPlaylist> {
 
   @override
   Widget build(BuildContext context) {
-    final listToRender = filteredPlaylists; // Khóa danh sách
-
     return BlocListener<PlaylistListBloc, PlaylistListState>(
       listener: (BuildContext context, PlaylistListState state) {
         if (state is PlaylistListEdited) initPlaylists();
@@ -122,15 +130,15 @@ class AllPlaylistState extends State<AllPlaylist> {
         children: [
           _buildSearchBar(), 
           Expanded(
-            // BẢN VÁ: ListView.builder render siêu tốc, thay thế hoàn toàn Wrap gây đơ máy
+            // Tốc độ cuộn mượt 60fps vì _filteredPlaylists chỉ là tham chiếu thẳng tới mảng tĩnh
             child: ListView.builder(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              itemCount: listToRender.length + 1,
+              itemCount: _filteredPlaylists.length + 1,
               itemBuilder: (context, index) {
-                if (index < listToRender.length) {
-                  final playlist = listToRender[index];
+                if (index < _filteredPlaylists.length) {
+                  final playlist = _filteredPlaylists[index];
                   return Padding(
-                    padding: const EdgeInsets.only(bottom: 16.0), // Padding y hệt Wrap
+                    padding: const EdgeInsets.only(bottom: 16.0), 
                     child: PlaylistCard(
                       key: ValueKey(playlist.name),
                       playlist: playlist
@@ -183,7 +191,10 @@ class AllPlaylistState extends State<AllPlaylist> {
                 ),
               ),
               onChanged: (val) {
-                setState(() => _searchQuery = val);
+                setState(() {
+                   _searchQuery = val;
+                   _applyFilters();
+                });
               },
             ),
           ),

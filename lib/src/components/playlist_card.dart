@@ -1,5 +1,5 @@
-import 'dart:async'; 
 import 'package:flutter/material.dart';
+import 'package:rolify/data/audios.dart'; 
 import 'package:rolify/entities/audio.dart';
 import 'package:rolify/entities/playlist.dart';
 import 'package:rolify/presentation_logic_holders/audio_handler.dart'; 
@@ -10,7 +10,6 @@ import 'package:rolify/root/edit_playlist.dart';
 import 'package:rolify/root/all_playlist.dart'; 
 import 'package:rolify/src/components/button.dart';
 import 'package:rolify/src/components/player_card.dart';
-import 'package:rolify/data/audios.dart';
 
 import 'my_icons.dart';
 
@@ -23,12 +22,13 @@ class PlaylistCard extends StatefulWidget {
   PlaylistCardState createState() => PlaylistCardState();
 }
 
-// BẢN VÁ: Gỡ bỏ hoàn toàn KeepAlive. Chống mất trạng thái bằng Sổ Tay (expandedPlaylists)
 class PlaylistCardState extends State<PlaylistCard> {
   int _localSessionId = 0;
   bool isExpanded = false; 
 
-  // GIỮ NGUYÊN LOGIC TRẠNG THÁI CHUẨN CỦA BẠN
+  bool _isActive = false;
+  IconData _lastIcon = Icons.play_arrow; 
+
   bool get _isPlaying {
     if (!PlayingSounds().isPlayingPlaylist.value) return false;
     if (widget.playlist.audios.isEmpty) return false;
@@ -42,7 +42,7 @@ class PlaylistCardState extends State<PlaylistCard> {
   }
 
   IconData get _currentActionIcon {
-    if (!_isPlaying) return Icons.play_arrow;
+    if (!_isActive) return Icons.play_arrow;
 
     bool isEnginePlaying = false;
     try {
@@ -65,20 +65,36 @@ class PlaylistCardState extends State<PlaylistCard> {
     super.initState();
     PlaylistGlobals.expandNotifier.addListener(_onGlobalExpandChanged);
     
-    // Đọc trạng thái từ Sổ tay. Nếu chưa có thì lấy theo cờ Toàn cục.
     isExpanded = PlaylistGlobals.expandedPlaylists.contains(widget.playlist.name) 
         ? true 
         : PlaylistGlobals.expandNotifier.value;
 
-    AppState().audioHandler.playbackState.listen((event) {
-      if (mounted) setState(() {});
-    });
+    // BẢN VÁ TỐI THƯỢNG: Lắng nghe siêu nhẹ từ Notifier thay vì cắm thẳng vào ExoPlayer
+    PlayingSounds().stateChangeNotifier.addListener(_onSystemStateChanged);
+    PlayingSounds().isPlayingPlaylist.addListener(_onSystemStateChanged);
   }
 
   @override
   void dispose() {
     PlaylistGlobals.expandNotifier.removeListener(_onGlobalExpandChanged);
+    PlayingSounds().stateChangeNotifier.removeListener(_onSystemStateChanged);
+    PlayingSounds().isPlayingPlaylist.removeListener(_onSystemStateChanged);
     super.dispose();
+  }
+
+  // Hàm xử lý khi App có sự kiện Play/Pause/Stop
+  void _onSystemStateChanged() {
+    if (!mounted) return;
+    
+    bool activeNow = _isPlaying;
+    IconData iconNow = _currentActionIcon;
+
+    if (_isActive != activeNow || _lastIcon != iconNow) {
+      setState(() {
+        _isActive = activeNow;
+        _lastIcon = iconNow;
+      });
+    }
   }
 
   void _onGlobalExpandChanged() {
@@ -86,7 +102,6 @@ class PlaylistCardState extends State<PlaylistCard> {
       bool val = PlaylistGlobals.expandNotifier.value;
       setState(() {
         isExpanded = val;
-        // Đồng bộ vào sổ tay
         if (val) PlaylistGlobals.expandedPlaylists.add(widget.playlist.name);
         else PlaylistGlobals.expandedPlaylists.remove(widget.playlist.name);
       });
@@ -96,7 +111,6 @@ class PlaylistCardState extends State<PlaylistCard> {
   void _toggleExpanded(bool val) {
     setState(() {
       isExpanded = val;
-      // Ghi chép vào sổ tay để nhớ kể cả khi thẻ bị cuộn mất
       if (val) PlaylistGlobals.expandedPlaylists.add(widget.playlist.name);
       else PlaylistGlobals.expandedPlaylists.remove(widget.playlist.name);
     });
@@ -111,8 +125,6 @@ class PlaylistCardState extends State<PlaylistCard> {
     );
   }
 
-  // BẢN VÁ UI DANH SÁCH: Cấu trúc Dialog y hệt code gốc của bạn (tránh 2 khung chồng)
-  // Kèm theo GridView 2 cột với khoảng cách siêu nhỏ (1/2) như bạn mong muốn!
   void onTapList() async {
     List<Audio> freshDbAudios = await AudioData.getAllAudios();
     List<Audio> updatedAudios = widget.playlist.audios.map((oldAudio) {
@@ -132,14 +144,13 @@ class PlaylistCardState extends State<PlaylistCard> {
     showDialog(
       context: context,
       builder: (context) => Dialog(
-        backgroundColor: Colors.transparent, // Phải trong suốt để Stack tự do bo góc
+        backgroundColor: Colors.transparent,
         elevation: 0,
         insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(24),
           child: Stack(
             children: [
-              // BẢN VÁ TỐI THƯỢNG: Dùng Positioned.fill để ép lớp nền 1 ôm khít đúng bằng lớp danh sách bên trên!
               Positioned.fill(
                 child: Container(color: widget.playlist.color ?? Colors.grey[800]),
               ),
@@ -153,10 +164,10 @@ class PlaylistCardState extends State<PlaylistCard> {
                       border: Border.all(color: textColor.withOpacity(0.3), width: 1.5),
                     ),
                     child: Column(
-                      mainAxisSize: MainAxisSize.min, // Lệnh vàng ép khung thu nhỏ theo List
+                      mainAxisSize: MainAxisSize.min,
                       children: [
                         Padding(
-                          padding: const EdgeInsets.all(12.0),
+                          padding: const EdgeInsets.all(12.0), 
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
@@ -187,7 +198,7 @@ class PlaylistCardState extends State<PlaylistCard> {
                                   child: Text("Playlist trống", style: TextStyle(color: textColor.withOpacity(0.5))),
                                 )
                               : GridView.builder(
-                                  shrinkWrap: true, // Xóa khoảng trống thừa trong Grid
+                                  shrinkWrap: true, 
                                   padding: const EdgeInsets.symmetric(horizontal: 12.0),
                                   gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                                     crossAxisCount: 2, 
@@ -203,7 +214,7 @@ class PlaylistCardState extends State<PlaylistCard> {
                         ),
                         
                         Padding(
-                          padding: const EdgeInsets.all(12.0),
+                          padding: const EdgeInsets.all(12.0), 
                           child: MyButton(
                             icon: MyIcons.add(),
                             onTap: () {
@@ -225,7 +236,7 @@ class PlaylistCardState extends State<PlaylistCard> {
   }
 
   void togglePlay() {
-    if (_isPlaying) {
+    if (_isActive) {
       stopAllSoundInPlaylist();
     } else {
       playAllSoundInPlaylist();
@@ -243,7 +254,7 @@ class PlaylistCardState extends State<PlaylistCard> {
     Color defaultBg = isDarkMode ? const Color(0xff222222) : Colors.white;
     Color baseColor = widget.playlist.color ?? defaultBg;
     
-    Color bgColor = _isPlaying 
+    Color bgColor = _isActive 
         ? (widget.playlist.color ?? Theme.of(context).colorScheme.primary).withOpacity(isDarkMode ? 0.6 : 0.2)
         : baseColor.withOpacity(isDarkMode ? 0.85 : 1.0);
 
@@ -262,7 +273,7 @@ class PlaylistCardState extends State<PlaylistCard> {
         ),
         child: Row(
           children: [
-            Icon(_currentActionIcon, color: textColor, size: 28), // Icon thẩm mỹ
+            Icon(_lastIcon, color: textColor, size: 28), 
             const SizedBox(width: 12),
             Expanded(
               child: Column(
@@ -297,7 +308,7 @@ class PlaylistCardState extends State<PlaylistCard> {
     Color defaultBg = isDarkMode ? const Color(0xff222222) : Colors.grey.shade100;
     Color baseColor = widget.playlist.color ?? defaultBg;
     
-    Color bgColor = _isPlaying 
+    Color bgColor = _isActive 
         ? (widget.playlist.color ?? Theme.of(context).colorScheme.primary).withOpacity(isDarkMode ? 0.6 : 0.2)
         : baseColor;
 
@@ -362,7 +373,7 @@ class PlaylistCardState extends State<PlaylistCard> {
                         children: [
                           IconButton(
                             onPressed: togglePlay, 
-                            icon: Icon(_currentActionIcon, size: 28, color: textColor),
+                            icon: Icon(_lastIcon, size: 28, color: textColor),
                             padding: EdgeInsets.zero,
                             constraints: const BoxConstraints(),
                           ),
