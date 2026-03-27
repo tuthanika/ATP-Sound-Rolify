@@ -1,6 +1,5 @@
 import 'dart:async'; 
 import 'package:flutter/material.dart';
-import 'package:rolify/data/audios.dart'; 
 import 'package:rolify/entities/audio.dart';
 import 'package:rolify/entities/playlist.dart';
 import 'package:rolify/presentation_logic_holders/audio_handler.dart'; 
@@ -23,21 +22,26 @@ class PlaylistCard extends StatefulWidget {
   PlaylistCardState createState() => PlaylistCardState();
 }
 
-// BẢN VÁ TỐI THƯỢNG: AutomaticKeepAliveClientMixin giúp thẻ không bị chết khi cuộn khuất màn hình!
-class PlaylistCardState extends State<PlaylistCard> with AutomaticKeepAliveClientMixin {
-  
-  // BẮT BUỘC: Khai báo true để giữ cho thẻ luôn sống ngầm
-  @override
-  bool get wantKeepAlive => true; 
-
+// BẢN VÁ: Gỡ bỏ hoàn toàn KeepAlive. Chống mất trạng thái bằng Sổ Tay (expandedPlaylists)
+class PlaylistCardState extends State<PlaylistCard> {
   int _localSessionId = 0;
   bool isExpanded = false; 
-  bool _isActive = false;
-  IconData _lastIcon = Icons.play_arrow; 
-  StreamSubscription? _playbackSub;
+
+  // GIỮ NGUYÊN LOGIC TRẠNG THÁI CHUẨN CỦA BẠN
+  bool get _isPlaying {
+    if (!PlayingSounds().isPlayingPlaylist.value) return false;
+    if (widget.playlist.audios.isEmpty) return false;
+    
+    for (var audio in widget.playlist.audios) {
+      if (PlayingSounds().playingAudios.any((p) => p.path == audio.path)) {
+        return true; 
+      }
+    }
+    return false;
+  }
 
   IconData get _currentActionIcon {
-    if (!_isActive) return Icons.play_arrow;
+    if (!_isPlaying) return Icons.play_arrow;
 
     bool isEnginePlaying = false;
     try {
@@ -60,46 +64,41 @@ class PlaylistCardState extends State<PlaylistCard> with AutomaticKeepAliveClien
     super.initState();
     PlaylistGlobals.expandNotifier.addListener(_onGlobalExpandChanged);
     
-    // BẢN VÁ: Đồng bộ ngay trạng thái Global lúc thẻ vừa được vẽ ra để tránh bị hụt nhịp (thẻ 5 bị xịt)
-    isExpanded = PlaylistGlobals.expandNotifier.value;
+    // Đọc trạng thái từ Sổ tay. Nếu chưa có thì lấy theo cờ Toàn cục.
+    isExpanded = PlaylistGlobals.expandedPlaylists.contains(widget.playlist.name) 
+        ? true 
+        : PlaylistGlobals.expandNotifier.value;
 
-    _playbackSub = AppState().audioHandler.playbackState.listen((event) {
-      if (mounted && _isActive) {
-        bool hasPlayingAudio = false;
-        for (var audio in widget.playlist.audios) {
-          if (PlayingSounds().playingAudios.any((p) => p.path == audio.path)) {
-            hasPlayingAudio = true;
-            break;
-          }
-        }
-        
-        if (!hasPlayingAudio) {
-          setState(() { _isActive = false; });
-        } else {
-          IconData newIcon = _currentActionIcon;
-          if (newIcon != _lastIcon) {
-            setState(() { _lastIcon = newIcon; });
-          }
-        }
-      }
+    AppState().audioHandler.playbackState.listen((event) {
+      if (mounted) setState(() {});
     });
   }
 
   @override
   void dispose() {
     PlaylistGlobals.expandNotifier.removeListener(_onGlobalExpandChanged);
-    _playbackSub?.cancel(); 
     super.dispose();
   }
 
   void _onGlobalExpandChanged() {
-    if (mounted && isExpanded != PlaylistGlobals.expandNotifier.value) {
-      setState(() => isExpanded = PlaylistGlobals.expandNotifier.value);
+    if (mounted) {
+      bool val = PlaylistGlobals.expandNotifier.value;
+      setState(() {
+        isExpanded = val;
+        // Đồng bộ vào sổ tay
+        if (val) PlaylistGlobals.expandedPlaylists.add(widget.playlist.name);
+        else PlaylistGlobals.expandedPlaylists.remove(widget.playlist.name);
+      });
     }
   }
 
   void _toggleExpanded(bool val) {
-    setState(() => isExpanded = val);
+    setState(() {
+      isExpanded = val;
+      // Ghi chép vào sổ tay để nhớ kể cả khi thẻ bị cuộn mất
+      if (val) PlaylistGlobals.expandedPlaylists.add(widget.playlist.name);
+      else PlaylistGlobals.expandedPlaylists.remove(widget.playlist.name);
+    });
   }
 
   void onEdit() {
@@ -111,18 +110,9 @@ class PlaylistCardState extends State<PlaylistCard> with AutomaticKeepAliveClien
     );
   }
 
-  void onTapList() async {
-    List<Audio> freshDbAudios = await AudioData.getAllAudios();
-    List<Audio> updatedAudios = widget.playlist.audios.map((oldAudio) {
-      try {
-        return freshDbAudios.firstWhere((a) => a.path == oldAudio.path);
-      } catch (_) {
-        return oldAudio;
-      }
-    }).toList();
-
-    if (!mounted) return;
-
+  // BẢN VÁ UI DANH SÁCH: Cấu trúc Dialog y hệt code gốc của bạn (tránh 2 khung chồng)
+  // Kèm theo GridView 2 cột với khoảng cách siêu nhỏ (1/2) như bạn mong muốn!
+  void onTapList() {
     bool isDarkMode = Theme.of(context).brightness == Brightness.dark;
     Color bgColor = isDarkMode ? const Color(0xff222222) : Colors.white;
     Color textColor = isDarkMode ? Colors.white : Colors.black87;
@@ -130,73 +120,79 @@ class PlaylistCardState extends State<PlaylistCard> with AutomaticKeepAliveClien
     showDialog(
       context: context,
       builder: (context) => Dialog(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
-        child: Container(
-          decoration: BoxDecoration(
-            color: bgColor.withOpacity(0.95),
-            borderRadius: BorderRadius.circular(24),
-            border: Border.all(color: textColor.withOpacity(0.2), width: 1.5),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min, 
+        backgroundColor: bgColor,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(24),
+          child: Stack(
             children: [
-              Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    IconButton(
-                      icon: MyIcons.back(),
-                      onPressed: () => Navigator.pop(context),
-                      color: textColor,
+              Container(color: widget.playlist.color ?? Colors.grey[800]),
+              Container(
+                color: bgColor.withOpacity(0.8),
+                child: Padding(
+                  padding: const EdgeInsets.all(4.0),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: textColor.withOpacity(0.3), width: 1.5),
                     ),
-                    Expanded(
-                      child: Text(
-                        widget.playlist.name,
-                        textAlign: TextAlign.center,
-                        style: TextStyle(color: textColor, fontSize: 18, fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                    Opacity(opacity: 0, child: IconButton(icon: MyIcons.back(), onPressed: () {})),
-                  ],
-                ),
-              ),
-              
-              ConstrainedBox(
-                constraints: BoxConstraints(
-                  maxHeight: MediaQuery.of(context).size.height * 0.6,
-                ),
-                child: updatedAudios.isEmpty
-                    ? Padding(
-                        padding: const EdgeInsets.all(24.0),
-                        child: Text("Playlist trống", style: TextStyle(color: textColor.withOpacity(0.5))),
-                      )
-                    : GridView.builder(
-                        shrinkWrap: true, 
-                        padding: const EdgeInsets.symmetric(horizontal: 12.0),
-                        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 2, 
-                          crossAxisSpacing: 4, 
-                          mainAxisSpacing: 4, 
-                          mainAxisExtent: 125, 
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.all(16.0),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              IconButton(
+                                icon: MyIcons.back(),
+                                onPressed: () => Navigator.pop(context),
+                                color: textColor,
+                              ),
+                              Expanded(
+                                child: Text(
+                                  widget.playlist.name,
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(color: textColor, fontSize: 18, fontWeight: FontWeight.bold),
+                                ),
+                              ),
+                              Opacity(opacity: 0, child: IconButton(icon: MyIcons.back(), onPressed: () {})),
+                            ],
+                          ),
                         ),
-                        itemCount: updatedAudios.length,
-                        itemBuilder: (context, index) {
-                          return PlayerWidget(audio: updatedAudios[index]);
-                        },
-                      ),
-              ),
-              
-              Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: MyButton(
-                  icon: MyIcons.add(),
-                  onTap: () {
-                    Navigator.pop(context);
-                    onEdit();
-                  },
+                        // GIỮ NGUYÊN CHIỀU CAO GỐC (Tránh lỗi 2 khung): SizedBox 1/2 màn hình
+                        SizedBox(
+                          height: MediaQuery.of(context).size.height / 2,
+                          child: widget.playlist.audios.isEmpty
+                              ? Center(child: Text("Playlist trống", style: TextStyle(color: textColor.withOpacity(0.5))))
+                              // BẢN VÁ: Dùng Grid 2 cột, khoảng cách giảm 1 nửa, bóp chiều cao 140
+                              : GridView.builder(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 8.0),
+                                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                                    crossAxisCount: 2, 
+                                    crossAxisSpacing: 4, // Đã giảm 1/2 khoảng cách ngang
+                                    mainAxisSpacing: 4,  // Đã giảm 1/2 khoảng cách dọc
+                                    mainAxisExtent: 140, // Ép form thẻ 
+                                  ),
+                                  itemCount: widget.playlist.audios.length,
+                                  itemBuilder: (context, index) {
+                                    return PlayerWidget(audio: widget.playlist.audios[index]); // Không truyền isPlaylist
+                                  },
+                                ),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.all(16.0),
+                          child: MyButton(
+                            icon: MyIcons.add(),
+                            onTap: () {
+                              Navigator.pop(context);
+                              onEdit();
+                            },
+                          ),
+                        )
+                      ],
+                    ),
+                  ),
                 ),
               )
             ],
@@ -207,26 +203,15 @@ class PlaylistCardState extends State<PlaylistCard> with AutomaticKeepAliveClien
   }
 
   void togglePlay() {
-    if (_isActive) {
+    if (_isPlaying) {
       stopAllSoundInPlaylist();
-      setState(() { 
-        _isActive = false; 
-        _lastIcon = Icons.play_arrow;
-      });
     } else {
       playAllSoundInPlaylist();
-      setState(() { 
-        _isActive = true; 
-        _lastIcon = Icons.stop;
-      });
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    super.build(context); // LỆNH BẮT BUỘC để kích hoạt tính năng Tái chế chống quên trạng thái
-    
-    _lastIcon = _currentActionIcon; 
     if (!isExpanded) return _buildCollapsed();
     return _buildExpanded();
   }
@@ -236,7 +221,7 @@ class PlaylistCardState extends State<PlaylistCard> with AutomaticKeepAliveClien
     Color defaultBg = isDarkMode ? const Color(0xff222222) : Colors.white;
     Color baseColor = widget.playlist.color ?? defaultBg;
     
-    Color bgColor = _isActive 
+    Color bgColor = _isPlaying 
         ? (widget.playlist.color ?? Theme.of(context).colorScheme.primary).withOpacity(isDarkMode ? 0.6 : 0.2)
         : baseColor.withOpacity(isDarkMode ? 0.85 : 1.0);
 
@@ -255,7 +240,7 @@ class PlaylistCardState extends State<PlaylistCard> with AutomaticKeepAliveClien
         ),
         child: Row(
           children: [
-            Icon(_lastIcon, color: textColor, size: 28),
+            Icon(_currentActionIcon, color: textColor, size: 28), // Icon thẩm mỹ
             const SizedBox(width: 12),
             Expanded(
               child: Column(
@@ -290,7 +275,7 @@ class PlaylistCardState extends State<PlaylistCard> with AutomaticKeepAliveClien
     Color defaultBg = isDarkMode ? const Color(0xff222222) : Colors.grey.shade100;
     Color baseColor = widget.playlist.color ?? defaultBg;
     
-    Color bgColor = _isActive 
+    Color bgColor = _isPlaying 
         ? (widget.playlist.color ?? Theme.of(context).colorScheme.primary).withOpacity(isDarkMode ? 0.6 : 0.2)
         : baseColor;
 
@@ -355,7 +340,7 @@ class PlaylistCardState extends State<PlaylistCard> with AutomaticKeepAliveClien
                         children: [
                           IconButton(
                             onPressed: togglePlay, 
-                            icon: Icon(_lastIcon, size: 28, color: textColor),
+                            icon: Icon(_currentActionIcon, size: 28, color: textColor),
                             padding: EdgeInsets.zero,
                             constraints: const BoxConstraints(),
                           ),
