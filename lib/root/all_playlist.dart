@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:rolify/data/playlist.dart';
 import 'package:rolify/entities/playlist.dart';
+import 'package:rolify/entities/audio.dart'; // BẢN VÁ: Import Audio để ép kiểu danh sách
 import 'package:rolify/presentation_logic_holders/playlist_list_bloc/playlist_list_bloc.dart';
 import 'package:rolify/presentation_logic_holders/playlist_list_bloc/playlist_list_state.dart';
 import 'package:rolify/src/components/button.dart';
@@ -10,6 +11,11 @@ import 'package:rolify/src/components/playlist_card.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'edit_playlist.dart';
+
+// BẢN VÁ: Bộ theo dõi sự kiện Thu gọn / Mở rộng toàn cục
+class PlaylistGlobals {
+  static final ValueNotifier<bool> expandNotifier = ValueNotifier<bool>(false);
+}
 
 class AllPlaylist extends StatefulWidget {
   const AllPlaylist({Key? key}) : super(key: key);
@@ -21,7 +27,7 @@ class AllPlaylist extends StatefulWidget {
 class AllPlaylistState extends State<AllPlaylist> {
   List<Playlist> playlists = [];
   String _searchQuery = '';
-  int _sortType = 4; // Mặc định là 4: Mới nhất
+  int _sortType = 0; // 0: Mới nhất, 1: A-Z, 2: Z-A, 3: Ít bài, 4: Nhiều bài
 
   @override
   void initState() {
@@ -30,21 +36,34 @@ class AllPlaylistState extends State<AllPlaylist> {
     initPlaylists();
   }
 
-  // Khôi phục trạng thái Sort đã lưu
   Future<void> _loadSortPreference() async {
     final prefs = await SharedPreferences.getInstance();
     if (mounted) {
       setState(() {
-        _sortType = prefs.getInt('playlist_sort_type') ?? 4;
+        _sortType = prefs.getInt('playlist_sort_type') ?? 0;
       });
     }
   }
 
-  // Lưu trạng thái Sort khi thay đổi
   Future<void> _updateSortType(int val) async {
     setState(() => _sortType = val);
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt('playlist_sort_type', val);
+  }
+
+  // BẢN VÁ: Chạm icon Sort để xoay vòng các kiểu sắp xếp
+  void _cycleSort() {
+    int next = (_sortType + 1) % 5;
+    _updateSortType(next);
+  }
+
+  // BẢN VÁ: Hoán đổi Thu gọn/Mở rộng toàn bộ
+  void _toggleExpandAll() async {
+    PlaylistGlobals.expandNotifier.value = !PlaylistGlobals.expandNotifier.value;
+    final prefs = await SharedPreferences.getInstance();
+    for (var p in playlists) {
+      await prefs.setBool('playlist_exp_${p.name}', PlaylistGlobals.expandNotifier.value);
+    }
   }
 
   void initPlaylists() {
@@ -57,24 +76,44 @@ class AllPlaylistState extends State<AllPlaylist> {
     });
   }
 
-  // Logic Sắp xếp bao gồm "Mới nhất"
   List<Playlist> get filteredPlaylists {
     var list = playlists.where((p) => 
         p.name.toLowerCase().contains(_searchQuery.toLowerCase())).toList();
         
     if (_sortType == 0) {
-      list.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+      list = list.reversed.toList(); // Mới nhất
     } else if (_sortType == 1) {
-      list.sort((a, b) => b.name.toLowerCase().compareTo(a.name.toLowerCase()));
+      list.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
     } else if (_sortType == 2) {
-      list.sort((a, b) => a.audios.length.compareTo(b.audios.length));
+      list.sort((a, b) => b.name.toLowerCase().compareTo(a.name.toLowerCase()));
     } else if (_sortType == 3) {
-      list.sort((a, b) => b.audios.length.compareTo(a.audios.length));
+      list.sort((a, b) => a.audios.length.compareTo(b.audios.length));
     } else if (_sortType == 4) {
-      // Mới nhất: Dữ liệu get từ Local thường theo thứ tự thêm vào, ta chỉ cần đảo ngược (reversed)
-      list = list.reversed.toList();
+      list.sort((a, b) => b.audios.length.compareTo(a.audios.length));
     }
     return list;
+  }
+
+  IconData _getSortIcon() {
+    switch (_sortType) {
+      case 0: return Icons.access_time; // Mới nhất
+      case 1: return Icons.sort_by_alpha; // A-Z
+      case 2: return Icons.keyboard_arrow_up; // Z-A
+      case 3: return Icons.filter_list; // Ít bài
+      case 4: return Icons.filter_list_alt; // Nhiều bài
+      default: return Icons.sort;
+    }
+  }
+
+  String _getSortText() {
+    switch (_sortType) {
+      case 0: return "Mới nhất";
+      case 1: return "A - Z";
+      case 2: return "Z - A";
+      case 3: return "Ít bài nhất";
+      case 4: return "Nhiều bài nhất";
+      default: return "";
+    }
   }
 
   @override
@@ -97,20 +136,22 @@ class AllPlaylistState extends State<AllPlaylist> {
     );
   }
 
+  // BẢN VÁ: Thanh ngang đồng nhất UI (Search + Sort + Expand)
   Widget _buildSearchBar() {
+    bool isDark = Theme.of(context).brightness == Brightness.dark;
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
       child: Row(
         children: [
           Expanded(
             child: TextField(
-              style: const TextStyle(color: Colors.white),
+              style: TextStyle(color: Theme.of(context).textTheme.bodyLarge?.color),
               decoration: InputDecoration(
                 hintText: 'Tìm playlist...',
-                hintStyle: const TextStyle(color: Colors.white54),
-                prefixIcon: const Icon(Icons.search, color: Colors.white54),
+                hintStyle: const TextStyle(color: Colors.grey),
+                prefixIcon: const Icon(Icons.search, color: Colors.grey),
                 filled: true,
-                fillColor: Colors.white10,
+                fillColor: isDark ? Colors.white10 : Colors.black12,
                 contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 16),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(16),
@@ -122,32 +163,29 @@ class AllPlaylistState extends State<AllPlaylist> {
               },
             ),
           ),
-          const SizedBox(width: 12),
-          Container(
-            decoration: BoxDecoration(
-              color: Colors.white10,
-              borderRadius: BorderRadius.circular(16),
+          const SizedBox(width: 8),
+          Tooltip(
+            message: 'Sắp xếp: ${_getSortText()}',
+            child: IconButton(
+              icon: Icon(_getSortIcon(), color: Theme.of(context).iconTheme.color),
+              onPressed: _cycleSort,
             ),
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            child: DropdownButtonHideUnderline(
-              child: DropdownButton<int>(
-                value: _sortType,
-                dropdownColor: Colors.grey[900],
-                icon: const Icon(Icons.sort, color: Colors.white),
-                style: const TextStyle(color: Colors.white),
-                items: const [
-                  DropdownMenuItem(value: 4, child: Text("Mới nhất")),
-                  DropdownMenuItem(value: 0, child: Text("A - Z")),
-                  DropdownMenuItem(value: 1, child: Text("Z - A")),
-                  DropdownMenuItem(value: 2, child: Text("Ít bài nhất")),
-                  DropdownMenuItem(value: 3, child: Text("Nhiều bài nhất")),
-                ],
-                onChanged: (val) {
-                  if (val != null) _updateSortType(val);
-                },
-              ),
-            ),
-          )
+          ),
+          ValueListenableBuilder<bool>(
+            valueListenable: PlaylistGlobals.expandNotifier,
+            builder: (context, isExpandedAll, child) {
+              return Tooltip(
+                message: 'Thu gọn / Mở rộng',
+                child: IconButton(
+                  icon: Icon(
+                    isExpandedAll ? Icons.unfold_less : Icons.unfold_more,
+                    color: Theme.of(context).iconTheme.color,
+                  ),
+                  onPressed: _toggleExpandAll,
+                ),
+              );
+            },
+          ),
         ],
       ),
     );
@@ -172,8 +210,10 @@ class AllPlaylistState extends State<AllPlaylist> {
             onTap: () => Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => const EditPlaylist(
-                        playlist: Playlist(name: 'New Playlist', audios: [])),
+                    // BẢN VÁ TUYỆT ĐỐI: Bỏ chữ "const" và định nghĩa "<Audio>[]" 
+                    // Để mảng không bị khóa (immutable), sửa tận gốc lỗi nút + vô tác dụng
+                    builder: (context) => EditPlaylist(
+                        playlist: Playlist(name: 'New Playlist', audios: <Audio>[])),
                   ),
                 )),
       ),
