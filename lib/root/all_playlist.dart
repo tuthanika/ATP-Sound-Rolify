@@ -14,6 +14,8 @@ import 'edit_playlist.dart';
 
 class PlaylistGlobals {
   static final ValueNotifier<bool> expandNotifier = ValueNotifier<bool>(false);
+  // BẢN VÁ: Sổ tay lưu trạng thái mở rộng, chống amnesia khi cuộn
+  static final Set<String> expandedPlaylists = {}; 
 }
 
 class AllPlaylist extends StatefulWidget {
@@ -25,7 +27,6 @@ class AllPlaylist extends StatefulWidget {
 
 class AllPlaylistState extends State<AllPlaylist> {
   List<Playlist> playlists = [];
-  List<Playlist> filteredPlaylists = []; // BẢN VÁ: Biến lưu danh sách đã lọc, chống tính toán lại
   String _searchQuery = '';
   int _sortType = 0; 
 
@@ -35,6 +36,7 @@ class AllPlaylistState extends State<AllPlaylist> {
     _loadSortPreference();
     initPlaylists();
     PlaylistGlobals.expandNotifier.value = false; 
+    PlaylistGlobals.expandedPlaylists.clear(); 
   }
 
   Future<void> _loadSortPreference() async {
@@ -46,33 +48,29 @@ class AllPlaylistState extends State<AllPlaylist> {
     }
   }
 
-  Future<void> _updateSortType(int val) async {
-    _sortType = val;
-    _applyFilters(); // Chỉ sắp xếp lại khi có lệnh thay đổi
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt('playlist_sort_type', val);
-  }
-
-  void _cycleSort() {
+  void _cycleSort() async {
     int next = (_sortType + 1) % 5;
-    _updateSortType(next);
+    setState(() => _sortType = next);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt('playlist_sort_type', next);
   }
 
   void _toggleExpandAll() {
     PlaylistGlobals.expandNotifier.value = !PlaylistGlobals.expandNotifier.value;
+    PlaylistGlobals.expandedPlaylists.clear(); // Reset sổ cá nhân để nghe theo lệnh chung
   }
 
   void initPlaylists() {
     PlaylistData.getAllPlaylist().then((value) {
       if (mounted) {
-        playlists = value;
-        _applyFilters(); // Áp dụng lọc ngay khi load xong data
+        setState(() {
+          playlists = value;
+        });
       }
     });
   }
 
-  // BẢN VÁ HIỆU NĂNG: Hàm xử lý độc lập, vĩnh viễn không được gọi trong Build()
-  void _applyFilters() {
+  List<Playlist> get filteredPlaylists {
     var list = playlists.where((p) => 
         p.name.toLowerCase().contains(_searchQuery.toLowerCase())).toList();
         
@@ -87,10 +85,7 @@ class AllPlaylistState extends State<AllPlaylist> {
     } else if (_sortType == 4) {
       list.sort((a, b) => b.audios.length.compareTo(a.audios.length));
     }
-    
-    setState(() {
-      filteredPlaylists = list;
-    });
+    return list;
   }
 
   IconData _getSortIcon() {
@@ -117,6 +112,8 @@ class AllPlaylistState extends State<AllPlaylist> {
 
   @override
   Widget build(BuildContext context) {
+    final listToRender = filteredPlaylists; // Khóa danh sách
+
     return BlocListener<PlaylistListBloc, PlaylistListState>(
       listener: (BuildContext context, PlaylistListState state) {
         if (state is PlaylistListEdited) initPlaylists();
@@ -125,14 +122,15 @@ class AllPlaylistState extends State<AllPlaylist> {
         children: [
           _buildSearchBar(), 
           Expanded(
+            // BẢN VÁ: ListView.builder render siêu tốc, thay thế hoàn toàn Wrap gây đơ máy
             child: ListView.builder(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              itemCount: filteredPlaylists.length + 1,
+              itemCount: listToRender.length + 1,
               itemBuilder: (context, index) {
-                if (index < filteredPlaylists.length) {
-                  final playlist = filteredPlaylists[index];
+                if (index < listToRender.length) {
+                  final playlist = listToRender[index];
                   return Padding(
-                    padding: const EdgeInsets.only(bottom: 12.0),
+                    padding: const EdgeInsets.only(bottom: 16.0), // Padding y hệt Wrap
                     child: PlaylistCard(
                       key: ValueKey(playlist.name),
                       playlist: playlist
@@ -185,8 +183,7 @@ class AllPlaylistState extends State<AllPlaylist> {
                 ),
               ),
               onChanged: (val) {
-                _searchQuery = val;
-                _applyFilters(); // Tìm kiếm mượt mà không delay
+                setState(() => _searchQuery = val);
               },
             ),
           ),
