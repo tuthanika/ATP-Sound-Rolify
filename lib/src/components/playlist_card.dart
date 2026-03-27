@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:rolify/data/audios.dart'; 
 import 'package:rolify/entities/audio.dart';
 import 'package:rolify/entities/playlist.dart';
+import 'package:rolify/root/all_sounds/search_bar.dart';
 import 'package:rolify/presentation_logic_holders/audio_handler.dart'; 
 import 'package:rolify/presentation_logic_holders/audio_service_commands.dart';
 import 'package:rolify/presentation_logic_holders/playing_sounds_singleton.dart';
@@ -10,7 +11,11 @@ import 'package:rolify/root/edit_playlist.dart';
 import 'package:rolify/root/all_playlist.dart'; 
 import 'package:rolify/src/components/button.dart';
 import 'package:rolify/src/components/player_card.dart';
+import 'package:rolify/src/components/radio.dart';
+import 'package:rolify/src/theme/texts.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
+import 'auto_scroll_text.dart';
 import 'my_icons.dart';
 
 class PlaylistCard extends StatefulWidget {
@@ -23,115 +28,110 @@ class PlaylistCard extends StatefulWidget {
 }
 
 class PlaylistCardState extends State<PlaylistCard> {
-  // BIẾN KHÓA TỐI THƯỢNG: Chỉ ghi nhớ duy nhất Tên Playlist vừa được bấm Play
-  static String? activePlaylistName; 
-
+  final duration = const Duration(milliseconds: 400);
+  bool expanded = false, showAudioList = false;
   int _localSessionId = 0;
-  bool isExpanded = false; 
+  List<Audio> filteredAudios = [];
+  final TextEditingController filterController = TextEditingController();
+  final FocusNode focusNode = FocusNode();
+  int sortMode = 0; 
+  bool isCollapsedItems = true;
 
-  bool _isActive = false;
-  IconData _lastIcon = Icons.play_arrow; 
-
-  // LOGIC TRẢ LẠI SỰ CHUẨN XÁC: Chỉ phát sáng nếu ĐÚNG playlist này được bấm!
-  bool get _isPlaying {
-    if (!PlayingSounds().isPlayingPlaylist.value) return false;
-    return activePlaylistName == widget.playlist.name;
-  }
-
-  IconData get _currentActionIcon {
-    if (!_isActive) return Icons.play_arrow;
-
-    bool isEnginePlaying = false;
-    try {
-      final myHandler = AppState().audioHandler as MyAudioHandler;
-      for (var audio in widget.playlist.audios) {
-        final player = myHandler.audioPlayers[audio.path];
-        if (player != null && player.playing) {
-          isEnginePlaying = true;
-          break;
-        }
-      }
-    } catch (_) {}
-
-    if (!isEnginePlaying) return Icons.pause;
-    return Icons.stop;
+  @override
+  void didUpdateWidget(covariant PlaylistCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.playlist.audios != widget.playlist.audios) {
+      _filterPlaylistSounds();
+    }
   }
 
   @override
   void initState() {
     super.initState();
+    filteredAudios = widget.playlist.audios;
+    _loadSortMode();
     PlaylistGlobals.expandNotifier.addListener(_onGlobalExpandChanged);
     
     isExpanded = PlaylistGlobals.expandedPlaylists.contains(widget.playlist.name) 
         ? true 
         : PlaylistGlobals.expandNotifier.value;
-
-    // THAY THẾ playbackState.listen (Gây Đơ App) bằng stateChangeNotifier siêu nhẹ!
-    PlayingSounds().stateChangeNotifier.addListener(_onSystemStateChanged);
-    PlayingSounds().isPlayingPlaylist.addListener(_onSystemStateChanged);
   }
 
   @override
   void dispose() {
     PlaylistGlobals.expandNotifier.removeListener(_onGlobalExpandChanged);
-    PlayingSounds().stateChangeNotifier.removeListener(_onSystemStateChanged);
-    PlayingSounds().isPlayingPlaylist.removeListener(_onSystemStateChanged);
     super.dispose();
-  }
-
-  void _onSystemStateChanged() {
-    if (!mounted) return;
-    
-    // Auto-nhả khóa nếu playlist này đang active nhưng tất cả sound của nó đã bị tắt
-    if (activePlaylistName == widget.playlist.name) {
-       bool hasPlayingAudio = false;
-       for (var audio in widget.playlist.audios) {
-         if (PlayingSounds().playingAudios.any((p) => p.path == audio.path)) {
-           hasPlayingAudio = true;
-           break;
-         }
-       }
-       if (!hasPlayingAudio) {
-         activePlaylistName = null;
-       }
-    }
-
-    bool activeNow = _isPlaying;
-    IconData iconNow = _currentActionIcon;
-
-    if (_isActive != activeNow || _lastIcon != iconNow) {
-      setState(() {
-        _isActive = activeNow;
-        _lastIcon = iconNow;
-      });
-    }
   }
 
   void _onGlobalExpandChanged() {
     if (mounted) {
       bool val = PlaylistGlobals.expandNotifier.value;
+      if (val && !expanded) {
+        setState(() {
+          expanded = true;
+          showAudioList = true;
+        });
+      } else if (!val && expanded) {
+        _collapse();
+      }
+    }
+  }
+
+  Future<void> _loadSortMode() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (mounted) {
       setState(() {
-        isExpanded = val;
-        if (val) PlaylistGlobals.expandedPlaylists.add(widget.playlist.name);
-        else PlaylistGlobals.expandedPlaylists.remove(widget.playlist.name);
+        sortMode = prefs.getInt('playlist_card_sort_${widget.playlist.name}') ?? 0;
+        _filterPlaylistSounds();
       });
     }
   }
 
-  void _toggleExpanded(bool val) {
+  void _cycleSort() async {
     setState(() {
-      isExpanded = val;
-      if (val) PlaylistGlobals.expandedPlaylists.add(widget.playlist.name);
-      else PlaylistGlobals.expandedPlaylists.remove(widget.playlist.name);
+      sortMode = (sortMode + 1) % 3;
+      _filterPlaylistSounds();
     });
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt('playlist_card_sort_${widget.playlist.name}', sortMode);
+  }
+
+  void _collapse() {
+    if (!expanded) return;
+    setState(() => expanded = false);
+    Future.delayed(duration).then((_) {
+      if (mounted && !expanded) setState(() => showAudioList = false);
+    });
+  }
+
+  // BẢN VÁ TỐI THƯỢNG: Trích xuất logic .every() CHÍNH XÁC từ file code gốc bạn gửi!
+  // Chỉ sáng màu khi TẤT CẢ các bài hát trong list đều đang nằm trong danh sách phát
+  bool _isPlaylistPlaying() {
+    if (widget.playlist.audios.isEmpty) return false;
+    return widget.playlist.audios.every((playlistAudio) =>
+        PlayingSounds().playingAudios.any((playing) => playing.path == playlistAudio.path)
+    );
+  }
+
+  void _filterPlaylistSounds() {
+    List<Audio> result = List<Audio>.from(widget.playlist.audios);
+    if (filterController.text.isNotEmpty) {
+      result = result.where((e) => e.name.toLowerCase().contains(filterController.text.toLowerCase())).toList();
+    }
+    if (sortMode == 0) {
+      result.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+    } else if (sortMode == 1) {
+      result.sort((a, b) => b.name.toLowerCase().compareTo(a.name.toLowerCase()));
+    } else {
+      result = result.reversed.toList();
+    }
+    setState(() => filteredAudios = result);
   }
 
   void onEdit() {
     Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (context) => EditPlaylist(playlist: widget.playlist),
-      ),
+      MaterialPageRoute(builder: (context) => EditPlaylist(playlist: widget.playlist)),
     );
   }
 
@@ -174,7 +174,7 @@ class PlaylistCardState extends State<PlaylistCard> {
                       border: Border.all(color: textColor.withOpacity(0.3), width: 1.5),
                     ),
                     child: Column(
-                      mainAxisSize: MainAxisSize.min,
+                      mainAxisSize: MainAxisSize.min, 
                       children: [
                         Padding(
                           padding: const EdgeInsets.all(12.0), 
@@ -245,177 +245,164 @@ class PlaylistCardState extends State<PlaylistCard> {
     );
   }
 
-  void togglePlay() {
-    if (_isActive) {
-      stopAllSoundInPlaylist();
-    } else {
-      playAllSoundInPlaylist();
-    }
-  }
+  double get maxHeight => MediaQuery.of(context).size.height - MediaQuery.of(context).padding.top - 160;
 
   @override
   Widget build(BuildContext context) {
-    if (!isExpanded) return _buildCollapsed();
-    return _buildExpanded();
-  }
+    return ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: 500),
+      // TUYỆT KỸ CHỐNG LAG: Chỉ theo dõi màu và nút Play, KHÔNG RENDER LẠI GRIDVIEW!
+      child: ValueListenableBuilder<int>(
+        valueListenable: PlayingSounds().stateChangeNotifier,
+        builder: (context, _, child) {
+          final currentlyPlaying = _isPlaylistPlaying();
 
-  Widget _buildCollapsed() {
-    bool isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    Color defaultBg = isDarkMode ? const Color(0xff222222) : Colors.white;
-    Color baseColor = widget.playlist.color ?? defaultBg;
-    
-    Color bgColor = _isActive 
-        ? (widget.playlist.color ?? Theme.of(context).colorScheme.primary).withOpacity(isDarkMode ? 0.6 : 0.2)
-        : baseColor.withOpacity(isDarkMode ? 0.85 : 1.0);
-
-    Color textColor = bgColor.computeLuminance() > 0.5 ? Colors.black87 : Colors.white;
-
-    return InkWell(
-      onTap: togglePlay, 
-      onLongPress: onEdit,
-      borderRadius: BorderRadius.circular(16),
-      child: Container(
-        height: 64,
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        decoration: BoxDecoration(
-          color: bgColor,
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Row(
-          children: [
-            Icon(_lastIcon, color: textColor, size: 28), 
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    widget.playlist.name,
-                    style: TextStyle(color: textColor, fontSize: 16, fontWeight: FontWeight.bold),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  Text(
-                    '${widget.playlist.audios.length} sounds',
-                    style: TextStyle(color: textColor.withOpacity(0.7), fontSize: 12),
-                  ),
-                ],
-              ),
+          return AnimatedContainer(
+            duration: duration,
+            curve: Curves.ease,
+            height: expanded ? maxHeight : 170,
+            decoration: BoxDecoration(
+              color: currentlyPlaying 
+                  ? (widget.playlist.color ?? Theme.of(context).colorScheme.primary).withOpacity(Theme.of(context).brightness == Brightness.dark ? 0.4 : 0.4)
+                  : (widget.playlist.color?.withOpacity(0.2) ?? Theme.of(context).colorScheme.surfaceContainerHighest),
+              borderRadius: const BorderRadius.all(Radius.circular(16.0)),
             ),
-            IconButton(
-              icon: Icon(Icons.expand_more, color: textColor),
-              onPressed: () => _toggleExpanded(true), 
-            )
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildExpanded() {
-    bool isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    Color defaultBg = isDarkMode ? const Color(0xff222222) : Colors.grey.shade100;
-    Color baseColor = widget.playlist.color ?? defaultBg;
-    
-    Color bgColor = _isActive 
-        ? (widget.playlist.color ?? Theme.of(context).colorScheme.primary).withOpacity(isDarkMode ? 0.6 : 0.2)
-        : baseColor;
-
-    Color textColor = bgColor.computeLuminance() > 0.5 ? Colors.black87 : Colors.white;
-
-    Widget nameBox = Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 8.0),
-      child: FittedBox(
-        fit: BoxFit.scaleDown,
-        child: Text(
-          widget.playlist.name,
-          style: TextStyle(color: textColor, fontSize: 24, fontWeight: FontWeight.bold),
-        ),
-      ),
-    );
-
-    return SizedBox(
-      width: MediaQuery.of(context).size.width,
-      height: 180, 
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(24),
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            Container(color: bgColor),
-            Padding(
-              padding: const EdgeInsets.all(4.0),
-              child: Container(
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: textColor.withOpacity(0.3), width: 1.5),
-                ),
-                child: Column(
-                  children: [
-                    Align(
-                      alignment: Alignment.topRight,
-                      child: IconButton(
-                        icon: Icon(Icons.expand_less, color: textColor),
-                        onPressed: () => _toggleExpanded(false), 
-                      ),
+            padding: const EdgeInsets.only(top: 16.0, left: 16.0, right: 16.0, bottom: 8.0),
+            child: Stack(
+              children: <Widget>[
+                Column(
+                  children: <Widget>[
+                    Row(
+                      children: <Widget>[
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: <Widget>[
+                              MyText.body(widget.playlist.name, fontWeight: FontWeight.w500),
+                              ScrollText(audios: widget.playlist.audios),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 8.0),
+                        MyButton(
+                          icon: MyIcons.edit(),
+                          onTap: onEdit,
+                        ),
+                      ],
                     ),
-                    Expanded(
-                      child: InkWell(
-                        onTap: onTapList, 
-                        onLongPress: onEdit,
-                        child: Container(
-                          alignment: Alignment.center,
-                          child: nameBox,
+                    if (showAudioList) ...[
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 8.0),
+                        child: MySearchBar(
+                          filterController: filterController,
+                          focusNode: focusNode,
+                          filterAudios: (_) => _filterPlaylistSounds(),
+                          resetTextFilter: (_) {
+                            filterController.clear();
+                            focusNode.unfocus();
+                            _filterPlaylistSounds();
+                          },
+                          sortMode: sortMode,
+                          onSortToggle: _cycleSort, 
+                          isCollapsed: isCollapsedItems,
+                          onLayoutToggle: () => setState(() => isCollapsedItems = !isCollapsedItems),
+                          onAddTap: () {},
+                          showAddButton: false,
+                        ),
+                      ),
+                      Expanded(
+                        child: GridView.builder(
+                          padding: const EdgeInsets.only(bottom: 100),
+                          physics: const BouncingScrollPhysics(),
+                          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 2,
+                            crossAxisSpacing: 8,
+                            mainAxisSpacing: 8,
+                            childAspectRatio: isCollapsedItems ? 3.0 : 1.15,
+                          ),
+                          itemCount: filteredAudios.length,
+                          itemBuilder: (context, index) {
+                            final e = filteredAudios[index];
+                            return PlayerWidget(
+                              key: Key('${e.path}_playlist_${isCollapsedItems}'),
+                              audio: e,
+                              isCollapsedLayout: isCollapsedItems,
+                              autoShrinkText: true,
+                            );
+                          },
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+                Align(
+                  alignment: Alignment.bottomCenter,
+                  child: SizedBox(
+                    height: 96,
+                    child: AnimatedContainer(
+                      duration: duration,
+                      curve: Curves.ease,
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                        borderRadius: const BorderRadius.all(Radius.circular(12.0)),
+                        boxShadow: expanded ? [
+                          BoxShadow(color: Theme.of(context).shadowColor.withOpacity(0.2), blurRadius: 8, spreadRadius: 1)
+                        ] : [],
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Row(
+                          children: <Widget>[
+                            Expanded(child: Container()),
+                            MyRadio(
+                              big: true,
+                              icon: currentlyPlaying ? MyIcons.pauseBig() : MyIcons.playBig(),
+                              value: currentlyPlaying,
+                              onChanged: (value) {
+                                if (value) {
+                                  playAllSoundInPlaylist();
+                                } else {
+                                  stopAllSoundInPlaylist();
+                                }
+                              },
+                            ),
+                            Expanded(
+                              child: Padding(
+                                padding: const EdgeInsets.only(left: 8.0),
+                                child: Align(
+                                  alignment: Alignment.centerLeft,
+                                  child: MyRadio(
+                                    icon: MyIcons.playlistList(color: expanded ? Theme.of(context).colorScheme.primary : null),
+                                    value: expanded,
+                                    onChanged: (bool value) {
+                                      if (value) {
+                                        setState(() {
+                                          expanded = true;
+                                          showAudioList = true;
+                                        });
+                                      } else {
+                                        _collapse();
+                                      }
+                                    },
+                                  ),
+                                ),
+                              )
+                            )
+                          ],
                         ),
                       ),
                     ),
-                    Center(
-                      child: Text(
-                        '${widget.playlist.audios.length} sounds',
-                        style: TextStyle(color: textColor.withOpacity(0.7), fontWeight: FontWeight.bold)
-                      ),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                        children: [
-                          IconButton(
-                            onPressed: togglePlay, 
-                            icon: Icon(_lastIcon, size: 28, color: textColor),
-                            padding: EdgeInsets.zero,
-                            constraints: const BoxConstraints(),
-                          ),
-                          IconButton(
-                            onPressed: onEdit,
-                            icon: Icon(Icons.edit, size: 22, color: textColor.withOpacity(0.8)),
-                            padding: EdgeInsets.zero,
-                            constraints: const BoxConstraints(),
-                          ),
-                          IconButton(
-                            onPressed: onTapList,
-                            icon: Icon(Icons.list, size: 22, color: textColor.withOpacity(0.8)),
-                            padding: EdgeInsets.zero,
-                            constraints: const BoxConstraints(),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            )
-          ],
-        ),
+                  ),
+                )
+              ],
+            ),
+          );
+        }
       ),
     );
   }
 
   void playAllSoundInPlaylist() async {
-    // KHÓA MỤC TIÊU: Ghi nhận chính xác Playlist nào vừa ra lệnh Play
-    activePlaylistName = widget.playlist.name; 
-    
     PlayingSounds().isPlayingPlaylist.value = true;
     _localSessionId++;
     final currentSession = _localSessionId;
@@ -434,11 +421,6 @@ class PlaylistCardState extends State<PlaylistCard> {
   }
 
   void stopAllSoundInPlaylist() async {
-    // GIẢI PHÓNG MỤC TIÊU KHI BẤM STOP
-    if (activePlaylistName == widget.playlist.name) {
-       activePlaylistName = null; 
-    }
-    
     _localSessionId++;
     PlayingSounds().isPlayingPlaylist.value = false;
     for (final audio in widget.playlist.audios) {
