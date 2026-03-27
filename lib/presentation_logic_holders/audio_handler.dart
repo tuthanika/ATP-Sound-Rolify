@@ -170,6 +170,53 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
     
     return true; 
   }
+  
+   // BẢN VÁ: Hàm xử lý triệt để khi gặp File âm thanh bị hỏng/lỗi định dạng
+  void _handleBrokenAudioNext(Audio brokenAudio) {
+    if (brokenAudio.folderName == null) return;
+    
+    final specialFolders = PlayingSounds().activeSpecialFolders;
+    if (!specialFolders.containsKey(brokenAudio.folderName)) return;
+
+    final folderData = specialFolders[brokenAudio.folderName]!;
+    final mode = folderData['mode'] as String;
+    List<Audio> audios = folderData['audios'] as List<Audio>;
+    
+    if (audios.isEmpty) return;
+
+    // 1. Gỡ bỏ vĩnh viễn file lỗi khỏi danh sách phát của phiên Tuần tự này
+    int currentIndex = audios.indexWhere((a) => a.path == brokenAudio.path);
+    if (currentIndex != -1) {
+       audios.removeAt(currentIndex);
+    }
+    
+    specialFolders[brokenAudio.folderName]!['audios'] = audios;
+    _sequentialActivePaths.remove(brokenAudio.path);
+
+    // Nếu xóa xong mà thư mục trống trơn (tất cả file đều lỗi) -> Dừng luôn để chống crash
+    if (audios.isEmpty) {
+        specialFolders.remove(brokenAudio.folderName);
+        return; 
+    }
+
+    // 2. Tính toán khéo léo bài tiếp theo
+    int nextIndex = 0;
+    if (mode == 'sequential') {
+        // Vì bài lỗi đã bị xóa, các bài sau sẽ dồn vị trí lên. 
+        // Do đó currentIndex hiện tại chính là bài tiếp theo!
+        nextIndex = currentIndex;
+        if (nextIndex >= audios.length || nextIndex < 0) nextIndex = 0; 
+    } else if (mode == 'random') {
+        nextIndex = Random().nextInt(audios.length);
+    }
+
+    final nextAudio = audios[nextIndex];
+    
+    // 3. Tự động ra lệnh phát bài mới
+    Future.delayed(const Duration(milliseconds: 100), () {
+      playAudio(nextAudio, isSequential: true);
+    });
+  }
 
   // BẢN VÁ: Truyền cờ isFromSpecialFolder xuyên suốt xuống lõi để định hình ExoPlayer ngay từ đầu
   Future<AudioPlayer> getAudioPlayer(Audio audio, {bool isFromSpecialFolder = false}) async {
@@ -306,7 +353,8 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
       
       if (!player.playing) {
         PlayingSounds().playAudio(audio);
-        playAudioPlayer(player);
+        // Đã update: truyền thêm đối tượng audio vào để hệ thống biết bài nào đang chạy
+        playAudioPlayer(player, audio); 
       }
     } catch (e) {
       debugPrint("Lỗi Play Audio: $e");
@@ -315,6 +363,12 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
       try { brokenPlayer?.dispose(); } catch(_) {}
       PlayingSounds().removeAudio(audio);
       _broadcastState();
+
+      // BẢN VÁ: Nếu đang chạy Tuần tự/Ngẫu nhiên mà gặp file nạp bị lỗi -> Tự bỏ qua
+      if (isSequential || _sequentialActivePaths.contains(audio.path)) {
+        debugPrint("Tự động bỏ qua file hỏng: ${audio.name}");
+        _handleBrokenAudioNext(audio);
+      }
     } finally {
       _loadingPaths.remove(audio.path);
     }
@@ -375,7 +429,8 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
     });
   }
 
-  void playAudioPlayer(AudioPlayer audioPlayer) {
+  // Thêm tham số audioContext để biết chính xác bài nào đang bị lỗi
+  void playAudioPlayer(AudioPlayer audioPlayer, [Audio? audioContext]) {
     audioPlayer.play().catchError((e) {
       debugPrint("Lỗi playAudioPlayer: $e");
       playingAudio.remove(audioPlayer);
@@ -388,7 +443,15 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
         audioPlayer.dispose();
       } catch (_) {}
       
+      if (audioContext != null) {
+         PlayingSounds().removeAudio(audioContext);
+      }
       _broadcastState();
+
+      // BẢN VÁ: Nếu ấn nút Play mà loa bị lỗi, tự động Next sang bài mới
+      if (audioContext != null && _sequentialActivePaths.contains(audioContext.path)) {
+         _handleBrokenAudioNext(audioContext);
+      }
     });
 
     if (!playingAudio.contains(audioPlayer)) {
