@@ -63,68 +63,20 @@ class PlayingSounds {
     double? newMasterVolume,
     List<String>? newActivePlaylistIds,
   ]) async {
-    final currentPlayingPaths = playingAudios.map((a) => a.path).toList(growable: false);
-    final currentPausedPaths = pausedAudios.map((a) => a.path).toList(growable: false);
-    final pathStateChanged = !_samePathSet(playingPaths, currentPlayingPaths) ||
-        !_samePathSet(pausedPaths, currentPausedPaths);
-
-    final masterVolumeChanged =
-        newMasterVolume != null && newMasterVolume != masterVolume;
-
-    bool playlistIdsChanged = false;
-    if (newActivePlaylistIds != null) {
-      final isSameLength = newActivePlaylistIds.length == activePlaylistIds.length;
-      final isSameItems =
-          isSameLength && newActivePlaylistIds.every((id) => activePlaylistIds.contains(id));
-      playlistIdsChanged = !isSameItems;
-    }
-
-    if (!pathStateChanged && !masterVolumeChanged && !playlistIdsChanged) {
-      return;
-    }
-
-    List<Audio> newPlaying = playingAudios;
-    List<Audio> newPaused = pausedAudios;
-    if (pathStateChanged) {
-      final knownByPath = <String, Audio>{
-        for (final a in playingAudios) a.path: a,
-        for (final a in pausedAudios) a.path: a,
-      };
-
-      final requestedPaths = <String>{...playingPaths, ...pausedPaths};
-      final missingPaths =
-          requestedPaths.where((path) => !knownByPath.containsKey(path)).toList(growable: false);
-
-      if (missingPaths.isNotEmpty) {
-        final allAudios = await AudioData.getAllAudios();
-        for (final audio in allAudios) {
-          if (requestedPaths.contains(audio.path)) {
-            knownByPath[audio.path] = audio;
-          }
-        }
-      }
-
-      newPlaying = playingPaths
-          .map((path) => knownByPath[path])
-          .whereType<Audio>()
-          .toList(growable: false);
-      newPaused = pausedPaths
-          .map((path) => knownByPath[path])
-          .whereType<Audio>()
-          .toList(growable: false);
-    }
-
+    final allAudios = await AudioData.getAllAudios();
+    
+    final newPlaying = allAudios.where((a) => playingPaths.contains(a.path)).toList();
+    final newPaused = allAudios.where((a) => pausedPaths.contains(a.path)).toList();
+    
     bool changed = false;
-    if (pathStateChanged &&
-        (newPlaying.length != playingAudios.length ||
-            !newPlaying.every((a) => playingAudios.contains(a)))) {
+    if (newPlaying.length != playingAudios.length || 
+        !newPlaying.every((a) => playingAudios.contains(a))) {
       playingAudios = newPlaying;
       changed = true;
     }
     
-    if (pathStateChanged &&
-        (newPaused.length != pausedAudios.length ||
-            !newPaused.every((a) => pausedAudios.contains(a)))) {
+    if (newPaused.length != pausedAudios.length || 
+        !newPaused.every((a) => pausedAudios.contains(a))) {
       pausedAudios = newPaused;
       changed = true;
     }
@@ -156,15 +108,5 @@ class PlayingSounds {
     }
     
     if (changed) _notify();
-  }
-
-  bool _samePathSet(List<String> a, List<String> b) {
-    final setA = a.toSet();
-    final setB = b.toSet();
-    if (setA.length != setB.length) return false;
-    for (final value in setA) {
-      if (!setB.contains(value)) return false;
-    }
-    return true;
   }
 }

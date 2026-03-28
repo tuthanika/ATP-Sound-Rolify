@@ -26,7 +26,6 @@ class AllPlaylist extends StatefulWidget {
 
 class AllPlaylistState extends State<AllPlaylist> {
   List<Playlist> playlists = [];
-  Map<String, String> _playlistGlobalIdsByName = {};
   
   // BẢN VÁ TỐI THƯỢNG: Danh sách đã được lọc và sắp xếp. 
   // Biến này triệt tiêu hoàn toàn sự cố tính toán lại khi cuộn màn hình!
@@ -81,11 +80,6 @@ class AllPlaylistState extends State<AllPlaylist> {
 
   // Hàm xử lý data chạy độc lập, tách rời khỏi build()
   void _applyFilters() {
-    _playlistGlobalIdsByName = {};
-    for (var i = 0; i < playlists.length; i++) {
-      _playlistGlobalIdsByName.putIfAbsent(playlists[i].name, () => i.toString());
-    }
-
     var list = playlists.where((p) => 
         p.name.toLowerCase().contains(_searchQuery.toLowerCase())).toList();
         
@@ -136,6 +130,7 @@ class AllPlaylistState extends State<AllPlaylist> {
         children: [
           _buildSearchBar(), 
           Expanded(
+            // Tốc độ cuộn mượt 60fps vì _filteredPlaylists chỉ là tham chiếu thẳng tới mảng tĩnh
             child: ListView.builder(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               itemCount: _filteredPlaylists.length + 1,
@@ -144,12 +139,9 @@ class AllPlaylistState extends State<AllPlaylist> {
                   final playlist = _filteredPlaylists[index];
                   return Padding(
                     padding: const EdgeInsets.only(bottom: 16.0), 
-                    child: RepaintBoundary(
-                      child: PlaylistCard(
-                        key: ValueKey('${playlist.name}-${playlist.audios.length}'),
-                        playlist: playlist,
-                        playlistGlobalId: _playlistGlobalIdsByName[playlist.name],
-                      ),
+                    child: PlaylistCard(
+                      key: ValueKey(playlist.name),
+                      playlist: playlist
                     ),
                   );
                 } else {
