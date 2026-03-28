@@ -44,7 +44,6 @@ class PlaylistCardState extends State<PlaylistCard> {
   }
 
   bool get _isActive => _playbackState != PlaylistPlaybackState.stopped;
-
   IconData get _currentActionIcon {
     switch (_playbackState) {
       case PlaylistPlaybackState.playing:
