@@ -63,8 +63,8 @@ class PlayingSounds {
     double? newMasterVolume,
     List<String>? newActivePlaylistIds,
   ]) async {
-    final currentPlayingPaths = playingAudios.map((a) => a.path).toList();
-    final currentPausedPaths = pausedAudios.map((a) => a.path).toList();
+    final currentPlayingPaths = playingAudios.map((a) => a.path).toList(growable: false);
+    final currentPausedPaths = pausedAudios.map((a) => a.path).toList(growable: false);
     final pathStateChanged = !_samePathSet(playingPaths, currentPlayingPaths) ||
         !_samePathSet(pausedPaths, currentPausedPaths);
 
@@ -86,9 +86,32 @@ class PlayingSounds {
     List<Audio> newPlaying = playingAudios;
     List<Audio> newPaused = pausedAudios;
     if (pathStateChanged) {
-      final allAudios = await AudioData.getAllAudios();
-      newPlaying = allAudios.where((a) => playingPaths.contains(a.path)).toList();
-      newPaused = allAudios.where((a) => pausedPaths.contains(a.path)).toList();
+      final knownByPath = <String, Audio>{
+        for (final a in playingAudios) a.path: a,
+        for (final a in pausedAudios) a.path: a,
+      };
+
+      final requestedPaths = <String>{...playingPaths, ...pausedPaths};
+      final missingPaths =
+          requestedPaths.where((path) => !knownByPath.containsKey(path)).toList(growable: false);
+
+      if (missingPaths.isNotEmpty) {
+        final allAudios = await AudioData.getAllAudios();
+        for (final audio in allAudios) {
+          if (requestedPaths.contains(audio.path)) {
+            knownByPath[audio.path] = audio;
+          }
+        }
+      }
+
+      newPlaying = playingPaths
+          .map((path) => knownByPath[path])
+          .whereType<Audio>()
+          .toList(growable: false);
+      newPaused = pausedPaths
+          .map((path) => knownByPath[path])
+          .whereType<Audio>()
+          .toList(growable: false);
     }
 
     bool changed = false;
@@ -136,11 +159,11 @@ class PlayingSounds {
   }
 
   bool _samePathSet(List<String> a, List<String> b) {
-    if (a.length != b.length) return false;
     final setA = a.toSet();
-    if (setA.length != b.toSet().length) return false;
-    for (final value in b) {
-      if (!setA.contains(value)) return false;
+    final setB = b.toSet();
+    if (setA.length != setB.length) return false;
+    for (final value in setA) {
+      if (!setB.contains(value)) return false;
     }
     return true;
   }

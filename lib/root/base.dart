@@ -1,5 +1,6 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter/material.dart';
+import 'dart:async';
 import 'package:rolify/presentation_logic_holders/audio_edit_bloc/audio_edit_bloc.dart';
 import 'package:rolify/presentation_logic_holders/audio_edit_bloc/audio_edit_state.dart';
 import 'package:rolify/presentation_logic_holders/audio_handler.dart';
@@ -33,6 +34,7 @@ class BaseState extends State<Base> with WidgetsBindingObserver {
   int pageSelected = 0;
   int? previousPage;
   static const MethodChannel _widgetChannel = MethodChannel('rolify/widget_command');
+  StreamSubscription<dynamic>? _customEventSubscription;
 
   @override
   void initState() {
@@ -46,7 +48,7 @@ class BaseState extends State<Base> with WidgetsBindingObserver {
     });
 
     // Re-enable state broadcasting from the unified background handler
-    AppState().audioHandler.customEvent.listen((event) {
+    _customEventSubscription = AppState().audioHandler.customEvent.listen((event) {
       if (event['name'] == 'state_update') {
         final List<dynamic>? playingPaths = event['playingPaths'];
         final List<dynamic>? pausedPaths = event['pausedPaths'];
@@ -125,6 +127,7 @@ class BaseState extends State<Base> with WidgetsBindingObserver {
 
   @override
   void dispose() {
+    _customEventSubscription?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
