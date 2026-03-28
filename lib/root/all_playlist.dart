@@ -26,6 +26,7 @@ class AllPlaylist extends StatefulWidget {
 
 class AllPlaylistState extends State<AllPlaylist> {
   List<Playlist> playlists = [];
+  Map<String, String> _playlistGlobalIdsByName = {};
   
   // BẢN VÁ TỐI THƯỢNG: Danh sách đã được lọc và sắp xếp. 
   // Biến này triệt tiêu hoàn toàn sự cố tính toán lại khi cuộn màn hình!
@@ -80,6 +81,11 @@ class AllPlaylistState extends State<AllPlaylist> {
 
   // Hàm xử lý data chạy độc lập, tách rời khỏi build()
   void _applyFilters() {
+    _playlistGlobalIdsByName = {};
+    for (var i = 0; i < playlists.length; i++) {
+      _playlistGlobalIdsByName.putIfAbsent(playlists[i].name, () => i.toString());
+    }
+
     var list = playlists.where((p) => 
         p.name.toLowerCase().contains(_searchQuery.toLowerCase())).toList();
         
@@ -141,7 +147,8 @@ class AllPlaylistState extends State<AllPlaylist> {
                     padding: const EdgeInsets.only(bottom: 16.0), 
                     child: PlaylistCard(
                       key: ValueKey(playlist.name),
-                      playlist: playlist
+                      playlist: playlist,
+                      playlistGlobalId: _playlistGlobalIdsByName[playlist.name],
                     ),
                   );
                 } else {
