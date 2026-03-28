@@ -27,11 +27,8 @@ class PlaylistCard extends StatefulWidget {
 }
 
 class PlaylistCardState extends State<PlaylistCard> {
-  static const Duration _minStateRefreshGap = Duration(milliseconds: 120);
   int _localSessionId = 0;
   bool isExpanded = false;
-  DateTime? _lastStateRefreshAt;
-  bool _hasPendingRefresh = false;
 
   PlaylistPlaybackState get _playbackState {
     final playlistPaths = widget.playlist.audios.map((a) => a.path).toSet();
@@ -69,38 +66,12 @@ class PlaylistCardState extends State<PlaylistCard> {
         ? true 
         : PlaylistGlobals.expandNotifier.value;
 
-    PlayingSounds().stateChangeNotifier.addListener(_onSystemStateChanged);
-    PlayingSounds().activePlaylistIdsNotifier.addListener(_onSystemStateChanged);
   }
 
   @override
   void dispose() {
     PlaylistGlobals.expandNotifier.removeListener(_onGlobalExpandChanged);
-    PlayingSounds().stateChangeNotifier.removeListener(_onSystemStateChanged);
-    PlayingSounds().activePlaylistIdsNotifier.removeListener(_onSystemStateChanged);
     super.dispose();
-  }
-
-  void _onSystemStateChanged() {
-    if (!mounted) return;
-
-    final now = DateTime.now();
-    final last = _lastStateRefreshAt;
-    if (last == null || now.difference(last) >= _minStateRefreshGap) {
-      _lastStateRefreshAt = now;
-      setState(() {});
-      return;
-    }
-
-    if (_hasPendingRefresh) return;
-    _hasPendingRefresh = true;
-    final wait = _minStateRefreshGap - now.difference(last);
-    Future.delayed(wait, () {
-      _hasPendingRefresh = false;
-      if (!mounted) return;
-      _lastStateRefreshAt = DateTime.now();
-      setState(() {});
-    });
   }
 
   void _onGlobalExpandChanged() {
