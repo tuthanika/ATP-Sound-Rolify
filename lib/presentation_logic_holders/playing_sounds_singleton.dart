@@ -97,6 +97,15 @@ class PlayingSounds {
         changed = true;
       }
     }
+
+    // Nếu không còn audio nào chạy/tạm dừng, xem như trạng thái STOP toàn cục:
+    // reset toàn bộ playlist active để tránh UI "kẹt" sáng sai thẻ playlist.
+    if (newPlaying.isEmpty && newPaused.isEmpty && activePlaylistIds.isNotEmpty) {
+      activePlaylistIds = [];
+      activePlaylistIdsNotifier.value = [];
+      isPlayingPlaylist.value = false;
+      changed = true;
+    }
     
     if (changed) _notify();
   }
