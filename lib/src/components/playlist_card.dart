@@ -26,7 +26,7 @@ class PlaylistCard extends StatefulWidget {
 class PlaylistCardState extends State<PlaylistCard> {
   int _localSessionId = 0;
   bool isExpanded = false; 
-  static final Set<String> _locallyActivatedPlaylistNames = <String>{};
+  String? _playlistGlobalId;
 
   PlaylistPlaybackState get _playbackState {
     final playlistPaths = widget.playlist.audios.map((a) => a.path).toSet();
@@ -35,17 +35,13 @@ class PlaylistCardState extends State<PlaylistCard> {
 
     final hasGlobalActiveId = _playlistGlobalId != null &&
         PlayingSounds().activePlaylistIds.contains(_playlistGlobalId);
-    final hasLocalActiveMark = _locallyActivatedPlaylistNames.contains(widget.playlist.name);
-    final isExplicitlyActivated = hasGlobalActiveId || hasLocalActiveMark;
-
-    if (!isExplicitlyActivated) return PlaylistPlaybackState.stopped;
+    if (!hasGlobalActiveId) return PlaylistPlaybackState.stopped;
 
     if (hasAnyPlaying) return PlaylistPlaybackState.playing;
     if (hasAnyPaused) return PlaylistPlaybackState.paused;
 
     return PlaylistPlaybackState.stopped;
   }
-  String? _playlistGlobalId;
 
   bool get _isActive => _playbackState != PlaylistPlaybackState.stopped;
 
@@ -81,17 +77,10 @@ class PlaylistCardState extends State<PlaylistCard> {
     PlayingSounds().stateChangeNotifier.removeListener(_onSystemStateChanged);
     PlayingSounds().isPlayingPlaylist.removeListener(_onSystemStateChanged);
     PlayingSounds().activePlaylistIdsNotifier.removeListener(_onSystemStateChanged);
-    _locallyActivatedPlaylistNames.remove(widget.playlist.name);
     super.dispose();
   }
 
   void _onSystemStateChanged() {
-    final playlistPaths = widget.playlist.audios.map((a) => a.path).toSet();
-    final hasAnyPlaying = PlayingSounds().playingAudios.any((a) => playlistPaths.contains(a.path));
-    final hasAnyPaused = PlayingSounds().pausedAudios.any((a) => playlistPaths.contains(a.path));
-    if (!hasAnyPlaying && !hasAnyPaused) {
-      _locallyActivatedPlaylistNames.remove(widget.playlist.name);
-    }
     if (mounted) setState(() {});
   }
 
@@ -243,10 +232,20 @@ class PlaylistCardState extends State<PlaylistCard> {
   }
 
   void togglePlay() {
-    if (_isActive) {
-      stopAllSoundInPlaylist();
-    } else {
-      playAllSoundInPlaylist();
+    if (_playlistGlobalId != null) {
+      AppState().audioHandler.customAction('play_playlist', {"id": _playlistGlobalId});
+      return;
+    }
+
+    if (_isActive) stopAllSoundInPlaylist();
+    else playAllSoundInPlaylist();
+  }
+
+  @override
+  void didUpdateWidget(covariant PlaylistCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.playlist.name != widget.playlist.name) {
+      _resolvePlaylistGlobalId();
     }
   }
 
@@ -411,7 +410,6 @@ class PlaylistCardState extends State<PlaylistCard> {
 
   void playAllSoundInPlaylist() async {
     PlayingSounds().isPlayingPlaylist.value = true;
-    _locallyActivatedPlaylistNames.add(widget.playlist.name);
     if (mounted) setState(() {});
     _localSessionId++;
     final currentSession = _localSessionId;
@@ -432,7 +430,6 @@ class PlaylistCardState extends State<PlaylistCard> {
   void stopAllSoundInPlaylist() async {
     _localSessionId++;
     PlayingSounds().isPlayingPlaylist.value = false;
-    _locallyActivatedPlaylistNames.remove(widget.playlist.name);
     if (mounted) setState(() {});
     for (final audio in widget.playlist.audios) {
       AudioServiceCommands.stop(audio);
