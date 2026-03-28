@@ -250,7 +250,7 @@ class PlaylistCardState extends State<PlaylistCard> {
     Color textColor = bgColor.computeLuminance() > 0.5 ? Colors.black87 : Colors.white;
 
     return InkWell(
-      onTap: togglePlay, 
+      onTap: () => _toggleExpanded(true),
       onLongPress: onEdit,
       borderRadius: BorderRadius.circular(16),
       child: Container(
@@ -262,8 +262,14 @@ class PlaylistCardState extends State<PlaylistCard> {
         ),
         child: Row(
           children: [
-            Icon(_currentActionIcon, color: textColor, size: 28), 
-            const SizedBox(width: 12),
+            IconButton(
+              onPressed: togglePlay,
+              icon: Icon(_currentActionIcon, color: textColor, size: 28),
+              splashRadius: 20,
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+            ),
+            const SizedBox(width: 8),
             Expanded(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -284,7 +290,7 @@ class PlaylistCardState extends State<PlaylistCard> {
             ),
             IconButton(
               icon: Icon(Icons.expand_more, color: textColor),
-              onPressed: () => _toggleExpanded(true), 
+              onPressed: () => _toggleExpanded(true),
             )
           ],
         ),
