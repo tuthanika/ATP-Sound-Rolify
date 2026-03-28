@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:rolify/data/audios.dart'; 
+import 'package:rolify/data/playlist.dart';
 import 'package:rolify/entities/audio.dart';
 import 'package:rolify/entities/playlist.dart';
 import 'package:rolify/presentation_logic_holders/audio_handler.dart'; 
@@ -25,34 +26,34 @@ class PlaylistCard extends StatefulWidget {
 class PlaylistCardState extends State<PlaylistCard> {
   int _localSessionId = 0;
   bool isExpanded = false; 
+  String? _playlistGlobalId;
 
-  bool _isActive = false;
-  IconData _lastIcon = Icons.play_arrow; 
+  PlaylistPlaybackState get _playbackState {
+    final playlistPaths = widget.playlist.audios.map((a) => a.path).toSet();
+    final hasAnyPlaying = PlayingSounds().playingAudios.any((a) => playlistPaths.contains(a.path));
+    final hasAnyPaused = PlayingSounds().pausedAudios.any((a) => playlistPaths.contains(a.path));
 
-  // BẢN VÁ 1: Trị lỗi "Lệch Play/Pause" (Mất màu thẻ khi Widget ấn Pause)
-  // Giải pháp: Quét cả danh sách nhạc đang Tạm dừng. 
-  bool get _isPlaying {
-    if (!PlayingSounds().isPlayingPlaylist.value) return false;
-    if (widget.playlist.audios.isEmpty) return false;
-    
-    return widget.playlist.audios.every((playlistAudio) {
-      bool isPlaying = PlayingSounds().playingAudios.any((p) => p.path == playlistAudio.path);
-      bool isPaused = PlayingSounds().pausedAudios.any((p) => p.path == playlistAudio.path);
-      return isPlaying || isPaused;
-    });
+    final hasGlobalActiveId = _playlistGlobalId != null &&
+        PlayingSounds().activePlaylistIds.contains(_playlistGlobalId);
+    if (!hasGlobalActiveId) return PlaylistPlaybackState.stopped;
+
+    if (hasAnyPlaying) return PlaylistPlaybackState.playing;
+    if (hasAnyPaused) return PlaylistPlaybackState.paused;
+
+    return PlaylistPlaybackState.stopped;
   }
 
-  // BẢN VÁ 2: Trị lỗi "Stop không clear màu" 
-  // Giải pháp: Dùng biến state nội bộ thay vì đụng vào lõi ExoPlayer (gây crash ngầm chặn lệnh clear màu)
+  bool get _isActive => _playbackState != PlaylistPlaybackState.stopped;
+
   IconData get _currentActionIcon {
-    if (!_isActive) return Icons.play_arrow;
-
-    bool isActuallyPlaying = widget.playlist.audios.any((playlistAudio) =>
-        PlayingSounds().playingAudios.any((p) => p.path == playlistAudio.path)
-    );
-
-    if (isActuallyPlaying) return Icons.stop;
-    return Icons.pause;
+    switch (_playbackState) {
+      case PlaylistPlaybackState.playing:
+        return Icons.stop;
+      case PlaylistPlaybackState.paused:
+        return Icons.pause;
+      case PlaylistPlaybackState.stopped:
+        return Icons.play_arrow;
+    }
   }
 
   @override
@@ -66,6 +67,8 @@ class PlaylistCardState extends State<PlaylistCard> {
 
     PlayingSounds().stateChangeNotifier.addListener(_onSystemStateChanged);
     PlayingSounds().isPlayingPlaylist.addListener(_onSystemStateChanged);
+    PlayingSounds().activePlaylistIdsNotifier.addListener(_onSystemStateChanged);
+    _resolvePlaylistGlobalId();
   }
 
   @override
@@ -73,21 +76,21 @@ class PlaylistCardState extends State<PlaylistCard> {
     PlaylistGlobals.expandNotifier.removeListener(_onGlobalExpandChanged);
     PlayingSounds().stateChangeNotifier.removeListener(_onSystemStateChanged);
     PlayingSounds().isPlayingPlaylist.removeListener(_onSystemStateChanged);
+    PlayingSounds().activePlaylistIdsNotifier.removeListener(_onSystemStateChanged);
     super.dispose();
   }
 
   void _onSystemStateChanged() {
-    if (!mounted) return;
-    
-    bool activeNow = _isPlaying;
-    IconData iconNow = _currentActionIcon;
+    if (mounted) setState(() {});
+  }
 
-    if (_isActive != activeNow || _lastIcon != iconNow) {
-      setState(() {
-        _isActive = activeNow;
-        _lastIcon = iconNow;
-      });
-    }
+  Future<void> _resolvePlaylistGlobalId() async {
+    final allPlaylists = await PlaylistData.getAllPlaylist();
+    final index = allPlaylists.indexWhere((p) => p.name == widget.playlist.name);
+    if (!mounted) return;
+    setState(() {
+      _playlistGlobalId = index >= 0 ? index.toString() : null;
+    });
   }
 
   void _onGlobalExpandChanged() {
@@ -229,10 +232,20 @@ class PlaylistCardState extends State<PlaylistCard> {
   }
 
   void togglePlay() {
-    if (_isActive) {
-      stopAllSoundInPlaylist();
-    } else {
-      playAllSoundInPlaylist();
+    if (_playlistGlobalId != null) {
+      AppState().audioHandler.customAction('play_playlist', {"id": _playlistGlobalId});
+      return;
+    }
+
+    if (_isActive) stopAllSoundInPlaylist();
+    else playAllSoundInPlaylist();
+  }
+
+  @override
+  void didUpdateWidget(covariant PlaylistCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.playlist.name != widget.playlist.name) {
+      _resolvePlaylistGlobalId();
     }
   }
 
@@ -266,7 +279,7 @@ class PlaylistCardState extends State<PlaylistCard> {
         ),
         child: Row(
           children: [
-            Icon(_lastIcon, color: textColor, size: 28), 
+            Icon(_currentActionIcon, color: textColor, size: 28), 
             const SizedBox(width: 12),
             Expanded(
               child: Column(
@@ -366,7 +379,7 @@ class PlaylistCardState extends State<PlaylistCard> {
                         children: [
                           IconButton(
                             onPressed: togglePlay, 
-                            icon: Icon(_lastIcon, size: 28, color: textColor),
+                            icon: Icon(_currentActionIcon, size: 28, color: textColor),
                             padding: EdgeInsets.zero,
                             constraints: const BoxConstraints(),
                           ),
@@ -397,6 +410,7 @@ class PlaylistCardState extends State<PlaylistCard> {
 
   void playAllSoundInPlaylist() async {
     PlayingSounds().isPlayingPlaylist.value = true;
+    if (mounted) setState(() {});
     _localSessionId++;
     final currentSession = _localSessionId;
     final startGlobalStopGen = AudioServiceCommands.globalStopGeneration;
@@ -416,9 +430,12 @@ class PlaylistCardState extends State<PlaylistCard> {
   void stopAllSoundInPlaylist() async {
     _localSessionId++;
     PlayingSounds().isPlayingPlaylist.value = false;
+    if (mounted) setState(() {});
     for (final audio in widget.playlist.audios) {
       AudioServiceCommands.stop(audio);
       await Future.delayed(const Duration(milliseconds: 100));
     }
   }
 }
+
+enum PlaylistPlaybackState { stopped, paused, playing }

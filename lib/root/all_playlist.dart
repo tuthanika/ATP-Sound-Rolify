@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'dart:async';
 import 'package:rolify/data/playlist.dart';
 import 'package:rolify/entities/playlist.dart';
 import 'package:rolify/entities/audio.dart'; 
@@ -33,6 +34,7 @@ class AllPlaylistState extends State<AllPlaylist> {
   
   String _searchQuery = '';
   int _sortType = 0; 
+  Timer? _searchDebounce;
 
   @override
   void initState() {
@@ -65,6 +67,14 @@ class AllPlaylistState extends State<AllPlaylist> {
   void _toggleExpandAll() {
     PlaylistGlobals.expandNotifier.value = !PlaylistGlobals.expandNotifier.value;
     PlaylistGlobals.expandedPlaylists.clear(); 
+  }
+
+  @override
+  void dispose() {
+    _searchDebounce?.cancel();
+    PlaylistGlobals.expandNotifier.value = false;
+    PlaylistGlobals.expandedPlaylists.clear();
+    super.dispose();
   }
 
   void initPlaylists() {
@@ -191,9 +201,13 @@ class AllPlaylistState extends State<AllPlaylist> {
                 ),
               ),
               onChanged: (val) {
-                setState(() {
-                   _searchQuery = val;
-                   _applyFilters();
+                _searchDebounce?.cancel();
+                _searchDebounce = Timer(const Duration(milliseconds: 150), () {
+                  if (!mounted) return;
+                  setState(() {
+                    _searchQuery = val;
+                    _applyFilters();
+                  });
                 });
               },
             ),

@@ -51,12 +51,14 @@ class BaseState extends State<Base> with WidgetsBindingObserver {
         final List<dynamic>? playingPaths = event['playingPaths'];
         final List<dynamic>? pausedPaths = event['pausedPaths'];
         final double? masterVolume = event['masterVolume'];
+        final List<dynamic>? activePlaylistIds = event['activePlaylistIds'];
         
         if (playingPaths != null || pausedPaths != null) {
           PlayingSounds().syncFromBackground(
             playingPaths?.cast<String>() ?? [],
             pausedPaths?.cast<String>() ?? [],
             masterVolume,
+            activePlaylistIds?.cast<String>(),
           );
         }
       }

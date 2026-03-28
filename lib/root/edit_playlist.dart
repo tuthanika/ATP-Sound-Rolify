@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:async';
 import 'package:rolify/data/audios.dart';
 import 'package:rolify/data/playlist.dart';
 import 'package:rolify/entities/audio.dart';
@@ -29,6 +30,7 @@ class EditPlaylistState extends State<EditPlaylist> {
   String _searchQuery = '';
   int _sortType = 0; // 0: Mới nhất, 1: A-Z, 2: Z-A
   bool _showAllFlat = false; 
+  Timer? _searchDebounce;
 
   // BẢN VÁ TỐI THƯỢNG CHỐNG ĐƠ: Danh sách phẳng trải dài để ListView.builder render siêu tốc
   List<dynamic> _flattenedList = [];
@@ -45,13 +47,15 @@ class EditPlaylistState extends State<EditPlaylist> {
   initAudios() {
     AudioData.getAllAudios().then((value) {
       if (mounted) {
-        audios = value;
-        _applyFilters();
+        setState(() {
+          audios = value;
+          _applyFilters(notify: false);
+        });
       }
     });
   }
 
-  void _applyFilters() {
+  void _applyFilters({bool notify = true}) {
     var list = audios.where((a) => 
         a.name.toLowerCase().contains(_searchQuery.toLowerCase())).toList();
         
@@ -65,6 +69,7 @@ class EditPlaylistState extends State<EditPlaylist> {
     
     filteredAudios = list;
     _buildFlattenedList();
+    if (notify && mounted) setState(() {});
   }
 
   // Thuật toán chuẩn bị dữ liệu (Chạy 1 lần, render vạn lần không đơ)
@@ -99,12 +104,18 @@ class EditPlaylistState extends State<EditPlaylist> {
         _flattenedList.add({'type': 'audio', 'audio': a});
       }
     }
-    setState(() {});
   }
 
   void _cycleSort() {
     _sortType = (_sortType + 1) % 3;
     _applyFilters();
+  }
+
+  @override
+  void dispose() {
+    _searchDebounce?.cancel();
+    playlistNameController.dispose();
+    super.dispose();
   }
 
   IconData _getSortIcon() {
@@ -223,9 +234,13 @@ class EditPlaylistState extends State<EditPlaylist> {
                               ),
                             ),
                             onChanged: (val) {
-                              _searchQuery = val;
-                              if (val.isNotEmpty && !_showAllFlat) _showAllFlat = true;
-                              _applyFilters(); 
+                              _searchDebounce?.cancel();
+                              _searchDebounce = Timer(const Duration(milliseconds: 150), () {
+                                if (!mounted) return;
+                                _searchQuery = val;
+                                if (val.isNotEmpty && !_showAllFlat) _showAllFlat = true;
+                                _applyFilters();
+                              });
                             },
                           ),
                         ),
@@ -259,7 +274,7 @@ class EditPlaylistState extends State<EditPlaylist> {
                             icon: Icon(_showAllFlat ? Icons.list : Icons.folder_copy, color: Theme.of(context).iconTheme.color, size: 20),
                             onPressed: () {
                               _showAllFlat = !_showAllFlat;
-                              _buildFlattenedList();
+                              _applyFilters();
                             },
                           ),
                         ),
@@ -304,9 +319,11 @@ class EditPlaylistState extends State<EditPlaylist> {
                             isExpanded: isExpanded,
                             allAdded: allAdded,
                             onTap: () {
-                              if (isExpanded) _expandedFolders.remove(fName);
-                              else _expandedFolders.add(fName);
-                              _buildFlattenedList(); // Cập nhật lại UI
+                              setState(() {
+                                if (isExpanded) _expandedFolders.remove(fName);
+                                else _expandedFolders.add(fName);
+                                _buildFlattenedList();
+                              });
                             },
                             onAddRemoveAll: () {
                               setState(() {

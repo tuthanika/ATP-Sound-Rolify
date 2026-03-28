@@ -57,7 +57,12 @@ class PlayingSounds {
     _notify();
   }
 
-  syncFromBackground(List<String> playingPaths, List<String> pausedPaths, [double? newMasterVolume]) async {
+  syncFromBackground(
+    List<String> playingPaths,
+    List<String> pausedPaths, [
+    double? newMasterVolume,
+    List<String>? newActivePlaylistIds,
+  ]) async {
     final allAudios = await AudioData.getAllAudios();
     
     final newPlaying = allAudios.where((a) => playingPaths.contains(a.path)).toList();
@@ -81,8 +86,27 @@ class PlayingSounds {
       masterVolumeNotifier.value = newMasterVolume;
       changed = true;
     }
+
+    if (newActivePlaylistIds != null) {
+      final isSameLength = newActivePlaylistIds.length == activePlaylistIds.length;
+      final isSameItems = isSameLength &&
+          newActivePlaylistIds.every((id) => activePlaylistIds.contains(id));
+      if (!isSameItems) {
+        activePlaylistIds = List<String>.from(newActivePlaylistIds);
+        activePlaylistIdsNotifier.value = List<String>.from(newActivePlaylistIds);
+        changed = true;
+      }
+    }
+
+    // Nếu không còn audio nào chạy/tạm dừng, xem như trạng thái STOP toàn cục:
+    // reset toàn bộ playlist active để tránh UI "kẹt" sáng sai thẻ playlist.
+    if (newPlaying.isEmpty && newPaused.isEmpty && activePlaylistIds.isNotEmpty) {
+      activePlaylistIds = [];
+      activePlaylistIdsNotifier.value = [];
+      isPlayingPlaylist.value = false;
+      changed = true;
+    }
     
     if (changed) _notify();
   }
 }
-
