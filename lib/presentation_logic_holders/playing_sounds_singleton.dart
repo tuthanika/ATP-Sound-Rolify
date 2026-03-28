@@ -63,20 +63,45 @@ class PlayingSounds {
     double? newMasterVolume,
     List<String>? newActivePlaylistIds,
   ]) async {
-    final allAudios = await AudioData.getAllAudios();
-    
-    final newPlaying = allAudios.where((a) => playingPaths.contains(a.path)).toList();
-    final newPaused = allAudios.where((a) => pausedPaths.contains(a.path)).toList();
-    
+    final currentPlayingPaths = playingAudios.map((a) => a.path).toList();
+    final currentPausedPaths = pausedAudios.map((a) => a.path).toList();
+    final pathStateChanged = !_samePathSet(playingPaths, currentPlayingPaths) ||
+        !_samePathSet(pausedPaths, currentPausedPaths);
+
+    final masterVolumeChanged =
+        newMasterVolume != null && newMasterVolume != masterVolume;
+
+    bool playlistIdsChanged = false;
+    if (newActivePlaylistIds != null) {
+      final isSameLength = newActivePlaylistIds.length == activePlaylistIds.length;
+      final isSameItems =
+          isSameLength && newActivePlaylistIds.every((id) => activePlaylistIds.contains(id));
+      playlistIdsChanged = !isSameItems;
+    }
+
+    if (!pathStateChanged && !masterVolumeChanged && !playlistIdsChanged) {
+      return;
+    }
+
+    List<Audio> newPlaying = playingAudios;
+    List<Audio> newPaused = pausedAudios;
+    if (pathStateChanged) {
+      final allAudios = await AudioData.getAllAudios();
+      newPlaying = allAudios.where((a) => playingPaths.contains(a.path)).toList();
+      newPaused = allAudios.where((a) => pausedPaths.contains(a.path)).toList();
+    }
+
     bool changed = false;
-    if (newPlaying.length != playingAudios.length || 
-        !newPlaying.every((a) => playingAudios.contains(a))) {
+    if (pathStateChanged &&
+        (newPlaying.length != playingAudios.length ||
+            !newPlaying.every((a) => playingAudios.contains(a)))) {
       playingAudios = newPlaying;
       changed = true;
     }
     
-    if (newPaused.length != pausedAudios.length || 
-        !newPaused.every((a) => pausedAudios.contains(a))) {
+    if (pathStateChanged &&
+        (newPaused.length != pausedAudios.length ||
+            !newPaused.every((a) => pausedAudios.contains(a)))) {
       pausedAudios = newPaused;
       changed = true;
     }
@@ -108,5 +133,15 @@ class PlayingSounds {
     }
     
     if (changed) _notify();
+  }
+
+  bool _samePathSet(List<String> a, List<String> b) {
+    if (a.length != b.length) return false;
+    final setA = a.toSet();
+    if (setA.length != b.toSet().length) return false;
+    for (final value in b) {
+      if (!setA.contains(value)) return false;
+    }
+    return true;
   }
 }
