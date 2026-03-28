@@ -57,7 +57,12 @@ class PlayingSounds {
     _notify();
   }
 
-  syncFromBackground(List<String> playingPaths, List<String> pausedPaths, [double? newMasterVolume]) async {
+  syncFromBackground(
+    List<String> playingPaths,
+    List<String> pausedPaths, [
+    double? newMasterVolume,
+    List<String>? newActivePlaylistIds,
+  ]) async {
     final allAudios = await AudioData.getAllAudios();
     
     final newPlaying = allAudios.where((a) => playingPaths.contains(a.path)).toList();
@@ -81,8 +86,18 @@ class PlayingSounds {
       masterVolumeNotifier.value = newMasterVolume;
       changed = true;
     }
+
+    if (newActivePlaylistIds != null) {
+      final isSameLength = newActivePlaylistIds.length == activePlaylistIds.length;
+      final isSameItems = isSameLength &&
+          newActivePlaylistIds.every((id) => activePlaylistIds.contains(id));
+      if (!isSameItems) {
+        activePlaylistIds = List<String>.from(newActivePlaylistIds);
+        activePlaylistIdsNotifier.value = List<String>.from(newActivePlaylistIds);
+        changed = true;
+      }
+    }
     
     if (changed) _notify();
   }
 }
-
