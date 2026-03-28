@@ -5,7 +5,6 @@ import 'package:rolify/entities/playlist.dart';
 import 'package:rolify/entities/audio.dart'; 
 import 'package:rolify/presentation_logic_holders/playlist_list_bloc/playlist_list_bloc.dart';
 import 'package:rolify/presentation_logic_holders/playlist_list_bloc/playlist_list_state.dart';
-import 'package:rolify/presentation_logic_holders/playing_sounds_singleton.dart';
 import 'package:rolify/src/components/button.dart';
 import 'package:rolify/src/components/my_icons.dart';
 import 'package:rolify/src/components/playlist_card.dart';
@@ -137,43 +136,39 @@ class AllPlaylistState extends State<AllPlaylist> {
         children: [
           _buildSearchBar(), 
           Expanded(
-            child: ValueListenableBuilder<int>(
-              valueListenable: PlayingSounds().stateChangeNotifier,
-              builder: (context, _, __) {
-                // Chỉ rebuild list 1 lần theo mỗi state tick thay vì mỗi card tự subscribe
-                return ListView.builder(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  itemCount: _filteredPlaylists.length + 1,
-                  itemBuilder: (context, index) {
-                    if (index < _filteredPlaylists.length) {
-                      final playlist = _filteredPlaylists[index];
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 16.0), 
-                        child: PlaylistCard(
-                          key: ValueKey(playlist.name),
-                          playlist: playlist,
-                          playlistGlobalId: _playlistGlobalIdsByName[playlist.name],
-                        ),
-                      );
-                    } else {
-                      return Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 16.0),
-                        child: Align(
-                          alignment: Alignment.center,
-                          child: MyButton(
-                              icon: MyIcons.add(),
-                              onTap: () => Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) => EditPlaylist(
-                                          playlist: Playlist(name: 'New Playlist', audios: <Audio>[])),
-                                    ),
-                                  )),
-                        ),
-                      );
-                    }
-                  },
-                );
+            child: ListView.builder(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              itemCount: _filteredPlaylists.length + 1,
+              itemBuilder: (context, index) {
+                if (index < _filteredPlaylists.length) {
+                  final playlist = _filteredPlaylists[index];
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 16.0), 
+                    child: RepaintBoundary(
+                      child: PlaylistCard(
+                        key: ValueKey('${playlist.name}-${playlist.audios.length}'),
+                        playlist: playlist,
+                        playlistGlobalId: _playlistGlobalIdsByName[playlist.name],
+                      ),
+                    ),
+                  );
+                } else {
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 16.0),
+                    child: Align(
+                      alignment: Alignment.center,
+                      child: MyButton(
+                          icon: MyIcons.add(),
+                          onTap: () => Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => EditPlaylist(
+                                      playlist: Playlist(name: 'New Playlist', audios: <Audio>[])),
+                                ),
+                              )),
+                    ),
+                  );
+                }
               },
             ),
           ),

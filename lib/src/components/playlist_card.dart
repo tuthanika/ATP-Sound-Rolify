@@ -29,11 +29,11 @@ class PlaylistCard extends StatefulWidget {
 class PlaylistCardState extends State<PlaylistCard> {
   int _localSessionId = 0;
   bool isExpanded = false;
+  late Set<String> _playlistAudioPaths;
 
   PlaylistPlaybackState get _playbackState {
-    final playlistPaths = widget.playlist.audios.map((a) => a.path).toSet();
-    final hasAnyPlaying = PlayingSounds().playingAudios.any((a) => playlistPaths.contains(a.path));
-    final hasAnyPaused = PlayingSounds().pausedAudios.any((a) => playlistPaths.contains(a.path));
+    final hasAnyPlaying = PlayingSounds().playingAudios.any((a) => _playlistAudioPaths.contains(a.path));
+    final hasAnyPaused = PlayingSounds().pausedAudios.any((a) => _playlistAudioPaths.contains(a.path));
 
     final hasGlobalActiveId = widget.playlistGlobalId != null &&
         PlayingSounds().activePlaylistIds.contains(widget.playlistGlobalId);
@@ -65,6 +65,7 @@ class PlaylistCardState extends State<PlaylistCard> {
     isExpanded = PlaylistGlobals.expandedPlaylists.contains(widget.playlist.name) 
         ? true 
         : PlaylistGlobals.expandNotifier.value;
+    _playlistAudioPaths = widget.playlist.audios.map((a) => a.path).toSet();
 
   }
 
@@ -72,6 +73,15 @@ class PlaylistCardState extends State<PlaylistCard> {
   void dispose() {
     PlaylistGlobals.expandNotifier.removeListener(_onGlobalExpandChanged);
     super.dispose();
+  }
+
+  @override
+  void didUpdateWidget(covariant PlaylistCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.playlist.audios.length != widget.playlist.audios.length ||
+        oldWidget.playlist.name != widget.playlist.name) {
+      _playlistAudioPaths = widget.playlist.audios.map((a) => a.path).toSet();
+    }
   }
 
   void _onGlobalExpandChanged() {
