@@ -1,12 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:rolify/data/audios.dart'; 
-import 'package:rolify/data/playlist.dart';
 import 'package:rolify/entities/audio.dart';
 import 'package:rolify/entities/playlist.dart';
-import 'package:rolify/presentation_logic_holders/audio_handler.dart'; 
 import 'package:rolify/presentation_logic_holders/audio_service_commands.dart';
 import 'package:rolify/presentation_logic_holders/playing_sounds_singleton.dart';
-import 'package:rolify/presentation_logic_holders/singletons/app_state.dart';
 import 'package:rolify/root/edit_playlist.dart';
 import 'package:rolify/root/all_playlist.dart'; 
 import 'package:rolify/src/components/button.dart';
@@ -26,16 +23,11 @@ class PlaylistCard extends StatefulWidget {
 class PlaylistCardState extends State<PlaylistCard> {
   int _localSessionId = 0;
   bool isExpanded = false; 
-  String? _playlistGlobalId;
 
   PlaylistPlaybackState get _playbackState {
     final playlistPaths = widget.playlist.audios.map((a) => a.path).toSet();
     final hasAnyPlaying = PlayingSounds().playingAudios.any((a) => playlistPaths.contains(a.path));
     final hasAnyPaused = PlayingSounds().pausedAudios.any((a) => playlistPaths.contains(a.path));
-
-    final hasGlobalActiveId = _playlistGlobalId != null &&
-        PlayingSounds().activePlaylistIds.contains(_playlistGlobalId);
-    if (!hasGlobalActiveId) return PlaylistPlaybackState.stopped;
 
     if (hasAnyPlaying) return PlaylistPlaybackState.playing;
     if (hasAnyPaused) return PlaylistPlaybackState.paused;
@@ -66,31 +58,17 @@ class PlaylistCardState extends State<PlaylistCard> {
         : PlaylistGlobals.expandNotifier.value;
 
     PlayingSounds().stateChangeNotifier.addListener(_onSystemStateChanged);
-    PlayingSounds().isPlayingPlaylist.addListener(_onSystemStateChanged);
-    PlayingSounds().activePlaylistIdsNotifier.addListener(_onSystemStateChanged);
-    _resolvePlaylistGlobalId();
   }
 
   @override
   void dispose() {
     PlaylistGlobals.expandNotifier.removeListener(_onGlobalExpandChanged);
     PlayingSounds().stateChangeNotifier.removeListener(_onSystemStateChanged);
-    PlayingSounds().isPlayingPlaylist.removeListener(_onSystemStateChanged);
-    PlayingSounds().activePlaylistIdsNotifier.removeListener(_onSystemStateChanged);
     super.dispose();
   }
 
   void _onSystemStateChanged() {
     if (mounted) setState(() {});
-  }
-
-  Future<void> _resolvePlaylistGlobalId() async {
-    final allPlaylists = await PlaylistData.getAllPlaylist();
-    final index = allPlaylists.indexWhere((p) => p.name == widget.playlist.name);
-    if (!mounted) return;
-    setState(() {
-      _playlistGlobalId = index >= 0 ? index.toString() : null;
-    });
   }
 
   void _onGlobalExpandChanged() {
@@ -232,21 +210,8 @@ class PlaylistCardState extends State<PlaylistCard> {
   }
 
   void togglePlay() {
-    if (_playlistGlobalId != null) {
-      AppState().audioHandler.customAction('play_playlist', {"id": _playlistGlobalId});
-      return;
-    }
-
     if (_isActive) stopAllSoundInPlaylist();
     else playAllSoundInPlaylist();
-  }
-
-  @override
-  void didUpdateWidget(covariant PlaylistCard oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.playlist.name != widget.playlist.name) {
-      _resolvePlaylistGlobalId();
-    }
   }
 
   @override
