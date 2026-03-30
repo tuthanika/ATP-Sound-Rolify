@@ -1,4 +1,3 @@
-import 'dart:async'; 
 import 'package:flutter/material.dart';
 import 'package:rolify/entities/audio.dart';
 import 'package:rolify/entities/playlist.dart';
@@ -23,10 +22,8 @@ class PlaylistCard extends StatefulWidget {
   PlaylistCardState createState() => PlaylistCardState();
 }
 
-// BẢN VÁ: Gỡ bỏ hoàn toàn KeepAlive. Chống mất trạng thái bằng Sổ Tay (expandedPlaylists)
 class PlaylistCardState extends State<PlaylistCard> {
   int _localSessionId = 0;
-  bool isExpanded = false; 
 
   // GIỮ NGUYÊN LOGIC TRẠNG THÁI CHUẨN CỦA BẠN
   bool get _isPlaying {
@@ -54,46 +51,14 @@ class PlaylistCardState extends State<PlaylistCard> {
     return Icons.stop;
   }
 
-  @override
-  void initState() {
-    super.initState();
-    PlaylistGlobals.expandNotifier.addListener(_onGlobalExpandChanged);
-    
-    // Đọc trạng thái từ Sổ tay. Nếu chưa có thì lấy theo cờ Toàn cục.
-    isExpanded = PlaylistGlobals.expandedPlaylists.contains(widget.playlist.name) 
-        ? true 
-        : PlaylistGlobals.expandNotifier.value;
-
-    PlayingSounds().stateChangeNotifier.addListener(_onStateChanged);
-  }
-
-  void _onStateChanged() {
-    if (mounted) setState(() {});
-  }
-
-  @override
-  void dispose() {
-    PlaylistGlobals.expandNotifier.removeListener(_onGlobalExpandChanged);
-    PlayingSounds().stateChangeNotifier.removeListener(_onStateChanged);
-    super.dispose();
-  }
-
-  void _onGlobalExpandChanged() {
-    if (mounted) {
-      bool val = PlaylistGlobals.expandNotifier.value;
-      setState(() {
-        isExpanded = val;
-        // Đồng bộ vào sổ tay
-        if (val) PlaylistGlobals.expandedPlaylists.add(widget.playlist.name);
-        else PlaylistGlobals.expandedPlaylists.remove(widget.playlist.name);
-      });
-    }
+  // Đọc trạng thái mở rộng trực tiếp từ Sổ Tay, không cần listener
+  bool get isExpanded {
+    if (PlaylistGlobals.expandedPlaylists.contains(widget.playlist.name)) return true;
+    return PlaylistGlobals.expandNotifier.value;
   }
 
   void _toggleExpanded(bool val) {
     setState(() {
-      isExpanded = val;
-      // Ghi chép vào sổ tay để nhớ kể cả khi thẻ bị cuộn mất
       if (val) PlaylistGlobals.expandedPlaylists.add(widget.playlist.name);
       else PlaylistGlobals.expandedPlaylists.remove(widget.playlist.name);
     });
@@ -246,44 +211,48 @@ class PlaylistCardState extends State<PlaylistCard> {
 
     Color textColor = bgColor.computeLuminance() > 0.5 ? Colors.black87 : Colors.white;
 
-    return InkWell(
-      onTap: togglePlay, 
-      onLongPress: onEdit,
-      borderRadius: BorderRadius.circular(16),
-      child: Container(
-        height: 64,
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        decoration: BoxDecoration(
-          color: bgColor,
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Row(
-          children: [
-            Icon(_currentActionIcon, color: textColor, size: 28), // Icon thẩm mỹ
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    widget.playlist.name,
-                    style: TextStyle(color: textColor, fontSize: 16, fontWeight: FontWeight.bold),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      elevation: 0,
+      margin: EdgeInsets.zero,
+      color: bgColor,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: InkWell(
+        onTap: togglePlay, 
+        onLongPress: onEdit,
+        child: SizedBox(
+          height: 64,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Row(
+              children: [
+                Icon(_currentActionIcon, color: textColor, size: 28),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        widget.playlist.name,
+                        style: TextStyle(color: textColor, fontSize: 16, fontWeight: FontWeight.bold),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      Text(
+                        '${widget.playlist.audios.length} sounds',
+                        style: TextStyle(color: textColor.withOpacity(0.7), fontSize: 12),
+                      ),
+                    ],
                   ),
-                  Text(
-                    '${widget.playlist.audios.length} sounds',
-                    style: TextStyle(color: textColor.withOpacity(0.7), fontSize: 12),
-                  ),
-                ],
-              ),
+                ),
+                IconButton(
+                  icon: Icon(Icons.expand_more, color: textColor),
+                  onPressed: () => _toggleExpanded(true), 
+                )
+              ],
             ),
-            IconButton(
-              icon: Icon(Icons.expand_more, color: textColor),
-              onPressed: () => _toggleExpanded(true), 
-            )
-          ],
+          ),
         ),
       ),
     );
@@ -312,77 +281,74 @@ class PlaylistCardState extends State<PlaylistCard> {
     );
 
     return SizedBox(
-      width: MediaQuery.of(context).size.width,
       height: 180, 
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(24),
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            Container(color: bgColor),
-            Padding(
-              padding: const EdgeInsets.all(4.0),
-              child: Container(
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: textColor.withOpacity(0.3), width: 1.5),
+      child: Card(
+        clipBehavior: Clip.antiAlias,
+        elevation: 0,
+        margin: EdgeInsets.zero,
+        color: bgColor,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        child: Padding(
+          padding: const EdgeInsets.all(4.0),
+          child: Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: textColor.withOpacity(0.3), width: 1.5),
+            ),
+            child: Column(
+              children: [
+                Align(
+                  alignment: Alignment.topRight,
+                  child: IconButton(
+                    icon: Icon(Icons.expand_less, color: textColor),
+                    onPressed: () => _toggleExpanded(false), 
+                  ),
                 ),
-                child: Column(
-                  children: [
-                    Align(
-                      alignment: Alignment.topRight,
-                      child: IconButton(
-                        icon: Icon(Icons.expand_less, color: textColor),
-                        onPressed: () => _toggleExpanded(false), 
-                      ),
+                Expanded(
+                  child: InkWell(
+                    onTap: onTapList, 
+                    onLongPress: onEdit,
+                    child: Container(
+                      alignment: Alignment.center,
+                      child: nameBox,
                     ),
-                    Expanded(
-                      child: InkWell(
-                        onTap: onTapList, 
-                        onLongPress: onEdit,
-                        child: Container(
-                          alignment: Alignment.center,
-                          child: nameBox,
-                        ),
-                      ),
-                    ),
-                    Center(
-                      child: Text(
-                        '${widget.playlist.audios.length} sounds',
-                        style: TextStyle(color: textColor.withOpacity(0.7), fontWeight: FontWeight.bold)
-                      ),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                        children: [
-                          IconButton(
-                            onPressed: togglePlay, 
-                            icon: Icon(_currentActionIcon, size: 28, color: textColor),
-                            padding: EdgeInsets.zero,
-                            constraints: const BoxConstraints(),
-                          ),
-                          IconButton(
-                            onPressed: onEdit,
-                            icon: Icon(Icons.edit, size: 22, color: textColor.withOpacity(0.8)),
-                            padding: EdgeInsets.zero,
-                            constraints: const BoxConstraints(),
-                          ),
-                          IconButton(
-                            onPressed: onTapList,
-                            icon: Icon(Icons.list, size: 22, color: textColor.withOpacity(0.8)),
-                            padding: EdgeInsets.zero,
-                            constraints: const BoxConstraints(),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
-              ),
-            )
-          ],
+                Center(
+                  child: Text(
+                    '${widget.playlist.audios.length} sounds',
+                    style: TextStyle(color: textColor.withOpacity(0.7), fontWeight: FontWeight.bold)
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      IconButton(
+                        onPressed: togglePlay, 
+                        icon: Icon(_currentActionIcon, size: 28, color: textColor),
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                      ),
+                      IconButton(
+                        onPressed: onEdit,
+                        icon: Icon(Icons.edit, size: 22, color: textColor.withOpacity(0.8)),
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                      ),
+                      IconButton(
+                        onPressed: onTapList,
+                        icon: Icon(Icons.list, size: 22, color: textColor.withOpacity(0.8)),
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );

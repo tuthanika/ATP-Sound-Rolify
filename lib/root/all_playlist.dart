@@ -8,6 +8,7 @@ import 'package:rolify/presentation_logic_holders/playlist_list_bloc/playlist_li
 import 'package:rolify/src/components/button.dart';
 import 'package:rolify/src/components/my_icons.dart';
 import 'package:rolify/src/components/playlist_card.dart';
+import 'package:rolify/presentation_logic_holders/playing_sounds_singleton.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'edit_playlist.dart';
@@ -36,7 +37,21 @@ class AllPlaylistState extends State<AllPlaylist> {
     _loadSortPreference();
     initPlaylists();
     PlaylistGlobals.expandNotifier.value = false; 
-    PlaylistGlobals.expandedPlaylists.clear(); 
+    PlaylistGlobals.expandedPlaylists.clear();
+    // Listener duy nhất cho toàn bộ danh sách — không churn vì AllPlaylist sống mãi trong IndexedStack
+    PlayingSounds().stateChangeNotifier.addListener(_onStateChanged);
+    PlaylistGlobals.expandNotifier.addListener(_onStateChanged);
+  }
+
+  void _onStateChanged() {
+    if (mounted) setState(() {});
+  }
+
+  @override
+  void dispose() {
+    PlayingSounds().stateChangeNotifier.removeListener(_onStateChanged);
+    PlaylistGlobals.expandNotifier.removeListener(_onStateChanged);
+    super.dispose();
   }
 
   Future<void> _loadSortPreference() async {
@@ -57,7 +72,8 @@ class AllPlaylistState extends State<AllPlaylist> {
 
   void _toggleExpandAll() {
     PlaylistGlobals.expandNotifier.value = !PlaylistGlobals.expandNotifier.value;
-    PlaylistGlobals.expandedPlaylists.clear(); // Reset sổ cá nhân để nghe theo lệnh chung
+    PlaylistGlobals.expandedPlaylists.clear();
+    // setState sẽ được gọi tự động từ expandNotifier listener
   }
 
   void initPlaylists() {
@@ -130,7 +146,7 @@ class AllPlaylistState extends State<AllPlaylist> {
                 if (index < listToRender.length) {
                   final playlist = listToRender[index];
                   return Padding(
-                    padding: const EdgeInsets.only(bottom: 16.0), // Padding y hệt Wrap
+                    padding: const EdgeInsets.only(bottom: 16.0),
                     child: PlaylistCard(
                       key: ValueKey(playlist.name),
                       playlist: playlist
