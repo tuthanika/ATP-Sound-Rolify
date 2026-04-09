@@ -30,7 +30,7 @@ class AllPlaylistState extends State<AllPlaylist> {
   List<Playlist> playlists = [];
   String _searchQuery = '';
   int _sortType = 0; 
-
+  final ValueNotifier<bool> _isScrolling = ValueNotifier<bool>(false);
   @override
   void initState() {
     super.initState();
@@ -64,7 +64,10 @@ class AllPlaylistState extends State<AllPlaylist> {
 
   void _cycleSort() async {
     int next = (_sortType + 1) % 5;
-    setState(() => _sortType = next);
+    setState(() {
+      _sortType = next;
+      _updateRenderList();
+    });
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt('playlist_sort_type', next);
   }
@@ -75,32 +78,36 @@ class AllPlaylistState extends State<AllPlaylist> {
     // setState sẽ được gọi tự động từ expandNotifier listener
   }
 
+  List<MapEntry<int, Playlist>> _listToRender = [];
+
   void initPlaylists() {
     PlaylistData.getAllPlaylist().then((value) {
       if (mounted) {
         setState(() {
           playlists = value;
+          _updateRenderList();
         });
       }
     });
   }
 
-  List<Playlist> get filteredPlaylists {
-    var list = playlists.where((p) => 
-        p.name.toLowerCase().contains(_searchQuery.toLowerCase())).toList();
+  void _updateRenderList() {
+    // Gắn Index gốc (ID trong DB) ngay từ đầu để tránh lookup sau này
+    var list = playlists.asMap().entries.where((e) => 
+        e.value.name.toLowerCase().contains(_searchQuery.toLowerCase())).toList();
         
     if (_sortType == 0) {
       list = list.reversed.toList(); 
     } else if (_sortType == 1) {
-      list.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+      list.sort((a, b) => a.value.name.toLowerCase().compareTo(b.value.name.toLowerCase()));
     } else if (_sortType == 2) {
-      list.sort((a, b) => b.name.toLowerCase().compareTo(a.name.toLowerCase()));
+      list.sort((a, b) => b.value.name.toLowerCase().compareTo(a.value.name.toLowerCase()));
     } else if (_sortType == 3) {
-      list.sort((a, b) => a.audios.length.compareTo(b.audios.length));
+      list.sort((a, b) => a.value.audios.length.compareTo(b.value.audios.length));
     } else if (_sortType == 4) {
-      list.sort((a, b) => b.audios.length.compareTo(a.audios.length));
+      list.sort((a, b) => b.value.audios.length.compareTo(a.value.audios.length));
     }
-    return list;
+    _listToRender = list;
   }
 
   IconData _getSortIcon() {
@@ -127,10 +134,8 @@ class AllPlaylistState extends State<AllPlaylist> {
 
   @override
   Widget build(BuildContext context) {
-    // Memoization is handled by calculating the list once per build or state change.
-    // However, since we removed the frequent audio state rebuilds, 
-    // this getter is now much less of a bottleneck.
-    final listToRender = filteredPlaylists; 
+    // TỐI ƯU CỰC HẠN: Sử dụng list đã được tính toán sẵn (Memoized)
+    final listToRender = _listToRender; 
 
     return BlocListener<PlaylistListBloc, PlaylistListState>(
       listener: (BuildContext context, PlaylistListState state) {
@@ -140,20 +145,31 @@ class AllPlaylistState extends State<AllPlaylist> {
         children: [
           _buildSearchBar(), 
           Expanded(
-            child: ListView.builder(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              itemCount: listToRender.length + 1,
-              itemBuilder: (context, index) {
-                if (index < listToRender.length) {
-                  final playlist = listToRender[index];
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 16.0),
-                    child: PlaylistCard(
-                      key: ValueKey(playlist.name),
-                      playlist: playlist,
-                    ),
-                  );
-                } else {
+            child: NotificationListener<ScrollNotification>(
+              onNotification: (notification) {
+                if (notification is ScrollStartNotification) {
+                  _isScrolling.value = true;
+                } else if (notification is ScrollEndNotification) {
+                  _isScrolling.value = false;
+                }
+                return false;
+              },
+              child: ListView.builder(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                itemCount: listToRender.length + 1,
+                itemBuilder: (context, index) {
+                  if (index < listToRender.length) {
+                    final entry = listToRender[index];
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 16.0),
+                      child: PlaylistCard(
+                        key: ValueKey(entry.value.name),
+                        playlist: entry.value,
+                        dbIndex: entry.key,
+                        isScrolling: _isScrolling,
+                      ),
+                    );
+                  } else {
                   return Padding(
                     padding: const EdgeInsets.symmetric(vertical: 16.0),
                     child: Align(
@@ -171,6 +187,7 @@ class AllPlaylistState extends State<AllPlaylist> {
                   );
                 }
               },
+              ),
             ),
           ),
         ],
@@ -200,7 +217,10 @@ class AllPlaylistState extends State<AllPlaylist> {
                 ),
               ),
               onChanged: (val) {
-                setState(() => _searchQuery = val);
+                setState(() {
+                   _searchQuery = val;
+                   _updateRenderList();
+                });
               },
             ),
           ),
