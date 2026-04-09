@@ -40,35 +40,14 @@ class AllSoundState extends State<AllSound> with WidgetsBindingObserver {
   
   TextEditingController filterController = TextEditingController();
   FocusNode focusNode = FocusNode();
-  bool pauseAll = true, audioToPauseExist = false, audioToReplayExist = false;
   final ValueNotifier<bool> isControlsExpanded = ValueNotifier(false);
 
-  bool get playPauseEnabled =>
-      (pauseAll && audioToPauseExist) ||
-      (pauseAll == false && audioToReplayExist);
+  bool get playPauseEnabled => items.isNotEmpty || PlayingSounds().playingAudios.isNotEmpty || PlayingSounds().pausedAudios.isNotEmpty;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    eventBus.on<AudioPlayed>().listen((event) {
-      if (mounted) {
-        setState(() {
-          audioToPauseExist = PlayingSounds().playingAudios.isNotEmpty;
-          audioToReplayExist = PlayingSounds().pausedAudios.isNotEmpty;
-          pauseAll = audioToPauseExist;
-        });
-      }
-    });
-    eventBus.on<AudioPaused>().listen((event) {
-      if (mounted) {
-        setState(() {
-          audioToPauseExist = PlayingSounds().playingAudios.isNotEmpty;
-          audioToReplayExist = PlayingSounds().pausedAudios.isNotEmpty;
-          pauseAll = audioToPauseExist;
-        });
-      }
-    });
     initAudios();
   }
 
@@ -82,6 +61,7 @@ class AllSoundState extends State<AllSound> with WidgetsBindingObserver {
   @override
   dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    isControlsExpanded.dispose();
     super.dispose();
   }
 
@@ -401,18 +381,9 @@ class AllSoundState extends State<AllSound> with WidgetsBindingObserver {
             builder: (context, isExpanded, _) {
               return Align(
                 alignment: Alignment.bottomCenter,
-                child: ValueListenableBuilder<int>(
-                  valueListenable: PlayingSounds().stateChangeNotifier,
-                  builder: (context, _, __) {
-                    return GlobalControls(
-                      isExpanded: isExpanded,
-                      onExpandChanged: (value) => isControlsExpanded.value = value,
-                      pauseAll: PlayingSounds().playingAudios.isNotEmpty,
-                      playPauseEnabled: items.isNotEmpty ||
-                          PlayingSounds().playingAudios.isNotEmpty,
-                      setPauseAll: (value) => setState(() {}),
-                    );
-                  }
+                child: GlobalControls(
+                  isExpanded: isExpanded,
+                  onExpandChanged: (value) => isControlsExpanded.value = value,
                 ),
               );
             },
@@ -761,6 +732,7 @@ class AllSoundState extends State<AllSound> with WidgetsBindingObserver {
     
     if (added && mounted) {
       await AudioData.saveAllAudios(context, allAudios);
+      if (!mounted) return;
       resetTextFilter(context);
       BlocProvider.of<AudioListBloc>(context).add(AudioListUpdate(List.from(allAudios)));
       initAudios(); 
@@ -797,6 +769,7 @@ class AllSoundState extends State<AllSound> with WidgetsBindingObserver {
 
     if (mounted) {
       await AudioData.saveAllAudios(context, allAudios);
+      if (!mounted) return;
       setState(() {
         items.remove(item);
         filteredItems.remove(item);
@@ -843,6 +816,7 @@ class AllSoundState extends State<AllSound> with WidgetsBindingObserver {
       
       if (changed && mounted) {
         await AudioData.saveAllAudios(context, allAudios);
+        if (!mounted) return null;
         BlocProvider.of<AudioListBloc>(context).add(AudioListUpdate(allAudios));
         return newName.trim();
       }

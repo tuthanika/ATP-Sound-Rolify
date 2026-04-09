@@ -174,13 +174,7 @@ class SessionSoundsState extends State<SessionSounds>
                   return GlobalControls(
                       isExpanded: isExpanded,
                       onExpandChanged: (val) => setState(() => isExpanded = val),
-                      pauseAll: PlayingSounds().playingAudios.isNotEmpty,
-                      playPauseEnabled: PlayingSounds().playingAudios.isNotEmpty || PlayingSounds().pausedAudios.isNotEmpty,
-                      setPauseAll: (value) {
-                        setState(() {
-                          pauseAll = value;
-                        });
-                      });
+                  );
                 }
               ),
             ),

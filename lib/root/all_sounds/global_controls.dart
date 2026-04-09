@@ -4,7 +4,6 @@ import '../../presentation_logic_holders/audio_service_commands.dart';
 import '../../presentation_logic_holders/playing_sounds_singleton.dart';
 import '../../presentation_logic_holders/singletons/app_state.dart';
 import '../../src/components/audio_slider.dart';
-import '../../src/components/button.dart';
 import '../../src/components/my_icons.dart';
 import '../../src/components/radio.dart';
 
@@ -13,17 +12,11 @@ import '../../src/theme/texts.dart';
 class GlobalControls extends StatefulWidget {
   final bool isExpanded;
   final ValueChanged<bool> onExpandChanged;
-  final bool pauseAll;
-  final bool playPauseEnabled;
-  final Function(bool value) setPauseAll;
 
   const GlobalControls({
     Key? key,
     required this.isExpanded,
     required this.onExpandChanged,
-    required this.pauseAll,
-    required this.playPauseEnabled,
-    required this.setPauseAll,
   }) : super(key: key);
 
   @override
@@ -42,43 +35,58 @@ class _GlobalControlsState extends State<GlobalControls> {
   void cycleVolume() {
     double current = PlayingSounds().masterVolume;
     double next;
-    if (current == 0) next = 0.25;
-    else if (current <= 0.25) next = 0.5;
-    else if (current <= 0.5) next = 1.0;
-    else next = 0;
+    if (current == 0) {
+      next = 0.25;
+    } else if (current <= 0.25) {
+      next = 0.5;
+    } else if (current <= 0.5) {
+      next = 1.0;
+    } else {
+      next = 0;
+    }
     
     setMasterVolume(next);
   }
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onPanUpdate: (details) {
-        if (details.delta.dy < -10 && !widget.isExpanded) {
-          widget.onExpandChanged(true);
-        } else if (details.delta.dy > 10 && widget.isExpanded) {
-          widget.onExpandChanged(false);
-        }
-      },
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeInOut,
-        padding: EdgeInsets.symmetric(
-            vertical: 12.0 * heightFactor, horizontal: 16.0),
-        decoration: const BoxDecoration(
-          color: Colors.transparent,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: <Widget>[
-            if (!widget.isExpanded) _buildCollapsedUI() else _buildExpandedUI(),
-          ],
-        ),
-      ),
+    return ValueListenableBuilder<Set<String>>(
+      valueListenable: PlayingSounds().playingPathsNotifier,
+      builder: (context, playingPaths, _) {
+        // Fallback to old notifier if needed, but we prefer paths
+        final bool isAnyonePlaying = PlayingSounds().playingAudios.isNotEmpty;
+        final bool isAnyonePaused = PlayingSounds().pausedAudios.isNotEmpty;
+        final bool playPauseEnabled = isAnyonePlaying || isAnyonePaused;
+
+        return GestureDetector(
+          onPanUpdate: (details) {
+            if (details.delta.dy < -10 && !widget.isExpanded) {
+              widget.onExpandChanged(true);
+            } else if (details.delta.dy > 10 && widget.isExpanded) {
+              widget.onExpandChanged(false);
+            }
+          },
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeInOut,
+            padding: EdgeInsets.symmetric(
+                vertical: 12.0 * heightFactor, horizontal: 16.0),
+            decoration: const BoxDecoration(
+              color: Colors.transparent,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: <Widget>[
+                if (!widget.isExpanded) _buildCollapsedUI(isAnyonePlaying, playPauseEnabled) else _buildExpandedUI(isAnyonePlaying, playPauseEnabled),
+              ],
+            ),
+          ),
+        );
+      }
     );
   }
 
-  Widget _buildCollapsedUI() {
+  Widget _buildCollapsedUI(bool isAnyonePlaying, bool playPauseEnabled) {
     return Center(
       child: Container(
         width: 200 * heightFactor,
@@ -111,12 +119,11 @@ class _GlobalControlsState extends State<GlobalControls> {
             ),
             MyRadio(
               big: false,
-              icon: widget.pauseAll ? MyIcons.pause() : MyIcons.play(),
-              value: widget.pauseAll,
+              icon: isAnyonePlaying ? MyIcons.pause() : MyIcons.play(),
+              value: isAnyonePlaying,
               onChanged: (value) {
-                if (!widget.playPauseEnabled) return;
+                if (!playPauseEnabled) return;
                 if (value) playAllSound(); else pauseAllSound();
-                widget.setPauseAll(value);
               },
             ),
           ],
@@ -125,7 +132,7 @@ class _GlobalControlsState extends State<GlobalControls> {
     );
   }
 
-  Widget _buildExpandedUI() {
+  Widget _buildExpandedUI(bool isAnyonePlaying, bool playPauseEnabled) {
     return Container(
       width: 280 * heightFactor,
       margin: const EdgeInsets.only(bottom: 12),
@@ -164,18 +171,28 @@ class _GlobalControlsState extends State<GlobalControls> {
                           child: Column(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              AudioSlider(
-                                isActive: true,
-                                value: PlayingSounds().masterVolume,
-                                onChanged: setMasterVolume,
+                              ValueListenableBuilder<double>(
+                                valueListenable: PlayingSounds().masterVolumeNotifier,
+                                builder: (context, volume, _) {
+                                  return AudioSlider(
+                                    isActive: true,
+                                    value: volume,
+                                    onChanged: setMasterVolume,
+                                  );
+                                }
                               ),
-                              MyText.caption(
-                                '${(PlayingSounds().masterVolume * 100).round()}%',
-                                fontWeight: FontWeight.bold,
-                                color: Theme.of(context)
-                                    .colorScheme
-                                    .onPrimaryContainer
-                                    .withOpacity(0.8),
+                              ValueListenableBuilder<double>(
+                                valueListenable: PlayingSounds().masterVolumeNotifier,
+                                builder: (context, volume, _) {
+                                  return MyText.caption(
+                                    '${(volume * 100).round()}%',
+                                    fontWeight: FontWeight.bold,
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onPrimaryContainer
+                                        .withOpacity(0.8),
+                                  );
+                                }
                               ),
                             ],
                           ),
@@ -199,15 +216,15 @@ class _GlobalControlsState extends State<GlobalControls> {
                 MyRadio(
                   customSize: 40,
                   customIconSize: 24,
-                  icon: widget.pauseAll ? MyIcons.pause() : MyIcons.play(),
-                  value: widget.pauseAll,
+                  icon: isAnyonePlaying ? MyIcons.pause() : MyIcons.play(),
+                  value: isAnyonePlaying,
                   onChanged: (value) {
-                    if (!widget.playPauseEnabled) return;
-                    if (value)
+                    if (!playPauseEnabled) return;
+                    if (value) {
                       playAllSound();
-                    else
+                    } else {
                       pauseAllSound();
-                    widget.setPauseAll(value);
+                    }
                   },
                 ),
                 const SizedBox(height: 8),
@@ -242,16 +259,17 @@ class _GlobalControlsState extends State<GlobalControls> {
   }
 
   void setMasterVolume(double value) async {
-    setState(() {
-      PlayingSounds().masterVolume = value;
-    });
+    PlayingSounds().masterVolume = value;
+    PlayingSounds().masterVolumeNotifier.value = value;
 
     final playingAudios = PlayingSounds().playingAudios;
     for (final audio in playingAudios) {
       AudioServiceCommands.setVolume(
-          audio, audio.volume * PlayingSounds().masterVolume,
+          audio, audio.volume * value,
           global: true);
-      await Future.delayed(const Duration(milliseconds: 100));
+      await Future.delayed(const Duration(milliseconds: 50));
     }
+    // Also tell background isolate
+    AppState().audioHandler.customAction('set_master_volume', {'volume': (value * 100).toInt()});
   }
 }

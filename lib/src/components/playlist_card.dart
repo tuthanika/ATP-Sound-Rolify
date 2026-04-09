@@ -10,6 +10,7 @@ import 'package:rolify/root/all_playlist.dart';
 import 'package:rolify/src/components/button.dart';
 import 'package:rolify/src/components/player_card.dart';
 import 'package:rolify/data/audios.dart';
+import 'package:rolify/data/playlist.dart';
 
 import 'my_icons.dart';
 
@@ -25,30 +26,14 @@ class PlaylistCard extends StatefulWidget {
 class PlaylistCardState extends State<PlaylistCard> {
   int _localSessionId = 0;
 
-  // GIỮ NGUYÊN LOGIC TRẠNG THÁI CHUẨN CỦA BẠN
-  bool get _isPlaying {
-    if (widget.playlist.audios.isEmpty) return false;
-    final playingPaths = PlayingSounds().playingAudios.map((p) => p.path).toSet();
-    return widget.playlist.audios.every((a) => playingPaths.contains(a.path));
+  @override
+  void initState() {
+    super.initState();
   }
 
-  IconData get _currentActionIcon {
-    if (!_isPlaying) return Icons.play_arrow;
-
-    bool isEnginePlaying = false;
-    try {
-      final myHandler = AppState().audioHandler as MyAudioHandler;
-      for (var audio in widget.playlist.audios) {
-        final player = myHandler.audioPlayers[audio.path];
-        if (player != null && player.playing) {
-          isEnginePlaying = true;
-          break;
-        }
-      }
-    } catch (_) {}
-
-    if (!isEnginePlaying) return Icons.pause;
-    return Icons.stop;
+  @override
+  void dispose() {
+    super.dispose();
   }
 
   // Đọc trạng thái mở rộng trực tiếp từ Sổ Tay, không cần listener
@@ -59,8 +44,11 @@ class PlaylistCardState extends State<PlaylistCard> {
 
   void _toggleExpanded(bool val) {
     setState(() {
-      if (val) PlaylistGlobals.expandedPlaylists.add(widget.playlist.name);
-      else PlaylistGlobals.expandedPlaylists.remove(widget.playlist.name);
+      if (val) {
+        PlaylistGlobals.expandedPlaylists.add(widget.playlist.name);
+      } else {
+        PlaylistGlobals.expandedPlaylists.remove(widget.playlist.name);
+      }
     });
   }
 
@@ -187,7 +175,10 @@ class PlaylistCardState extends State<PlaylistCard> {
   }
 
   void togglePlay() {
-    if (_isPlaying) {
+    final playingPaths = PlayingSounds().playingPathsNotifier.value;
+    final bool isPlayingNow = widget.playlist.audios.isNotEmpty && 
+                              widget.playlist.audios.every((a) => playingPaths.contains(a.path));
+    if (isPlayingNow) {
       stopAllSoundInPlaylist();
     } else {
       playAllSoundInPlaylist();
@@ -196,20 +187,49 @@ class PlaylistCardState extends State<PlaylistCard> {
 
   @override
   Widget build(BuildContext context) {
-    if (!isExpanded) return _buildCollapsed();
-    return _buildExpanded();
+    return ValueListenableBuilder<Set<String>>(
+      valueListenable: PlayingSounds().playingPathsNotifier,
+      builder: (context, playingPaths, _) {
+        // TỐI ƯU HỎA TỐC: Gom các vòng lặp checking trạng thái vào 1 pass duy nhất
+        bool showsAsActive = widget.playlist.audios.isNotEmpty;
+        bool anyPlaying = false;
+        
+        // Chỉ check nếu playlist có audio, tránh lãng phí O(N) vô ích
+        if (showsAsActive) {
+          for (final a in widget.playlist.audios) {
+            final bool isPathPlaying = playingPaths.contains(a.path);
+            if (!isPathPlaying) {
+              showsAsActive = false;
+              break; // Chỉ cần 1 cái không phát là coi như playlist chưa "Active" (theo quy tắc all-or-nothing)
+            }
+            anyPlaying = true; 
+          }
+        }
+        
+        final IconData actionIcon = showsAsActive 
+            ? (anyPlaying ? Icons.stop : Icons.pause) 
+            : Icons.play_arrow;
+
+        if (!isExpanded) return _buildCollapsed(showsAsActive, actionIcon);
+        return _buildExpanded(showsAsActive, actionIcon);
+      }
+    );
   }
 
-  Widget _buildCollapsed() {
+  // TỐI ƯU RENDER: Cache luminance và đơn giản hóa cây Widget cho máy yếu (Note 3)
+  Widget _buildCollapsed(bool isActive, IconData actionIcon) {
     bool isDarkMode = Theme.of(context).brightness == Brightness.dark;
     Color defaultBg = isDarkMode ? const Color(0xff222222) : Colors.white;
     Color baseColor = widget.playlist.color ?? defaultBg;
     
-    Color bgColor = _isPlaying 
+    // TỐI ƯU: Tránh tính toán độ sáng (luminance) nhiều lần trong 1 build frame
+    Color bgColor = isActive 
         ? (widget.playlist.color ?? Theme.of(context).colorScheme.primary).withOpacity(isDarkMode ? 0.6 : 0.2)
         : baseColor.withOpacity(isDarkMode ? 0.85 : 1.0);
 
-    Color textColor = bgColor.computeLuminance() > 0.5 ? Colors.black87 : Colors.white;
+    // Dùng threshold đơn giản nếu luminance quá lag, nhưng ở đây ta cache lại biến
+    final luminance = bgColor.computeLuminance();
+    Color textColor = luminance > 0.5 ? Colors.black87 : Colors.white;
 
     return Card(
       clipBehavior: Clip.antiAlias,
@@ -220,67 +240,55 @@ class PlaylistCardState extends State<PlaylistCard> {
       child: InkWell(
         onTap: togglePlay, 
         onLongPress: onEdit,
-        child: SizedBox(
+        child: Container( // Thay SizedBox bằng Container để nhẹ hơn (máy cổ)
           height: 64,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Row(
-              children: [
-                Icon(_currentActionIcon, color: textColor, size: 28),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        widget.playlist.name,
-                        style: TextStyle(color: textColor, fontSize: 16, fontWeight: FontWeight.bold),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      Text(
-                        '${widget.playlist.audios.length} sounds',
-                        style: TextStyle(color: textColor.withOpacity(0.7), fontSize: 12),
-                      ),
-                    ],
-                  ),
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Row(
+            children: [
+              Icon(actionIcon, color: textColor, size: 28),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      widget.playlist.name,
+                      style: TextStyle(color: textColor, fontSize: 16, fontWeight: FontWeight.bold),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    Text(
+                      '${widget.playlist.audios.length} sounds',
+                      style: TextStyle(color: textColor.withOpacity(0.7), fontSize: 12),
+                    ),
+                  ],
                 ),
-                IconButton(
-                  icon: Icon(Icons.expand_more, color: textColor),
-                  onPressed: () => _toggleExpanded(true), 
-                )
-              ],
-            ),
+              ),
+              IconButton(
+                icon: Icon(Icons.expand_more, color: textColor),
+                onPressed: () => _toggleExpanded(true), 
+              )
+            ],
           ),
         ),
       ),
     );
   }
 
-  Widget _buildExpanded() {
+  Widget _buildExpanded(bool isActive, IconData actionIcon) {
     bool isDarkMode = Theme.of(context).brightness == Brightness.dark;
     Color defaultBg = isDarkMode ? const Color(0xff222222) : Colors.grey.shade100;
     Color baseColor = widget.playlist.color ?? defaultBg;
     
-    Color bgColor = _isPlaying 
+    Color bgColor = isActive 
         ? (widget.playlist.color ?? Theme.of(context).colorScheme.primary).withOpacity(isDarkMode ? 0.6 : 0.2)
         : baseColor;
 
-    Color textColor = bgColor.computeLuminance() > 0.5 ? Colors.black87 : Colors.white;
+    final luminance = bgColor.computeLuminance();
+    Color textColor = luminance > 0.5 ? Colors.black87 : Colors.white;
 
-    Widget nameBox = Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 8.0),
-      child: FittedBox(
-        fit: BoxFit.scaleDown,
-        child: Text(
-          widget.playlist.name,
-          style: TextStyle(color: textColor, fontSize: 24, fontWeight: FontWeight.bold),
-        ),
-      ),
-    );
-
-    return SizedBox(
+    return Container(
       height: 180, 
       child: Card(
         clipBehavior: Clip.antiAlias,
@@ -288,95 +296,94 @@ class PlaylistCardState extends State<PlaylistCard> {
         margin: EdgeInsets.zero,
         color: bgColor,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        child: Padding(
-          padding: const EdgeInsets.all(4.0),
-          child: Container(
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: textColor.withOpacity(0.3), width: 1.5),
-            ),
-            child: Column(
-              children: [
-                Align(
-                  alignment: Alignment.topRight,
-                  child: IconButton(
+        child: Container( // Giảm bớt 1 lớp Stack nếu không cần thiết
+          padding: const EdgeInsets.all(8.0),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(20),
+            // Giảm độ phức tạp của border cho GPU đời cũ
+            border: Border.all(color: textColor.withOpacity(0.2), width: 1),
+          ),
+          child: Column(
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const SizedBox(width: 48), // Spacer cho cân đối nút bên phải
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.only(top: 8.0),
+                      child: Text(
+                        widget.playlist.name,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(color: textColor, fontSize: 20, fontWeight: FontWeight.bold),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ),
+                  IconButton(
                     icon: Icon(Icons.expand_less, color: textColor),
                     onPressed: () => _toggleExpanded(false), 
                   ),
-                ),
-                Expanded(
-                  child: InkWell(
-                    onTap: onTapList, 
-                    onLongPress: onEdit,
-                    child: Container(
-                      alignment: Alignment.center,
-                      child: nameBox,
+                ],
+              ),
+              Expanded(
+                child: InkWell(
+                  onTap: onTapList, 
+                  onLongPress: onEdit,
+                  child: Center(
+                    child: Text(
+                      '${widget.playlist.audios.length} sounds',
+                      style: TextStyle(color: textColor.withOpacity(0.8), fontWeight: FontWeight.w500)
                     ),
                   ),
                 ),
-                Center(
-                  child: Text(
-                    '${widget.playlist.audios.length} sounds',
-                    style: TextStyle(color: textColor.withOpacity(0.7), fontWeight: FontWeight.bold)
-                  ),
+              ),
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8.0),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    _buildIconButton(actionIcon, 28, textColor, togglePlay),
+                    _buildIconButton(Icons.edit, 22, textColor.withOpacity(0.8), onEdit),
+                    _buildIconButton(Icons.list, 22, textColor.withOpacity(0.8), onTapList),
+                  ],
                 ),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: [
-                      IconButton(
-                        onPressed: togglePlay, 
-                        icon: Icon(_currentActionIcon, size: 28, color: textColor),
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(),
-                      ),
-                      IconButton(
-                        onPressed: onEdit,
-                        icon: Icon(Icons.edit, size: 22, color: textColor.withOpacity(0.8)),
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(),
-                      ),
-                      IconButton(
-                        onPressed: onTapList,
-                        icon: Icon(Icons.list, size: 22, color: textColor.withOpacity(0.8)),
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),
     );
   }
 
+  Widget _buildIconButton(IconData icon, double size, Color color, VoidCallback onTap) {
+    return IconButton(
+      onPressed: onTap, 
+      icon: Icon(icon, size: size, color: color),
+      padding: EdgeInsets.zero,
+      visualDensity: VisualDensity.compact,
+      constraints: const BoxConstraints(),
+    );
+  }
+
   void playAllSoundInPlaylist() async {
-    PlayingSounds().isPlayingPlaylist.value = true;
-    _localSessionId++;
-    final currentSession = _localSessionId;
-    final startGlobalStopGen = AudioServiceCommands.globalStopGeneration;
-
-    for (final audio in widget.playlist.audios) {
-      if (_localSessionId != currentSession) break;
-      if (AudioServiceCommands.globalStopGeneration != startGlobalStopGen) break;
-
-      bool isSoundPlaying = PlayingSounds().playingAudios.any((p) => p.path == audio.path);
-      if (!isSoundPlaying) {
-        AudioServiceCommands.play(audio);
-        await Future.delayed(const Duration(milliseconds: 100));
-      }
+    // Tự động tìm index của playlist hiện tại để đồng nhất với Widget logic
+    final allPlaylists = await PlaylistData.getAllPlaylist();
+    final index = allPlaylists.indexWhere((p) => p.name == widget.playlist.name);
+    
+    if (index != -1) {
+      AppState().audioHandler.customAction('play_playlist', {'id': index.toString()});
     }
   }
 
   void stopAllSoundInPlaylist() async {
-    _localSessionId++;
-    for (final audio in widget.playlist.audios) {
-      AudioServiceCommands.stop(audio);
-      await Future.delayed(const Duration(milliseconds: 100));
+    final allPlaylists = await PlaylistData.getAllPlaylist();
+    final index = allPlaylists.indexWhere((p) => p.name == widget.playlist.name);
+    
+    if (index != -1) {
+      // Logic toggle trong AudioHandler sẽ tự stop nếu đã active
+      AppState().audioHandler.customAction('play_playlist', {'id': index.toString()});
     }
   }
 }

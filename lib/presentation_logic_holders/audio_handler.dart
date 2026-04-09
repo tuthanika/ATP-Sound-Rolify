@@ -99,7 +99,22 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
 
   void _initFocusListener() async {
     final session = await AudioSession.instance;
-    session.interruptionEventStream.listen((event) {});
+    session.interruptionEventStream.listen((event) {
+      if (event.begin) {
+        switch (event.type) {
+          case AudioInterruptionType.duck:
+            // Ducking: lower volume is handled by just_audio if configured, 
+            // but we can manually handle if needed.
+            break;
+          case AudioInterruptionType.pause:
+          case AudioInterruptionType.unknown:
+            if (playingAudio.isNotEmpty) {
+              pause();
+            }
+            break;
+        }
+      }
+    });
   }
 
   Future<void> setMockMediaItem(String path) async {
@@ -298,6 +313,7 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
       'playingPaths': playingPaths,
       'pausedPaths': pausedPaths,
       'masterVolume': PlayingSounds().masterVolume,
+      'activePlaylistIds': PlayingSounds().activePlaylistIds,
     });
     writeWidgetState();
   }
@@ -534,6 +550,7 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
     playingAudio = [];
     pausedAudio = [];
     _loadingPaths.clear();
+    PlayingSounds().activePlaylistIds = []; // BẢN VÁ: Clear sạch playlist khi dừng hẳn
     PlayingSounds().activeSpecialFolders.clear(); 
 
     _broadcastState();
@@ -645,7 +662,8 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
 
     if (name == 'stop_all') {
       await stop();
-      PlayingSounds().activePlaylistIds = [];
+      PlayingSounds().activePlaylistIds = []; // BẢN VÁ: Cầu chì bảo hiểm cuối cùng
+      PlayingSounds().activeSpecialFolders.clear();
       PlayingSounds().playingAudios = [];
       PlayingSounds().pausedAudios = [];
       writeWidgetState();

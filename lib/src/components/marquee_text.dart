@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:rolify/presentation_logic_holders/singletons/theme_mode_controller.dart';
-import 'package:rolify/src/theme/texts.dart';
 
 class MarqueeText extends StatefulWidget {
   final String text;

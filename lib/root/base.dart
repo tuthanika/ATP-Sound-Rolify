@@ -38,6 +38,8 @@ class BaseState extends State<Base> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    // NEW: Warm up the cache immediately on startup to avoid hangs later
+    PlayingSounds().refreshCache();
     _checkWidgetCommand();
     _widgetChannel.setMethodCallHandler((call) async {
       if (call.method == 'triggerCommand') {
@@ -57,6 +59,7 @@ class BaseState extends State<Base> with WidgetsBindingObserver {
             playingPaths?.cast<String>() ?? [],
             pausedPaths?.cast<String>() ?? [],
             masterVolume,
+            event['activePlaylistIds']?.cast<String>(),
           );
         }
       }
@@ -71,53 +74,16 @@ class BaseState extends State<Base> with WidgetsBindingObserver {
       final id = result['id'] as String?;
 
       if (command == 'play_pause') {
-        if (PlayingSounds().playingAudios.isNotEmpty) {
-          AppState().audioHandler.pause();
-        } else if (PlayingSounds().pausedAudios.isNotEmpty) {
-          final toPlay = List.from(PlayingSounds().pausedAudios);
-          for (var a in toPlay) AudioServiceCommands.play(a);
-        }
+        AppState().audioHandler.customAction('play_pause');
       } else if (command == 'stop_all') {
         AppState().audioHandler.customAction('stop_all');
       } else if (command == 'play_audio' && path != null) {
-        final allAudios = await AudioData.getAllAudios();
-        try {
-          final audio = allAudios.firstWhere((a) => a.path == path);
-          AudioServiceCommands.play(audio);
-        } catch (e) {}
+        AppState().audioHandler.customAction('play_audio', {'path': path});
       } else if (command == 'play_playlist' && id != null) {
-        final pIndex = int.tryParse(id);
-        if (pIndex != null) {
-          final allPlaylists = await PlaylistData.getAllPlaylist();
-          if (pIndex >= 0 && pIndex < allPlaylists.length) {
-            final playlist = allPlaylists[pIndex];
-            final isAlreadyActive = PlayingSounds().activePlaylistIds.contains(id);
-
-            if (isAlreadyActive) {
-              PlayingSounds().activePlaylistIds.remove(id);
-              for (final audio in playlist.audios) {
-                AudioServiceCommands.stop(audio);
-              }
-            } else {
-              PlayingSounds().activePlaylistIds.add(id);
-              PlayingSounds().isPlayingPlaylist.value = true;
-              for (final audio in playlist.audios) {
-                AudioServiceCommands.play(audio);
-                await Future.delayed(const Duration(milliseconds: 50));
-              }
-            }
-            PlayingSounds().activePlaylistIdsNotifier.value = List.from(PlayingSounds().activePlaylistIds);
-            AppState().audioHandler.customAction('broadcast_state');
-          }
-        }
+        AppState().audioHandler.customAction('play_playlist', {'id': id});
       } else if (command == 'set_master_volume' && result['volume'] != null) {
-        final int volInt = result['volume'];
-        final double volume = volInt / 100.0;
-        PlayingSounds().masterVolume = volume;
-        PlayingSounds().masterVolumeNotifier.value = volume;
-        AppState().audioHandler.customAction('set_master_volume', {'volume': volInt});
+        AppState().audioHandler.customAction('set_master_volume', {'volume': result['volume']});
       }
-
     }
   }
 

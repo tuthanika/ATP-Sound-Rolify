@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:io';
-import 'dart:math';
 
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter/material.dart';
@@ -14,17 +13,12 @@ import 'package:rolify/presentation_logic_holders/audio_service_commands.dart';
 import 'package:rolify/presentation_logic_holders/event_bus/stop_all_event_bus.dart';
 import 'package:rolify/presentation_logic_holders/singletons/app_state.dart';
 import 'package:rolify/presentation_logic_holders/audio_download_manager.dart';
-import 'package:rolify/presentation_logic_holders/audio_list_bloc/audio_list_bloc.dart';
-import 'package:rolify/presentation_logic_holders/audio_list_bloc/audio_list_event.dart';
 import 'package:rolify/src/components/audio_slider.dart';
-import 'package:rolify/src/components/button.dart';
 import 'package:rolify/src/components/radio.dart';
 import 'package:rolify/src/theme/texts.dart';
 
 import '../../presentation_logic_holders/playing_sounds_singleton.dart';
-import 'dropdown_image.dart';
 import 'marquee_text.dart';
-import 'my_icons.dart';
 
 class PlayerWidget extends StatefulWidget {
   final Audio audio;
@@ -51,7 +45,7 @@ class PlayerWidgetState extends State<PlayerWidget> {
   final List<StreamSubscription> _subscriptions = [];
   Timer? _volumeDebounce;
 
-  bool get isPlaying => PlayingSounds().playingAudios.any((e) => e.path == widget.audio.path);
+  bool get isPlaying => PlayingSounds().playingPathsSet.contains(widget.audio.path);
 
   @override
   void initState() {
@@ -210,7 +204,11 @@ class PlayerWidgetState extends State<PlayerWidget> {
   Widget _buildCollapsed() {
     return InkWell(
       onTap: () {
-        if (isPlaying) stop(); else play();
+        if (isPlaying) {
+          stop();
+        } else {
+          play();
+        }
       },
       child: _buildNameBox(),
     );
@@ -223,7 +221,11 @@ class PlayerWidgetState extends State<PlayerWidget> {
           flex: 2,
           child: InkWell(
             onTap: () {
-              if (isPlaying) stop(); else play(); // Đã gom tất cả logic tải vào hàm play()
+              if (isPlaying) {
+                stop();
+              } else {
+                play(); // Đã gom tất cả logic tải vào hàm play()
+              }
             },
             child: Container(
               alignment: Alignment.center,

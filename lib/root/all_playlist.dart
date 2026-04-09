@@ -38,8 +38,8 @@ class AllPlaylistState extends State<AllPlaylist> {
     initPlaylists();
     PlaylistGlobals.expandNotifier.value = false; 
     PlaylistGlobals.expandedPlaylists.clear();
-    // Listener duy nhất cho toàn bộ danh sách — không churn vì AllPlaylist sống mãi trong IndexedStack
-    PlayingSounds().stateChangeNotifier.addListener(_onStateChanged);
+    // Removed stateChangeNotifier listener to avoid redundant tab rebuilds.
+    // Listeners are now local to PlaylistCard.
     PlaylistGlobals.expandNotifier.addListener(_onStateChanged);
   }
 
@@ -49,7 +49,6 @@ class AllPlaylistState extends State<AllPlaylist> {
 
   @override
   void dispose() {
-    PlayingSounds().stateChangeNotifier.removeListener(_onStateChanged);
     PlaylistGlobals.expandNotifier.removeListener(_onStateChanged);
     super.dispose();
   }
@@ -128,7 +127,10 @@ class AllPlaylistState extends State<AllPlaylist> {
 
   @override
   Widget build(BuildContext context) {
-    final listToRender = filteredPlaylists; // Khóa danh sách
+    // Memoization is handled by calculating the list once per build or state change.
+    // However, since we removed the frequent audio state rebuilds, 
+    // this getter is now much less of a bottleneck.
+    final listToRender = filteredPlaylists; 
 
     return BlocListener<PlaylistListBloc, PlaylistListState>(
       listener: (BuildContext context, PlaylistListState state) {
@@ -138,7 +140,6 @@ class AllPlaylistState extends State<AllPlaylist> {
         children: [
           _buildSearchBar(), 
           Expanded(
-            // BẢN VÁ: ListView.builder render siêu tốc, thay thế hoàn toàn Wrap gây đơ máy
             child: ListView.builder(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               itemCount: listToRender.length + 1,
@@ -149,7 +150,7 @@ class AllPlaylistState extends State<AllPlaylist> {
                     padding: const EdgeInsets.only(bottom: 16.0),
                     child: PlaylistCard(
                       key: ValueKey(playlist.name),
-                      playlist: playlist
+                      playlist: playlist,
                     ),
                   );
                 } else {

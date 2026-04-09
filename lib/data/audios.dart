@@ -26,6 +26,7 @@ class AudioData {
     final preferences = await SharedPreferences.getInstance();
     final encodedAudios = audios.map((audio) => audio.toJson()).toList();
     preferences.setString('audios', jsonEncode(encodedAudios));
+    PlayingSounds().allAudiosCache = List.from(audios); // Update cache immediately
     BlocProvider.of<AudioListBloc>(context).add(AudioListUpdate(audios));
   }
 

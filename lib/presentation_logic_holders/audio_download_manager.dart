@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 
 class AudioFileManager {
+  static final Map<String, Future<String?>> _processingFutures = {};
   
   // Lấy thư mục lưu trữ
   static Future<Directory> _getStorageDir(bool isOfflineMode) async {
@@ -54,6 +55,21 @@ class AudioFileManager {
   static Future<String?> processPath(String sourcePath, String audioName, bool isOfflineMode) async {
     if (!sourcePath.startsWith('http')) return sourcePath; 
 
+    if (_processingFutures.containsKey(sourcePath)) {
+      return _processingFutures[sourcePath];
+    }
+
+    final future = _processPathInternal(sourcePath, audioName, isOfflineMode);
+    _processingFutures[sourcePath] = future;
+
+    try {
+      return await future;
+    } finally {
+      _processingFutures.remove(sourcePath);
+    }
+  }
+
+  static Future<String?> _processPathInternal(String sourcePath, String audioName, bool isOfflineMode) async {
     try {
       final localFile = await getLocalFile(sourcePath, audioName, isOfflineMode);
 
