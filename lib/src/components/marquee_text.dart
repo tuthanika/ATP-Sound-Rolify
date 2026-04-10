@@ -33,7 +33,6 @@ class _MarqueeTextState extends State<MarqueeText> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    // Subscribe to TickerMode changes (triggered when IndexedStack hides/shows tab)
     _isVisible = TickerMode.of(context);
     
     // Instantly kill any running animation if the widget goes offstage

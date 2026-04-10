@@ -23,7 +23,7 @@ class AudioSlider extends StatelessWidget {
     return MySlider(
       style: MySliderStyle(
         accent: accentColor,
-        variant: accentColor.withOpacity(0.3),
+        variant: accentColor.withValues(alpha: 0.3),
       ),
       min: 0.0,
       max: 1.0,

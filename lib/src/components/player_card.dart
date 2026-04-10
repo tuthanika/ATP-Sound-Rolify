@@ -131,7 +131,7 @@ class PlayerWidgetState extends State<PlayerWidget> {
             image: provider,
             fit: BoxFit.cover,
             colorFilter: ColorFilter.mode(
-              Colors.black.withOpacity(0.4),
+              Colors.black.withValues(alpha: 0.4),
               BlendMode.darken,
             ),
           );
@@ -165,9 +165,9 @@ class PlayerWidgetState extends State<PlayerWidget> {
     // Theme-aware colors for better visibility and playing state
     final Color idleBg = Theme.of(context).brightness == Brightness.light
         ? colorScheme.surfaceContainerHighest
-        : Colors.black.withOpacity(0.4);
+        : Colors.black.withValues(alpha: 0.4);
     
-    final Color playingBg = colorScheme.primary.withOpacity(0.85);
+    final Color playingBg = colorScheme.primary.withValues(alpha: 0.85);
     
     final Color textColor = isPlaying 
         ? colorScheme.onPrimary 
@@ -183,7 +183,7 @@ class PlayerWidgetState extends State<PlayerWidget> {
         color: isPlaying ? playingBg : idleBg,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: isPlaying ? colorScheme.primaryContainer.withOpacity(0.6) : Colors.white24,
+          color: isPlaying ? colorScheme.primaryContainer.withValues(alpha: 0.6) : Colors.white24,
           width: 1.5,
         ),
       ),
@@ -259,7 +259,7 @@ class PlayerWidgetState extends State<PlayerWidget> {
               },
               color: Theme.of(context).brightness == Brightness.light && audioImage.isEmpty
                   ? Theme.of(context).colorScheme.primary
-                  : Colors.white.withOpacity(0.9),
+                  : Colors.white.withValues(alpha: 0.9),
             ),
           ),
         ),
@@ -285,7 +285,13 @@ class PlayerWidgetState extends State<PlayerWidget> {
                     Navigator.pop(context); // Tự đóng UI Folder để hiện UI Edit ở main app
                   }
                 },
-                icon: const Icon(Icons.edit, size: 16, color: Colors.white70),
+                icon: Icon(
+                  Icons.edit,
+                  size: 16,
+                  color: Theme.of(context).brightness == Brightness.light && audioImage.isEmpty
+                      ? Theme.of(context).colorScheme.primary
+                      : Colors.white70,
+                ),
                 padding: EdgeInsets.zero,
                 constraints: const BoxConstraints(),
               ),
@@ -397,7 +403,7 @@ class FolderWidget extends StatelessWidget {
     
     final Color idleBg = isLight
         ? colorScheme.surfaceContainerHighest
-        : Colors.black.withOpacity(0.4);
+        : Colors.black.withValues(alpha: 0.4);
     
     final textColor = isLight ? colorScheme.onSurface : Colors.white;
 
@@ -468,7 +474,7 @@ class FolderWidget extends StatelessWidget {
               child: Center(
                 child: Text(
                   '${folder.audios.length} sounds', 
-                  style: TextStyle(color: textColor.withOpacity(0.7), fontWeight: FontWeight.bold)
+                  style: TextStyle(color: textColor.withValues(alpha: 0.7), fontWeight: FontWeight.bold)
                 ),
               ),
             ),
@@ -479,13 +485,13 @@ class FolderWidget extends StatelessWidget {
                 children: [
                   IconButton(
                     onPressed: onEdit, // <-- Nút sửa tên
-                    icon: const Icon(Icons.edit, size: 20, color: Colors.white70),
+                    icon: Icon(Icons.edit, size: 20, color: textColor.withValues(alpha: 0.8)),
                     padding: EdgeInsets.zero,
                     constraints: const BoxConstraints(),
                   ),
                   IconButton(
                     onPressed: onTapList,
-                    icon: const Icon(Icons.list, size: 20, color: Colors.white70),
+                    icon: Icon(Icons.list, size: 20, color: textColor.withValues(alpha: 0.8)),
                     padding: EdgeInsets.zero,
                     constraints: const BoxConstraints(),
                   ),

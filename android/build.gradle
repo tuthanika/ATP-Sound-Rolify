@@ -1,15 +1,3 @@
-buildscript {
-    ext.kotlin_version = '1.9.10'
-    repositories {
-        google()
-        mavenCentral()
-    }
-
-    dependencies {
-        classpath 'com.android.tools.build:gradle:7.1.2'
-        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
-    }
-}
 
 allprojects {
     repositories {
@@ -28,4 +16,30 @@ subprojects {
 
 tasks.register("clean", Delete) {
     delete rootProject.buildDir
+}
+
+subprojects {
+    def injectNamespace = { project ->
+        if (project.hasProperty('android') && project.android.namespace == null) {
+            def manifestFile = project.file("src/main/AndroidManifest.xml")
+            if (manifestFile.exists()) {
+                def manifestContent = manifestFile.getText()
+                def matcher = manifestContent =~ /package="([^"]+)"/
+                if (matcher.find()) {
+                    project.android.namespace = matcher.group(1)
+                } else {
+                    project.android.namespace = project.group
+                }
+            } else {
+                project.android.namespace = project.group
+            }
+        }
+    }
+    if (project.state.executed) {
+        injectNamespace(project)
+    } else {
+        project.afterEvaluate {
+            injectNamespace(project)
+        }
+    }
 }

@@ -4,8 +4,8 @@ import 'package:rolify/presentation_logic_holders/singletons/backup_service.dart
 import 'package:rolify/presentation_logic_holders/singletons/theme_mode_controller.dart';
 import 'package:rolify/src/theme/texts.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:launch_review/launch_review.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'dart:io';
 
 class SettingsPage extends StatelessWidget {
   const SettingsPage({Key? key}) : super(key: key);
@@ -208,7 +208,7 @@ class SettingsPage extends StatelessWidget {
   }) {
     return Container(
       decoration: BoxDecoration(
-        color: Theme.of(context).cardColor.withOpacity(0.5),
+        color: Theme.of(context).cardColor.withValues(alpha: 0.5),
         borderRadius: BorderRadius.circular(12.0),
       ),
       child: ListTile(
@@ -283,8 +283,14 @@ class SettingsPage extends StatelessWidget {
     await launchUrl(url);
   }
 
-  void _openPlayStore() {
-    LaunchReview.launch(iOSAppId: '1511308478');
+  Future<void> _openPlayStore() async {
+    final Uri url;
+    if (Platform.isIOS) {
+      url = Uri.parse('https://apps.apple.com/app/id1511308478');
+    } else {
+      url = Uri.parse('https://play.google.com/store/apps/details?id=com.tuthanika.rolify.plus');
+    }
+    await launchUrl(url, mode: LaunchMode.externalApplication);
   }
 }
 

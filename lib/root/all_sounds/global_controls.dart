@@ -92,11 +92,11 @@ class _GlobalControlsState extends State<GlobalControls> {
         width: 200 * heightFactor,
         padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
         decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surface.withOpacity(0.6),
+          color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.6),
           borderRadius: BorderRadius.circular(32),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.1),
+              color: Colors.black.withValues(alpha: 0.1),
               blurRadius: 10,
               spreadRadius: 2,
             )
@@ -105,11 +105,16 @@ class _GlobalControlsState extends State<GlobalControls> {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
           children: [
-            IconButton(
-              padding: EdgeInsets.zero,
-              constraints: const BoxConstraints(),
-              onPressed: cycleVolume,
-              icon: Icon(getVolumeIcon(PlayingSounds().masterVolume)),
+            ValueListenableBuilder<double>(
+              valueListenable: PlayingSounds().masterVolumeNotifier,
+              builder: (context, volume, _) {
+                return IconButton(
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                  onPressed: cycleVolume,
+                  icon: Icon(getVolumeIcon(volume)),
+                );
+              }
             ),
             IconButton(
               padding: EdgeInsets.zero,
@@ -142,7 +147,7 @@ class _GlobalControlsState extends State<GlobalControls> {
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black.withValues(alpha: 0.1),
             blurRadius: 10,
             spreadRadius: 2,
           )
@@ -165,7 +170,12 @@ class _GlobalControlsState extends State<GlobalControls> {
                   Expanded(
                     child: Row(
                       children: [
-                        Icon(getVolumeIcon(PlayingSounds().masterVolume), size: 18),
+                        ValueListenableBuilder<double>(
+                          valueListenable: PlayingSounds().masterVolumeNotifier,
+                          builder: (context, volume, _) {
+                            return Icon(getVolumeIcon(volume), size: 18);
+                          }
+                        ),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Column(
@@ -190,7 +200,7 @@ class _GlobalControlsState extends State<GlobalControls> {
                                     color: Theme.of(context)
                                         .colorScheme
                                         .onPrimaryContainer
-                                        .withOpacity(0.8),
+                                        .withValues(alpha: 0.8),
                                   );
                                 }
                               ),

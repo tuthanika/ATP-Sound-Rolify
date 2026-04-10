@@ -428,7 +428,7 @@ class _FolderRow extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 8.0),
         decoration: BoxDecoration(
-          color: Theme.of(context).brightness == Brightness.dark ? Colors.white10 : Colors.black.withOpacity(0.05),
+          color: Theme.of(context).brightness == Brightness.dark ? Colors.white10 : Colors.black.withValues(alpha: 0.05),
           borderRadius: BorderRadius.circular(12)
         ),
         child: Row(
@@ -449,7 +449,7 @@ class _FolderRow extends StatelessWidget {
                   ),
                   Text(
                     '$audioCount sounds',
-                    style: TextStyle(fontSize: 12, color: textColor.withOpacity(0.6)),
+                    style: TextStyle(fontSize: 12, color: textColor.withValues(alpha: 0.6)),
                   ),
                 ],
               ),

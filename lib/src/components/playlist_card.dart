@@ -59,12 +59,12 @@ class PlaylistCardState extends State<PlaylistCard> {
     Color baseColor = widget.playlist.color ?? defaultBg;
     
     // Calculate for Inactive
-    Color inactiveBg = baseColor.withOpacity(isDarkMode ? 0.85 : 1.0);
+    Color inactiveBg = baseColor.withValues(alpha: isDarkMode ? 0.85 : 1.0);
     _inactiveTextColor = inactiveBg.computeLuminance() > 0.5 ? Colors.black87 : Colors.white;
 
     // Calculate for Active
     Color activeBg = (widget.playlist.color ?? Theme.of(context).colorScheme.primary)
-        .withOpacity(isDarkMode ? 0.6 : 0.2);
+        .withValues(alpha: isDarkMode ? 0.6 : 0.2);
     _activeTextColor = activeBg.computeLuminance() > 0.5 ? Colors.black87 : Colors.white;
   }
 
@@ -132,13 +132,13 @@ class PlaylistCardState extends State<PlaylistCard> {
                 child: Container(color: widget.playlist.color ?? Colors.grey[800]),
               ),
               Container(
-                color: bgColor.withOpacity(0.8),
+                color: bgColor.withValues(alpha: 0.8),
                 child: Padding(
                   padding: const EdgeInsets.all(4.0),
                   child: Container(
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: textColor.withOpacity(0.3), width: 1.5),
+                      border: Border.all(color: textColor.withValues(alpha: 0.3), width: 1.5),
                     ),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
@@ -171,7 +171,7 @@ class PlaylistCardState extends State<PlaylistCard> {
                           child: updatedAudios.isEmpty
                               ? Padding(
                                   padding: const EdgeInsets.all(24.0),
-                                  child: Text("Playlist trống", style: TextStyle(color: textColor.withOpacity(0.5))),
+                                  child: Text("Playlist trống", style: TextStyle(color: textColor.withValues(alpha: 0.5))),
                                 )
                               : GridView.builder(
                                   shrinkWrap: true,
@@ -259,8 +259,8 @@ class PlaylistCardState extends State<PlaylistCard> {
     Color baseColor = widget.playlist.color ?? defaultBg;
     
     Color bgColor = isActive 
-        ? (widget.playlist.color ?? Theme.of(context).colorScheme.primary).withOpacity(isDarkMode ? 0.6 : 0.2)
-        : baseColor.withOpacity(isDarkMode ? 0.85 : 1.0);
+        ? (widget.playlist.color ?? Theme.of(context).colorScheme.primary).withValues(alpha: isDarkMode ? 0.6 : 0.2)
+        : baseColor.withValues(alpha: isDarkMode ? 0.85 : 1.0);
 
     Color textColor = isActive ? _activeTextColor : _inactiveTextColor;
 
@@ -296,7 +296,7 @@ class PlaylistCardState extends State<PlaylistCard> {
                       ),
                       Text(
                         '${widget.playlist.audios.length} sounds',
-                        style: TextStyle(color: textColor.withOpacity(0.7), fontSize: 12),
+                        style: TextStyle(color: textColor.withValues(alpha: 0.7), fontSize: 12),
                       ),
                     ],
                   ),
@@ -319,7 +319,7 @@ class PlaylistCardState extends State<PlaylistCard> {
     Color baseColor = widget.playlist.color ?? defaultBg;
     
     Color bgColor = isActive 
-        ? (widget.playlist.color ?? Theme.of(context).colorScheme.primary).withOpacity(isDarkMode ? 0.6 : 0.2)
+        ? (widget.playlist.color ?? Theme.of(context).colorScheme.primary).withValues(alpha: isDarkMode ? 0.6 : 0.2)
         : baseColor;
 
     Color textColor = isActive ? _activeTextColor : _inactiveTextColor;
@@ -337,7 +337,7 @@ class PlaylistCardState extends State<PlaylistCard> {
           padding: const EdgeInsets.all(8.0),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: textColor.withOpacity(0.2), width: 1),
+            border: Border.all(color: textColor.withValues(alpha: 0.2), width: 1),
           ),
           child: Column(
             children: [
@@ -370,7 +370,7 @@ class PlaylistCardState extends State<PlaylistCard> {
                   child: Center(
                     child: Text(
                       '${widget.playlist.audios.length} sounds',
-                      style: TextStyle(color: textColor.withOpacity(0.8), fontWeight: FontWeight.w500)
+                      style: TextStyle(color: textColor.withValues(alpha: 0.8), fontWeight: FontWeight.w500)
                     ),
                   ),
                 ),
@@ -381,8 +381,8 @@ class PlaylistCardState extends State<PlaylistCard> {
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: [
                     _buildIconButton(actionIcon, 28, textColor, togglePlay),
-                    _buildIconButton(Icons.edit, 22, textColor.withOpacity(0.8), onEdit),
-                    _buildIconButton(Icons.list, 22, textColor.withOpacity(0.8), onTapList),
+                    _buildIconButton(Icons.edit, 22, textColor.withValues(alpha: 0.8), onEdit),
+                    _buildIconButton(Icons.list, 22, textColor.withValues(alpha: 0.8), onTapList),
                   ],
                 ),
               ),

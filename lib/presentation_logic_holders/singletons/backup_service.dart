@@ -58,7 +58,7 @@ class BackupService {
         await [Permission.storage, Permission.audio].request();
       }
 
-      FilePickerResult? result = await FilePicker.platform.pickFiles(
+      FilePickerResult? result = await FilePicker.pickFiles(
         type: FileType.custom,
         allowedExtensions: ['json'],
       );
@@ -159,7 +159,7 @@ class BackupService {
 
   static Future<void> relink(BuildContext context) async {
     try {
-      String? directoryPath = await FilePicker.platform.getDirectoryPath();
+      String? directoryPath = await FilePicker.getDirectoryPath();
       if (directoryPath == null) return;
 
       if (Platform.isAndroid) {
