@@ -40,7 +40,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
 
   Win32Window::Point origin(x, y);
 
-  if (!window.CreateAndShow(L"rolify", origin, size)) {
+  if (!window.CreateAndShow(L"ATP Rolify", origin, size)) {
     return EXIT_FAILURE;
   }
   window.SetQuitOnClose(true);

@@ -76,7 +76,7 @@ class AppRoot extends StatelessWidget {
               }
 
               return MaterialApp(
-                title: 'Rolify',
+                title: 'ATP Rolify',
                 debugShowCheckedModeBanner: false,
                 themeMode: themeMode,
                 theme: ThemeData(
