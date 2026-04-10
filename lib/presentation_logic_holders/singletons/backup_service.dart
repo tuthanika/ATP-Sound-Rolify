@@ -35,10 +35,32 @@ class BackupService {
         'settings': settings,
       };
 
-      final tempDir = await getTemporaryDirectory();
       final fileName = 'rolify_backup_${DateTime.now().millisecondsSinceEpoch}.json';
+      final fileData = jsonEncode(data);
+
+      if (Platform.isWindows) {
+        String? outputPath = await FilePicker.saveFile(
+          dialogTitle: 'Chọn nơi lưu file sao lưu',
+          fileName: fileName,
+          type: FileType.custom,
+          allowedExtensions: ['json'],
+        );
+
+        if (outputPath != null) {
+          final file = File(outputPath);
+          await file.writeAsString(fileData);
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Đã sao lưu thành công tại: $outputPath')),
+            );
+          }
+        }
+        return;
+      }
+
+      final tempDir = await getTemporaryDirectory();
       final file = File('${tempDir.path}/$fileName');
-      await file.writeAsString(jsonEncode(data));
+      await file.writeAsString(fileData);
 
       await Share.shareXFiles(
         [XFile(file.path)],

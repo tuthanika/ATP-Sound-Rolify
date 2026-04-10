@@ -437,6 +437,22 @@ class AllSoundState extends State<AllSound> with WidgetsBindingObserver {
 
   Future<void> _pickFilesNative() async {
     try {
+      if (Platform.isWindows) {
+        final result = await FilePicker.pickFiles(
+          type: FileType.audio,
+          allowMultiple: true,
+        );
+        if (result != null && result.files.isNotEmpty) {
+          List<Map<String, dynamic>> audioItems = result.files.map((file) => {
+            'name': file.name,
+            'path': file.path ?? '',
+            'isOfflineMode': true,
+          }).toList();
+          _addAudiosWithNames(audioItems);
+        }
+        return;
+      }
+
       final List<dynamic>? result = await platform.invokeMethod('pickAudioFiles');
       if (result != null) {
         List<Map<String, dynamic>> audioItems = [];
@@ -455,6 +471,8 @@ class AllSoundState extends State<AllSound> with WidgetsBindingObserver {
       }
     } on PlatformException catch (e) {
       debugPrint("Error picking files: ${e.message}");
+    } catch (e) {
+      debugPrint("Error picking files: $e");
     }
   }
 
@@ -578,6 +596,16 @@ class AllSoundState extends State<AllSound> with WidgetsBindingObserver {
                 const SizedBox(height: 12),
                 ElevatedButton.icon(
                   onPressed: () async {
+                    if (Platform.isWindows) {
+                      final result = await FilePicker.pickFiles(
+                        type: FileType.audio,
+                        allowMultiple: false,
+                      );
+                      if (result != null && result.files.isNotEmpty) {
+                        controller.text = result.files.first.path ?? '';
+                      }
+                      return;
+                    }
                     final List<dynamic>? result = await platform.invokeMethod('pickAudioFiles');
                     if (result != null && result.isNotEmpty) {
                       final item = result.first as Map;

@@ -9,15 +9,20 @@ class AudioFileManager {
   static Future<Directory> _getStorageDir(bool isOfflineMode) async {
     Directory? baseDir;
     if (isOfflineMode) {
-      baseDir = await getExternalStorageDirectory();
+      if (Platform.isAndroid) {
+        baseDir = await getExternalStorageDirectory();
+      } else if (Platform.isWindows) {
+        baseDir = await getApplicationSupportDirectory();
+      }
       baseDir ??= await getApplicationDocumentsDirectory(); 
     } else {
-      var cacheDirs = await getExternalCacheDirectories();
-      if (cacheDirs != null && cacheDirs.isNotEmpty) {
-        baseDir = cacheDirs.first;
-      } else {
-        baseDir = await getTemporaryDirectory();
+      if (Platform.isAndroid) {
+        var cacheDirs = await getExternalCacheDirectories();
+        if (cacheDirs != null && cacheDirs.isNotEmpty) {
+          baseDir = cacheDirs.first;
+        }
       }
+      baseDir ??= await getTemporaryDirectory();
     }
     final targetDir = Directory('${baseDir.path}/cloud_audios');
     if (!await targetDir.exists()) {

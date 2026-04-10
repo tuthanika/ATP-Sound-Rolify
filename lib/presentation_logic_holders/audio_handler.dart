@@ -20,6 +20,28 @@ import 'package:rolify/presentation_logic_holders/audio_download_manager.dart';
 
 enum AudioCustomEvents { audioEnded, resumeAll, pauseAll }
 
+class FileAudioSource extends StreamAudioSource {
+  final File file;
+  final String? contentType;
+
+  FileAudioSource(this.file, {this.contentType});
+
+  @override
+  Future<StreamAudioResponse> request([int? start, int? end]) async {
+    final int size = await file.length();
+    final int startOffset = start ?? 0;
+    final int endOffset = end ?? size;
+    return StreamAudioResponse(
+      sourceLength: size,
+      contentLength: endOffset - startOffset,
+      offset: startOffset,
+      stream: file.openRead(start, end),
+      contentType: contentType ?? 'audio/mpeg',
+    );
+  }
+}
+
+
 Future<AudioHandler> initAudioService() async {
   final audioHandler = await AudioService.init(
     builder: () => MyAudioHandler(),
@@ -266,7 +288,12 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
     } else if (playablePath.startsWith('content://') || playablePath.startsWith('file://')) {
       await audioPlayer.setAudioSource(AudioSource.uri(Uri.parse(playablePath)));
     } else {
-      await audioPlayer.setAudioSource(AudioSource.uri(Uri.file(playablePath))); 
+      // BẢN VÁ: Sử dụng StreamAudioSource trên Windows để hỗ trợ Tiếng Việt Unicode 100%
+      if (Platform.isWindows) {
+        await audioPlayer.setAudioSource(FileAudioSource(File(playablePath)));
+      } else {
+        await audioPlayer.setFilePath(playablePath);
+      }
     }
     
     // ĐÃ XÓA BỎ HOÀN TOÀN CỜ CHECK FOLDER NAME TẠI ĐÂY!

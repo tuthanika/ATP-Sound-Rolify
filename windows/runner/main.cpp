@@ -25,8 +25,21 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
   project.set_dart_entrypoint_arguments(std::move(command_line_arguments));
 
   FlutterWindow window(project);
-  Win32Window::Point origin(10, 10);
-  Win32Window::Size size(1280, 720);
+  Win32Window::Size size(450, 800);
+  
+  // BẢN VÁ: Tính toán để cửa sổ hiện chính giữa màn hình
+  HMONITOR primary_monitor = MonitorFromWindow(nullptr, MONITOR_DEFAULTTOPRIMARY);
+  MONITORINFO monitor_info;
+  monitor_info.cbSize = sizeof(monitor_info);
+  GetMonitorInfo(primary_monitor, &monitor_info);
+
+  int screen_width = monitor_info.rcWork.right - monitor_info.rcWork.left;
+  int screen_height = monitor_info.rcWork.bottom - monitor_info.rcWork.top;
+  int x = monitor_info.rcWork.left + (screen_width - size.width) / 2;
+  int y = monitor_info.rcWork.top + (screen_height - size.height) / 2;
+
+  Win32Window::Point origin(x, y);
+
   if (!window.CreateAndShow(L"rolify", origin, size)) {
     return EXIT_FAILURE;
   }
