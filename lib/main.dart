@@ -1,7 +1,9 @@
+import 'dart:io';
 import 'package:audio_session/audio_session.dart';
 import 'package:dynamic_color/dynamic_color.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter/material.dart';
+import 'package:just_audio_media_kit/just_audio_media_kit.dart';
 import 'package:rolify/presentation_logic_holders/audio_edit_bloc/audio_edit_bloc.dart';
 import 'package:rolify/presentation_logic_holders/audio_handler.dart';
 import 'package:rolify/presentation_logic_holders/audio_list_bloc/audio_list_bloc.dart';
@@ -11,8 +13,21 @@ import 'package:rolify/presentation_logic_holders/singletons/theme_mode_controll
 import 'package:rolify/root/base.dart';
 
 Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  // Khởi tạo media_kit backend (libmpv/FFmpeg) cho Windows.
+  // Hỗ trợ đầy đủ OGG Vorbis, FLAC, MP3, WAV, Unicode path và gapless loop.
+  if (Platform.isWindows) {
+    JustAudioMediaKit.ensureInitialized(
+      windows: true,
+      android: false,
+      iOS: false,
+      macOS: false,
+      linux: false,
+    );
+  }
   // store this in a singleton
   AppState().audioHandler = await initAudioService();
+
 
   await _configureAudioSession();
   await ThemeModeController().init();

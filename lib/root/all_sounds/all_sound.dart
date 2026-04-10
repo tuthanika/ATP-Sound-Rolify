@@ -439,7 +439,7 @@ class AllSoundState extends State<AllSound> with WidgetsBindingObserver {
     try {
       if (Platform.isWindows) {
         final result = await FilePicker.pickFiles(
-          type: FileType.audio,
+          type: FileType.any,
           allowMultiple: true,
         );
         if (result != null && result.files.isNotEmpty) {
@@ -598,7 +598,7 @@ class AllSoundState extends State<AllSound> with WidgetsBindingObserver {
                   onPressed: () async {
                     if (Platform.isWindows) {
                       final result = await FilePicker.pickFiles(
-                        type: FileType.audio,
+                        type: FileType.any,
                         allowMultiple: false,
                       );
                       if (result != null && result.files.isNotEmpty) {

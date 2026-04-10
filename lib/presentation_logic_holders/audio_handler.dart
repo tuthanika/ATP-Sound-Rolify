@@ -8,6 +8,7 @@ import 'package:audio_session/audio_session.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:just_audio/just_audio.dart';
+import 'package:mime/mime.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:phone_state/phone_state.dart';
 import 'package:rolify/data/audios.dart';
@@ -19,28 +20,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:rolify/presentation_logic_holders/audio_download_manager.dart';
 
 enum AudioCustomEvents { audioEnded, resumeAll, pauseAll }
-
-class FileAudioSource extends StreamAudioSource {
-  final File file;
-  final String? contentType;
-
-  FileAudioSource(this.file, {this.contentType});
-
-  @override
-  Future<StreamAudioResponse> request([int? start, int? end]) async {
-    final int size = await file.length();
-    final int startOffset = start ?? 0;
-    final int endOffset = end ?? size;
-    return StreamAudioResponse(
-      sourceLength: size,
-      contentLength: endOffset - startOffset,
-      offset: startOffset,
-      stream: file.openRead(start, end),
-      contentType: contentType ?? 'audio/mpeg',
-    );
-  }
-}
-
 
 Future<AudioHandler> initAudioService() async {
   final audioHandler = await AudioService.init(
@@ -288,18 +267,13 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
     } else if (playablePath.startsWith('content://') || playablePath.startsWith('file://')) {
       await audioPlayer.setAudioSource(AudioSource.uri(Uri.parse(playablePath)));
     } else {
-      // BẢN VÁ: Sử dụng StreamAudioSource trên Windows để hỗ trợ Tiếng Việt Unicode 100%
-      if (Platform.isWindows) {
-        await audioPlayer.setAudioSource(FileAudioSource(File(playablePath)));
-      } else {
-        await audioPlayer.setFilePath(playablePath);
-      }
+      // Thống nhất cho Android và Windows: dùng setFilePath native.
+      // just_audio_media_kit (libmpv/FFmpeg) hỗ trợ đầy đủ OGG Vorbis, FLAC,
+      // Unicode path và gapless loop trên Windows — không cần workaround.
+      await audioPlayer.setFilePath(playablePath);
     }
     
-    // ĐÃ XÓA BỎ HOÀN TOÀN CỜ CHECK FOLDER NAME TẠI ĐÂY!
-    // Chạm thủ công -> isFromSpecialFolder = false -> Nạp LoopMode.one y hệt Main UI.
     await audioPlayer.setVolume(audio.volume * PlayingSounds().masterVolume);
-    // Lưu ý: setLoopMode đã được chuyển lên playAudio để định đoạt bằng hành động
 
     audioPlayer.playerStateStream.listen((state) {
       if (state.processingState == ProcessingState.completed) {
@@ -308,12 +282,10 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
           
           bool isHandledByFolder = false;
           
-          // ĐIỀU KIỆN RÀNG BUỘC CỦA BẠN: Chỉ check logic tuần tự NẾU có cờ isSequential
           if (_sequentialActivePaths.contains(audio.path)) {
              isHandledByFolder = _handleSpecialFolderNext(audio);
           }
 
-          // Nếu không có cờ, báo kết thúc bình thường (logic Main UI)
           if (!isHandledByFolder) {
             customEvent.add(createAudioCustomEvent(AudioCustomEvents.audioEnded, audio.path));
             _broadcastState();
