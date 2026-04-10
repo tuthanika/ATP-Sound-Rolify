@@ -92,9 +92,9 @@ class AllPlaylistState extends State<AllPlaylist> {
   }
 
   void _updateRenderList() {
-    // Gắn Index gốc (ID trong DB) ngay từ đầu để tránh lookup sau này
+    final query = _searchQuery.toLowerCase();
     var list = playlists.asMap().entries.where((e) => 
-        e.value.name.toLowerCase().contains(_searchQuery.toLowerCase())).toList();
+        e.value.name.toLowerCase().contains(query)).toList();
         
     if (_sortType == 0) {
       list = list.reversed.toList(); 

@@ -580,14 +580,14 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
       PlayingSounds().masterVolumeNotifier.value = volume;
       
       final allAudios = await AudioData.getAllAudios();
+      final audioMap = { for (var a in allAudios) a.path: a };
       
       for (var entry in audioPlayers.entries) {
         final String path = entry.key;
         final player = entry.value;
         
-        final int audioIndex = allAudios.indexWhere((a) => a.path == path);
-        if (audioIndex >= 0) {
-          final Audio audio = allAudios[audioIndex];
+        final Audio? audio = audioMap[path];
+        if (audio != null) {
           player.setVolume(audio.volume * volume);
         } else {
           player.setVolume(volume);
